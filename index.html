@@ -228,7 +228,8 @@
     <div class="card" id="missCard">
       <div style="display:flex; align-items:center; gap:10px;">
         <label>🏗 待補地標 <span id="missCount" style="color:var(--muted);"></span></label>
-        <button class="linkbtn" id="missRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        <label style="margin-left:auto;font-size:12px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="missAll"> 顯示全部(含完整地址)</label>
+        <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
       </div>
       <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「查最多次卻查不到座標」的地址(近14天)。次數越高越值得補——補一次全隊以後查它都免費又秒回。點「補這個」→ 帶名字開表單,你貼上座標(Google 地圖右鍵該點→複製座標)就完成。</div>
       <div style="overflow-x:auto;">
@@ -585,8 +586,10 @@
   // 🏗 待補地標:全隊查最多次卻查不到 → 一鍵帶名字開位置庫表單
   var MISS = [];
   document.addEventListener('click', function(e){ if(e.target && e.target.id==='missRefresh') loadMissQueue(); });
+  document.addEventListener('change', function(e){ if(e.target && e.target.id==='missAll') loadMissQueue(); });
   function loadMissQueue(){
-    api("missQueue").then(function(res){
+    var all = !!($('missAll') && $('missAll').checked);
+    api("missQueue", { all: all }).then(function(res){
       MISS = (res && res.rows) ? res.rows : [];
       $('missCount').textContent = MISS.length ? "("+MISS.length+" 個待補)" : "";
       var tb=$('missBody'); tb.innerHTML="";
