@@ -224,6 +224,22 @@
       <div id="repResolvedList" style="display:none; margin-top:8px;"></div>
     </div>
 
+    <!-- 待補地標(失敗地址金礦) -->
+    <div class="card" id="missCard">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label>🏗 待補地標 <span id="missCount" style="color:var(--muted);"></span></label>
+        <button class="linkbtn" id="missRefresh" style="margin-left:auto;">↻ 重新整理</button>
+      </div>
+      <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「查最多次卻查不到座標」的地址(近14天)。次數越高越值得補——補一次全隊以後查它都免費又秒回。點「補這個」→ 帶名字開表單,你貼上座標(Google 地圖右鍵該點→複製座標)就完成。</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>地址 / 地標</th><th>被查次數</th><th>動作</th></tr></thead>
+          <tbody id="missBody"></tbody>
+        </table>
+      </div>
+      <div class="empty hide" id="missEmpty" style="padding:8px 0 4px;">目前沒有值得補的查無地標(很好,快取很成熟)。</div>
+    </div>
+
     <!-- 社區/大樓 位置庫 -->
     <div class="card" id="placesCard">
       <div style="display:flex; align-items:center; gap:10px;">
@@ -360,6 +376,7 @@
     loadReports();
     loadGeoUsage();
     loadPlaces();
+    loadMissQueue();
   }
 
   // ── Google 定位用量(即時監控)──
@@ -564,6 +581,33 @@
   $('placeQ').addEventListener('input', renderPlaces);
   $('placeNewBtn').addEventListener('click', function(){ openPlaceForm(null); });
   function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); }
+
+  // 🏗 待補地標:全隊查最多次卻查不到 → 一鍵帶名字開位置庫表單
+  var MISS = [];
+  document.addEventListener('click', function(e){ if(e.target && e.target.id==='missRefresh') loadMissQueue(); });
+  function loadMissQueue(){
+    api("missQueue").then(function(res){
+      MISS = (res && res.rows) ? res.rows : [];
+      $('missCount').textContent = MISS.length ? "("+MISS.length+" 個待補)" : "";
+      var tb=$('missBody'); tb.innerHTML="";
+      $('missEmpty').classList.toggle('hide', MISS.length>0);
+      MISS.forEach(function(r, i){
+        var tr=document.createElement('tr');
+        tr.innerHTML = "<td>"+esc(r.q)+"</td>"+
+          "<td><b style='color:var(--green);'>"+r.n+" 次</b></td>"+
+          "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button>")+"</td>";
+        tb.appendChild(tr);
+      });
+      if(ROLE!=="viewer") tb.querySelectorAll("[data-mi]").forEach(function(b){
+        b.addEventListener('click', function(){
+          var r = MISS[parseInt(b.getAttribute('data-mi'),10)];
+          openPlaceForm({ name: r.q, aliases: [], lat: "", lng: "", city: "", address: "", verified: true });
+          $('placesCard').scrollIntoView({behavior:"smooth", block:"center"});
+          setTimeout(function(){ var c=$('pfCoord'); if(c) c.focus(); }, 400);
+        });
+      });
+    });
+  }
   function parseCoord(s){
     var t = String(s||"").replace(/，/g, ",");   // 全形逗號(中文輸入常見)→ 半形
     var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);  // 整數座標也收
@@ -588,7 +632,7 @@
       "</div>";
     if(p){
       $('pfName').value=p.name||""; $('pfAlias').value=(p.aliases||[]).join(", ");
-      $('pfCity').value=p.city||""; $('pfCoord').value=(p.lat+", "+p.lng);
+      $('pfCity').value=p.city||""; $('pfCoord').value=(p.lat!==""&&p.lat!=null)?(p.lat+", "+p.lng):"";
       $('pfAddr').value=p.address||""; $('pfVerified').checked=!!p.verified;
     }
     $('pfCancel').addEventListener('click', function(){ box.style.display="none"; box.innerHTML=""; });
