@@ -595,17 +595,26 @@
         var tr=document.createElement('tr');
         tr.innerHTML = "<td>"+esc(r.q)+"</td>"+
           "<td><b style='color:var(--green);'>"+r.n+" 次</b></td>"+
-          "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button>")+"</td>";
+          "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button> <button class='ghost' data-mig='"+i+"'>噪音</button>")+"</td>";
         tb.appendChild(tr);
       });
-      if(ROLE!=="viewer") tb.querySelectorAll("[data-mi]").forEach(function(b){
-        b.addEventListener('click', function(){
-          var r = MISS[parseInt(b.getAttribute('data-mi'),10)];
-          openPlaceForm({ name: r.q, aliases: [], lat: "", lng: "", city: "", address: "", verified: true });
-          $('placesCard').scrollIntoView({behavior:"smooth", block:"center"});
-          setTimeout(function(){ var c=$('pfCoord'); if(c) c.focus(); }, 400);
+      if(ROLE!=="viewer"){
+        tb.querySelectorAll("[data-mi]").forEach(function(b){
+          b.addEventListener('click', function(){
+            var r = MISS[parseInt(b.getAttribute('data-mi'),10)];
+            openPlaceForm({ name: r.q, aliases: [], lat: "", lng: "", city: "", address: "", verified: true });
+            $('placesCard').scrollIntoView({behavior:"smooth", block:"center"});
+            setTimeout(function(){ var c=$('pfCoord'); if(c) c.focus(); }, 400);
+          });
         });
-      });
+        tb.querySelectorAll("[data-mig]").forEach(function(b){
+          b.addEventListener('click', function(){
+            var r = MISS[parseInt(b.getAttribute('data-mig'),10)];
+            if(!confirm("把「"+r.q+"」標為噪音?以後不再出現在待補地標。")) return;
+            api("ignoreMiss",{q:r.q}).then(function(res){ res.ok?(toast("已歸噪音"),loadMissQueue()):toast("失敗"); });
+          });
+        });
+      }
     });
   }
   function parseCoord(s){
