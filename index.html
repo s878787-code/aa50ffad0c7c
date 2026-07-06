@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripRadar 後台</title>
+<style>
+  :root {
+    --green:#0D7A5F; --green-soft:#E1F0EB; --ink:#16201C; --muted:#6A756F; --faint:#9BA6A0;
+    --line:#E4E8E6; --bg:#F4F6F5; --chip:#EEF2F0; --red:#C94A3A; --red-soft:#FBE7E4;
+    --amber:#C48A1E; --amber-soft:#FBF0DA;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:960px; margin:0 auto; padding:20px 16px 80px; }
+
+  header { display:flex; align-items:center; gap:10px; margin:4px 0 18px; }
+  header .logo { width:40px; height:40px; border-radius:12px; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:20px; }
+  header h1 { font-size:19px; margin:0; }
+  header .sub { color:var(--muted); font-size:12.5px; margin-top:1px; }
+  header .right { margin-left:auto; }
+  .linkbtn { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:6px; }
+
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  label { font-size:12.5px; font-weight:600; color:var(--muted); }
+  input, select { font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; outline:none; background:#fff; color:var(--ink); }
+  input:focus, select:focus { border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
+  button { font-family:inherit; cursor:pointer; }
+  .primary { background:var(--green); color:#fff; border:none; padding:11px 20px; font-size:15px; font-weight:700; border-radius:9px; }
+  .primary:active { transform:scale(.98); }
+  .ghost { background:#fff; color:var(--green); border:1px solid var(--green); padding:9px 14px; font-size:14px; font-weight:600; border-radius:9px; }
+
+  /* 登入 */
+  .login { max-width:400px; margin:10vh auto 0; text-align:center; }
+  .login .logo-lg { font-size:44px; }
+  .login h2 { font-size:20px; margin:8px 0 2px; }
+  .login p { color:var(--muted); font-size:13px; margin:0 0 18px; }
+  .login input { width:100%; text-align:center; font-size:17px; letter-spacing:2px; }
+  .login .primary { width:100%; margin-top:10px; }
+  .err { color:var(--red); font-size:13px; min-height:18px; margin-top:8px; }
+
+  /* 統計卡 = 篩選器 */
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
+  .stat { background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; transition:border-color .12s; position:relative; overflow:hidden; }
+  .stat::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:transparent; }
+  .stat .n { font-size:24px; font-weight:800; line-height:1.1; }
+  .stat .t { font-size:12.5px; color:var(--muted); font-weight:600; margin-top:2px; }
+  .stat.active { border-color:var(--green); }
+  .stat.active::before { background:var(--green); }
+  .stat[data-f="soon"] .n { color:var(--amber); }
+  .stat[data-f="expired"] .n { color:var(--red); }
+  .stat[data-f="active"] .n { color:var(--green); }
+
+  /* 工具列 */
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:2px; }
+  .toolbar .search { flex:1; min-width:180px; position:relative; }
+  .toolbar .search input { width:100%; padding-left:34px; }
+  .toolbar .search::before { content:"🔍"; position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; opacity:.55; }
+  .toolbar .grp { display:flex; gap:6px; align-items:center; }
+  .toolbar .grp span { font-size:12.5px; color:var(--muted); }
+
+  /* 清單 */
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th { text-align:left; color:var(--faint); font-weight:600; font-size:11.5px; letter-spacing:.4px; padding:10px 8px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td { padding:12px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:#FAFBFA; }
+  .drv { font-weight:700; font-size:15px; }
+  .drv small { display:block; font-weight:500; font-size:11.5px; color:var(--faint); margin-top:1px; }
+  .key { font-family:ui-monospace,SFMono-Regular,monospace; font-size:12.5px; background:var(--chip); padding:3px 8px; border-radius:6px; cursor:pointer; white-space:nowrap; }
+  .key:hover { background:var(--green-soft); }
+  .exp b { font-weight:600; }
+  .exp small { display:block; font-size:11.5px; color:var(--faint); }
+  .pill { font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; display:inline-block; white-space:nowrap; }
+  .ok   { background:var(--green-soft); color:var(--green); }
+  .warn { background:var(--amber-soft); color:var(--amber); }
+  .bad  { background:var(--red-soft);   color:var(--red); }
+  .off  { background:var(--chip);       color:var(--muted); }
+  .act { display:flex; gap:5px; }
+  .act button { font-size:12.5px; font-weight:600; padding:6px 10px; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:7px; white-space:nowrap; }
+  .act button:hover { border-color:var(--green); color:var(--green); }
+  .act .danger:hover { border-color:var(--red); color:var(--red); }
+  .muted { color:var(--muted); font-size:13px; }
+  .empty { text-align:center; color:var(--faint); padding:34px 0 20px; font-size:14px; }
+
+  /* 發金鑰結果 */
+  .newkey { background:var(--green-soft); border:1px solid #9FD8C4; border-radius:12px; padding:14px 16px; margin-top:12px; display:none; }
+  .newkey .k { font-size:24px; font-weight:800; letter-spacing:1.5px; font-family:ui-monospace,monospace; }
+  .newkey .row2 { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .newkey .ghost { padding:8px 12px; font-size:13.5px; }
+
+  .toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:22px; font-size:14px; opacity:0; transition:opacity .18s; pointer-events:none; z-index:9; }
+  .toast.show { opacity:1; }
+  .hide { display:none !important; }
+
+  @media (max-width:720px) {
+    .stats { grid-template-columns:repeat(2,1fr); }
+    .hide-m { display:none; }
+    td, th { padding:10px 6px; }
+    .act button { padding:6px 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 登入 -->
+  <div class="login" id="loginView">
+    <div class="logo-lg">🚕</div>
+    <h2>TripRadar 後台</h2>
+    <p>司機授權管理</p>
+    <div class="card" style="padding:20px;">
+      <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
+      <button class="primary" id="loginBtn">進入後台</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+  </div>
+
+  <!-- 主畫面 -->
+  <div id="mainView" class="hide">
+    <header>
+      <div class="logo">🚕</div>
+      <div>
+        <h1>TripRadar 後台</h1>
+        <div class="sub" id="subline">司機授權管理</div>
+      </div>
+      <div class="right"><button class="linkbtn" style="margin-right:16px;" onclick="location.href='AI待審區.html'">🤖 AI 待審難單 →</button><button class="linkbtn" id="logoutBtn">登出</button></div>
+    </header>
+
+    <!-- 統計 = 篩選 -->
+    <div class="stats" id="stats">
+      <div class="stat active" data-f="all"><div class="n" id="nAll">0</div><div class="t">全部</div></div>
+      <div class="stat" data-f="active"><div class="n" id="nActive">0</div><div class="t">有效</div></div>
+      <div class="stat" data-f="soon"><div class="n" id="nSoon">0</div><div class="t">7 天內到期</div></div>
+      <div class="stat" data-f="expired"><div class="n" id="nExpired">0</div><div class="t">已過期／停用</div></div>
+    </div>
+
+    <!-- 營收統計(只算有效且非測試的授權) -->
+    <div class="card" id="revCard">
+      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+        <label>營收統計</label>
+        <span class="muted" style="font-size:12px;">只計入「有效」授權;測試不計費</span>
+      </div>
+      <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-top:10px;">
+        <div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">預估月營業額</div>
+          <div style="font-size:30px; font-weight:800; color:var(--green);" id="revMonth">$0</div>
+        </div>
+        <div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">預估年營業額</div>
+          <div style="font-size:20px; font-weight:700;" id="revYear">$0</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto; margin-top:10px;">
+        <table>
+          <thead><tr>
+            <th>方案</th><th>有效人數</th><th>每期收費加總</th><th>換算每月</th>
+          </tr></thead>
+          <tbody id="revBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Google 定位用量監控 -->
+    <div class="card" id="geoCard">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label>📡 Google 定位用量</label>
+        <span class="muted" style="font-size:12px;">即時;快取命中不花錢</span>
+        <button class="linkbtn" id="geoRefresh" style="margin-left:auto;">↻ 重新整理</button>
+      </div>
+      <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-top:10px;">
+        <div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">今日 Google 呼叫</div>
+          <div style="font-size:30px; font-weight:800;" id="geoToday">—</div>
+        </div>
+        <div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">快取命中率(今日)</div>
+          <div style="font-size:20px; font-weight:700; color:var(--green);" id="geoHitRate">—</div>
+        </div>
+        <div>
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">本月預估成本</div>
+          <div style="font-size:20px; font-weight:700;" id="geoCost">—</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">每日上限</div>
+          <input type="number" id="geoCap" min="0" style="width:90px;" placeholder="0=不限">
+          <button class="ghost" id="geoCapBtn" style="padding:4px 10px;">設定</button>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;" id="aiCtl">
+        <span style="font-size:12.5px; color:var(--muted); font-weight:700;">🤖 AI 看單救援</span>
+        <button class="ghost" id="aiToggle" style="padding:4px 12px;">—</button>
+        <span style="font-size:12.5px; color:var(--muted);">每日上限</span>
+        <input type="number" id="aiCap" min="0" style="width:80px;" placeholder="0=不限">
+        <button class="ghost" id="aiCapBtn" style="padding:4px 10px;">設定</button>
+        <span class="muted" style="font-size:11.5px;">關掉 = 全隊不打 AI(退回純規則)</span>
+      </div>
+      <div id="geoAdvice" style="margin-top:12px;"></div>
+      <div style="overflow-x:auto; margin-top:10px;">
+        <table>
+          <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th></tr></thead>
+          <tbody id="geoBody"></tbody>
+        </table>
+      </div>
+      <div style="overflow-x:auto; margin-top:8px;">
+        <table>
+          <thead><tr><th>今日各司機(前 20)</th><th>次數</th></tr></thead>
+          <tbody id="geoDrivers"></tbody>
+        </table>
+      </div>
+      <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
+    </div>
+
+    <!-- 司機問題回報 -->
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label>🐞 司機問題回報 <span id="repCount" style="color:var(--red);"></span></label>
+        <button class="linkbtn" id="repRefresh" style="margin-left:auto;">↻ 重新整理</button>
+      </div>
+      <div id="repOpenHead" style="margin-top:10px; color:var(--red); font-size:13px; font-weight:700;">🔧 未修復 <span id="repOpenCount"></span></div>
+      <div id="repList" style="margin-top:8px;"></div>
+      <div class="empty hide" id="repEmpty" style="padding:8px 0 4px;">目前沒有未修復的回報。司機在 App 偵錯頁按「回報問題」就會出現在這裡。</div>
+      <div id="repResolvedHead" style="margin-top:12px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:700; user-select:none;">✅ 已修復 <span id="repResolvedCount"></span> ▾(點一下展開)</div>
+      <div id="repResolvedList" style="display:none; margin-top:8px;"></div>
+    </div>
+
+    <!-- 社區/大樓 位置庫 -->
+    <div class="card" id="placesCard">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <label>🏢 社區/大樓 位置庫 <span id="placeCount" style="color:var(--muted);"></span></label>
+        <button class="linkbtn" id="placeRefresh" style="margin-left:auto;">↻ 重新整理</button>
+      </div>
+      <div class="muted" style="font-size:12px; margin:6px 0 10px;">派單只寫「XX社區/大樓/店名」Google 定不到 → 在這補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 →「這是哪裡」→ 點座標複製「25.033, 121.565」貼進來。**驗證**打勾才會被 App 採用。</div>
+      <div id="placeAdd" style="display:none; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--chip);"></div>
+      <div class="toolbar" style="margin-bottom:8px;">
+        <div class="search" style="flex:1; min-width:160px;"><input type="text" id="placeQ" placeholder="搜尋社區/大樓/別名"></div>
+        <button class="primary" id="placeNewBtn">＋ 新增地點</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>名稱 / 別名</th><th class="hide-m">縣市</th><th>座標</th><th>命中</th><th>狀態</th><th>動作</th></tr></thead>
+          <tbody id="placeBody"></tbody>
+        </table>
+      </div>
+      <div class="empty hide" id="placeEmpty" style="padding:8px 0 4px;">還沒有任何社區。從上面「新增地點」開始建,或從定位失敗的回報一筆筆補。</div>
+    </div>
+
+    <!-- 發新金鑰 -->
+    <div class="card" id="createCard">
+      <label>發一把新金鑰</label>
+      <div class="toolbar" style="margin-top:8px;">
+        <div class="search" style="flex:1; min-width:140px;"><input type="text" id="cName" placeholder="司機名字(例:阿凱)" autocomplete="off" style="padding-left:12px;"></div>
+        <select id="cPlan">
+          <option value="月繳">月繳</option><option value="季繳">季繳</option>
+          <option value="年繳">年繳</option><option value="測試">測試(免費)</option>
+        </select>
+        <input type="number" id="cPrice" placeholder="每期收費 $" min="0" style="width:110px;">
+        <select id="cMonths">
+          <option value="1">1 個月</option><option value="2">2 個月</option><option value="3">3 個月</option>
+          <option value="6">6 個月</option><option value="12">12 個月</option>
+        </select>
+        <input type="number" id="cDays" placeholder="贈送天數(可選)" min="1" max="365" title="加購在方案之上:月繳600+送1天=31天且計600營收;方案選「測試」時=免費鑰,填幾天開幾天" style="width:150px;">
+        <button class="primary" id="createBtn">產生金鑰</button>
+      </div>
+      <div class="muted" style="font-size:12px; margin-top:6px;">💡 <b>付費鑰</b>:選月/季/年繳＋填收費＋(可選)贈送天數 → 營收照計、到期＝方案月數＋贈送天數。<br>💡 <b>免費封測鑰</b>:方案選「測試」＋填贈送天數(例 7)→ 免費、到期自停、不計營收。</div>
+      <div class="newkey" id="newkey">
+        <div class="muted" id="nkMeta"></div>
+        <div class="k" id="nkKey"></div>
+        <div class="row2">
+          <button class="ghost" id="nkCopy">複製名字＋金鑰</button>
+          <button class="ghost" id="nkCopyMsg">複製給司機的訊息</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 清單 -->
+    <div class="card">
+      <div class="toolbar">
+        <div class="search"><input type="text" id="q" placeholder="搜尋司機 / 金鑰 / 手機號"></div>
+        <div class="grp"><span>續約月數</span>
+          <select id="renewMonths">
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="6">6</option><option value="12">12</option>
+          </select>
+        </div>
+        <button class="ghost" id="refreshBtn">↻ 重新整理</button>
+        <span style="font-size:12px; color:var(--faint); align-self:center;">· 每 20 秒自動更新</span>
+      </div>
+      <div style="overflow-x:auto; margin-top:6px;">
+        <table>
+          <thead><tr>
+            <th>司機</th><th>金鑰</th><th>方案</th><th>到期</th><th class="hide-m">最後上線</th><th>狀態</th><th>動作</th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div class="empty hide" id="empty">沒有符合的司機。</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+  var URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
+  var PW = sessionStorage.getItem("tr_pw") || "";
+  var ROWS = [], FILTER = "all", QUERY = "";
+  var ROLE = "admin";  // 伺服器依密碼判定:admin=全權 / viewer=唯讀監控(牆在伺服器,這裡只是藏按鈕)
+
+  function $(id){ return document.getElementById(id); }
+  function toast(t){ var e=$('toast'); e.textContent=t; e.classList.add('show'); setTimeout(function(){e.classList.remove('show');},1600); }
+  function api(action, extra){
+    return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
+      .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
+      .catch(function(){ return { error:"network" }; });
+  }
+  function p2(n){ return ("0"+n).slice(-2); }
+  function fmtD(iso){ if(!iso) return "—"; var d=new Date(iso); return d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate()); }
+  function daysLeft(iso){ return Math.floor((new Date(iso)-new Date())/86400000); }
+  function rel(iso){
+    if(!iso) return "—";
+    var diff = Date.now() - new Date(iso).getTime(), day = 86400000;
+    if(diff < day)   return "今天 " + p2(new Date(iso).getHours()) + ":" + p2(new Date(iso).getMinutes());
+    if(diff < 2*day) return "昨天";
+    return Math.floor(diff/day) + " 天前";
+  }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  // ── 登入 ──
+  $('loginBtn').addEventListener('click', login);
+  $('pw').addEventListener('keydown', function(e){ if(e.key==='Enter') login(); });
+  function login(){
+    PW = $('pw').value; if(!PW) return;
+    $('loginErr').textContent = "驗證中…";
+    api("list").then(function(res){
+      if(res.error){
+        $('loginErr').textContent =
+          res.error==="unauthorized" ? "密碼錯誤" :
+          res.error==="network" ? "連不上伺服器,請檢查網路" :
+          "連線失敗:" + res.error;
+        return;
+      }
+      sessionStorage.setItem("tr_pw", PW);
+      enter(res.rows||[], res.role);
+    });
+  }
+  function enter(rows, role){
+    ROWS = rows;
+    ROLE = role === "viewer" ? "viewer" : "admin";
+    if (ROLE === "viewer") {
+      // 唯讀監控:藏掉所有會改資料的入口(伺服器端另有硬牆,就算改前端也打不進)
+      $('createCard').classList.add('hide');
+      $('geoCap').disabled = true;
+      $('geoCapBtn').disabled = true;
+      $('placeNewBtn').classList.add('hide');   // 唯讀:社區庫只能看不能改
+    }
+    $('loginView').classList.add('hide');
+    $('mainView').classList.remove('hide');
+    render();
+    loadReports();
+    loadGeoUsage();
+    loadPlaces();
+  }
+
+  // ── Google 定位用量(即時監控)──
+  // 單價 = 2025/03 Google Maps Platform 新制參考價;實際帳單以 Google Cloud Console 為準。
+  var GEO_PRICING = {
+    geocode:            { free: 10000, per1000: 5,  label: "Google Geocoding(長尾退路)" },
+    geocode_nominatim:  { free: 0,     per1000: 0,  label: "自架 Nominatim 路名/地標(免費)" },
+    geocode_tgos:       { free: 0,     per1000: 0,  label: "TGOS 門牌定位(內政部官方,免費)" },
+    places:             { free: 5000,  per1000: 32, label: "Places 就近補救(⚠️最貴)" },
+    distance_google:    { free: 10000, per1000: 5,  label: "Google 距離(退路)" },
+    distance_geoapify:  { free: 0,     per1000: 0,  label: "Geoapify 距離(免費3000/日)" },
+    distance_osrm:      { free: 0,     per1000: 0,  label: "自架 OSRM 距離(免費)" },
+    cache_hit:          { free: 0,     per1000: 0,  label: "快取命中(不花錢)" },
+    cache_hit_miss:     { free: 0,     per1000: 0,  label: "🚫 失敗快取命中(查無直接回,省下 Google)" },
+    cache_hit_road:     { free: 0,     per1000: 0,  label: "🛣 路段快取命中(同路段共用座標,免費)" },
+    community_hit:      { free: 0,     per1000: 0,  label: "🏢 社區位置庫命中(免費)" },
+    budget_blocked:     { free: 0,     per1000: 0,  label: "超每日上限被擋" },
+    aiparse:            { free: 0,     per1000: 1.5, label: "🤖 AI 看單(Haiku)" },
+    aiparse_blocked:    { free: 0,     per1000: 0,  label: "🤖 AI 超每日上限被擋" }
+  };
+  var GOOGLE_APIS = ["geocode", "places", "distance_google"];
+  $('geoRefresh').addEventListener('click', loadGeoUsage);
+  $('geoCapBtn').addEventListener('click', function(){
+    var cap = parseInt($('geoCap').value || "0", 10) || 0;
+    api("setGeoCap", { cap: cap }).then(function(res){
+      toast(res.ok ? (cap ? "每日上限已設為 " + cap : "已取消上限") : "設定失敗");
+      loadGeoUsage();
+    });
+  });
+  // 🤖 AI 看單:開/關 + 每日上限(呼叫 setAiConfig;viewer 會被伺服器擋)
+  var aiEnabled = true;
+  $('aiToggle').addEventListener('click', function(){
+    api("setAiConfig", { enabled: !aiEnabled, cap: parseInt($('aiCap').value || "0", 10) || 0 }).then(function(res){
+      if(res.ok){ toast(res.ai_enabled ? "🤖 AI 看單已開啟" : "⛔ AI 看單已關閉"); loadGeoUsage(); }
+      else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  $('aiCapBtn').addEventListener('click', function(){
+    var cap = parseInt($('aiCap').value || "0", 10) || 0;
+    api("setAiConfig", { enabled: aiEnabled, cap: cap }).then(function(res){
+      if(res.ok){ toast(cap ? "AI 每日上限已設為 " + cap : "AI 已取消上限"); loadGeoUsage(); }
+      else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  function geoSum(arr, apis){ var s = 0; (arr||[]).forEach(function(r){ if(apis.indexOf(r.api) >= 0) s += r.n; }); return s; }
+  function licName(k){
+    for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
+    return k;
+  }
+  function loadGeoUsage(){
+    api("geoUsage").then(function(res){
+      if(!res.ok){
+        $('geoNote').textContent = "讀取失敗:" + (res.error||"?") + "(需先跑 schema v5 SQL,並重新部署 geocode + admin function)";
+        return;
+      }
+      var s = res.stats || {}, today = s.today || [], month = s.month || [];
+      // 免費命中=舊快取+路段快取+失敗快取+社區位置庫(0706 起有多層,只算 cache_hit 會低估)
+      var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, ["cache_hit", "cache_hit_road", "cache_hit_miss", "community_hit"]);
+      $('geoToday').textContent = gToday;
+      $('geoHitRate').textContent = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
+      var cost = 0;
+      month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
+      $('geoCost').textContent = "US$" + cost.toFixed(2);
+      if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
+      // 🤖 AI 看單開關狀態(viewer 隱藏控制項)
+      aiEnabled = res.ai_enabled !== false;
+      $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
+      $('aiToggle').style.color = aiEnabled ? "var(--green)" : "var(--red)";
+      if(document.activeElement !== $('aiCap')) $('aiCap').value = res.ai_daily_cap != null ? res.ai_daily_cap : 0;
+      $('aiCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
+      var tb = $('geoBody'); tb.innerHTML = "";
+      // 排序(0706):要付錢的 API 一律最上面(錢先看),免費的其後;同層都按「今日次數」大→小
+      var apiRows = [];
+      Object.keys(GEO_PRICING).forEach(function(k){
+        var t = 0, m = 0;
+        today.forEach(function(r){ if(r.api === k) t = r.n; });
+        month.forEach(function(r){ if(r.api === k) m = r.n; });
+        if(!t && !m) return;
+        apiRows.push({ k: k, t: t, m: m, p: GEO_PRICING[k] });
+      });
+      apiRows.sort(function(a,b){
+        var pa = a.p.per1000 ? 0 : 1, pb = b.p.per1000 ? 0 : 1;
+        if(pa !== pb) return pa - pb;          // 付費最上面
+        if(b.t !== a.t) return b.t - a.t;      // 今日次數大→小
+        return b.m - a.m;                      // 同今日看本月
+      });
+      apiRows.forEach(function(row){
+        var p = row.p, tr = document.createElement('tr');
+        tr.innerHTML = "<td>" + esc(p.label) + "</td><td>" + row.t + "</td><td>" + row.m + "</td><td>" +
+          (p.free ? p.free : "—") + "</td><td>" + (p.per1000 ? "US$" + p.per1000 + "/千次" : "免費") + "</td>";
+        tb.appendChild(tr);
+      });
+      var dv = $('geoDrivers'); dv.innerHTML = "";
+      (s.today_by_driver || []).forEach(function(r){
+        var tr = document.createElement('tr');
+        tr.innerHTML = "<td>" + esc(licName(r.lic)) + "</td><td>" + r.n + "</td>";
+        dv.appendChild(tr);
+      });
+      $('geoNote').textContent = "地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、90 天閒置才清)。免費額/單價為 2025 新制參考:Geocoding 與距離每月各 1 萬次免費、Places 文字搜尋 5 千次免費;實際以 Google Cloud 帳單為準。";
+      renderGeoAdvice({ today: today, month: month, cost: cost, gToday: gToday, hits: hits, cap: s.cap, drivers: s.today_by_driver || [] });
+    });
+  }
+
+  // ── 自動診斷 & 省錢建議(讀即時用量,翻成白話)──
+  function renderGeoAdvice(c){
+    var box = $('geoAdvice'); if(!box) return;
+    var T = c.today, M = c.month, tips = [];
+    function g1(arr, a){ return geoSum(arr, [a]); }         // 單一 api 今日/本月次數
+    function pctf(x){ return Math.round(x * 100); }
+    var geoT = g1(T,'geocode'), nomiT = g1(T,'geocode_nominatim'), placesT = g1(T,'places'),
+        geoapifyT = g1(T,'distance_geoapify'), osrmT = g1(T,'distance_osrm'), blockedT = g1(T,'budget_blocked');
+    var geoM = g1(M,'geocode'), placesM = g1(M,'places'), distGM = g1(M,'distance_google');
+    var hitDen = c.gToday + c.hits, hitRate = hitDen ? c.hits / hitDen : null;
+
+    // R1 本月成本頭條
+    if(c.cost <= 0.005){
+      tips.push({ s:0, h:"🟢 本月目前 <b>US$0</b> —— 查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
+    } else {
+      var paid = [["Google Geocoding", Math.max(0, geoM-10000)*5/1000],
+                  ["Places", Math.max(0, placesM-5000)*32/1000],
+                  ["Google 距離", Math.max(0, distGM-10000)*5/1000]];
+      paid.sort(function(a,b){ return b[1]-a[1]; });
+      tips.push({ s:3, h:"🔴 本月已產生 <b>US$"+c.cost.toFixed(2)+"</b>,主要來自 <b>"+esc(paid[0][0])+"</b>。往下看哪裡能砍。" });
+    }
+
+    // R2 照今日速度推估月底費用
+    var now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    function proj(m){ return Math.round(m / dom * dim); }
+    var pc = Math.max(0, proj(geoM)-10000)*5/1000 + Math.max(0, proj(placesM)-5000)*32/1000 + Math.max(0, proj(distGM)-10000)*5/1000;
+    if(pc >= c.cost + 1){
+      tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~US$"+pc.toFixed(0)+"</b>(現在 $"+c.cost.toFixed(2)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
+    }
+
+    // R3 查座標還有多少在花付費 Google
+    var geoDen = geoT + nomiT;
+    if(geoT > 0 && geoDen > 0){
+      var share = geoT / geoDen;
+      if(share > 0.3){
+        tips.push({ s:2, h:"🟡 今日查座標有 <b>"+pctf(share)+"%("+geoT+" 次)</b>還在打付費 Google($5/千)。自架 Nominatim 若已上線應趨近 0 → 確認它<b>匯完/存活</b>,匯完這塊就全免費。" });
+      } else if(nomiT > 0){
+        tips.push({ s:0, h:"🟢 查座標 <b>"+pctf(nomiT/geoDen)+"%</b> 已走免費自架 Nominatim,只剩少數長尾退 Google。" });
+      }
+    }
+
+    // R4 距離:Geoapify 爆日限 / OSRM 接手
+    if(geoapifyT > 3000){
+      if(osrmT > 0){
+        tips.push({ s:1, h:"🔵 距離正從 Geoapify 切到自架 OSRM;Geoapify 今日 "+geoapifyT+" 次(超過免費 3000/日的部分退了直線),切完會歸零。" });
+      } else {
+        tips.push({ s:3, h:"🔴 Geoapify 距離今日 <b>"+geoapifyT+"</b> 次,超過免費 3000/日 —— 超出的退直線(不準)。啟用<b>自架 OSRM</b> 可無限免費。" });
+      }
+    } else if(osrmT > 0 && geoapifyT < 200){
+      tips.push({ s:0, h:"🟢 距離已走自架 OSRM(免費無限),Geoapify 幾乎歸零。" });
+    }
+
+    // R5 Places 最貴
+    if(placesM > 5000){
+      tips.push({ s:3, h:"🔴 Places 本月 "+placesM+" 次已破免費 5,000($32/千,全表最貴)。把常漏查的裸路名補進地標庫最有效。" });
+    } else if(placesT > 0){
+      tips.push({ s:2, h:"🟡 Places(最貴 $32/千)今日 "+placesT+" 次 —— 通常是裸路名查不到才退它。量若持續,值得補地標庫。" });
+    }
+
+    // R6 快取命中率
+    if(hitRate != null){
+      if(hitRate < 0.5){
+        tips.push({ s:1, h:"🔵 快取命中率 "+pctf(hitRate)+"%,冷啟動偏低是正常的;地址累積後會自己升到 85–95%,不用管。" });
+      } else if(hitRate >= 0.85){
+        tips.push({ s:0, h:"🟢 快取命中率 "+pctf(hitRate)+"%,很成熟,大量查詢是白撿的。" });
+      }
+    }
+
+    // R7 每日上限保險絲 / 被擋
+    if(!c.cap){
+      tips.push({ s:1, h:"🔵 沒設每日上限保險絲。建議設一個(例 8000):萬一程式 bug 狂打 API,也不會爆帳單。上方欄位填數字按「設定」即可。" });
+    }
+    if(blockedT > 0){
+      tips.push({ s:2, h:"🟡 今日有 <b>"+blockedT+"</b> 次因超每日上限被擋(卡片退了直線)。正常量就調高上限;異常先查是哪個司機在狂打。" });
+    }
+
+    // R8 單一司機用量異常
+    var dr = (c.drivers || []).slice();
+    if(dr.length >= 2 && dr[0].n > 200 && dr[0].n > dr[1].n * 3){
+      tips.push({ s:2, h:"🟡 司機 <b>"+esc(licName(dr[0].lic))+"</b> 今日 "+dr[0].n+" 次,遠高於其他人 —— 可能一直查不到在重打,值得看他的單。" });
+    }
+
+    tips.sort(function(a,b){ return b.s - a.s; });
+    var SEV = { 3:{bd:'var(--red)',bg:'var(--red-soft)'}, 2:{bd:'#C9962F',bg:'#FBF1DC'}, 1:{bd:'var(--faint)',bg:'var(--chip)'}, 0:{bd:'var(--green)',bg:'var(--green-soft)'} };
+    if(!tips.length){ box.innerHTML = ""; return; }
+    var html = '<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;">💡 診斷 &amp; 省錢建議</div>';
+    tips.forEach(function(t){
+      var st = SEV[t.s];
+      html += '<div style="border-left:3px solid '+st.bd+';background:'+st.bg+';border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:6px;font-size:13px;line-height:1.55;">'+t.h+'</div>';
+    });
+    box.innerHTML = html;
+  }
+
+  // ── 司機問題回報 ──
+  var REPORTS = [];
+  // ── 社區/大樓 位置庫(策展)──
+  var PLACES = [];
+  $('placeRefresh').addEventListener('click', loadPlaces);
+  $('placeQ').addEventListener('input', renderPlaces);
+  $('placeNewBtn').addEventListener('click', function(){ openPlaceForm(null); });
+  function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); }
+  function parseCoord(s){
+    var t = String(s||"").replace(/，/g, ",");   // 全形逗號(中文輸入常見)→ 半形
+    var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);  // 整數座標也收
+    return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
+  }
+  function openPlaceForm(p){
+    var box = $('placeAdd'); box.style.display = "block";
+    box.innerHTML =
+      "<div class='toolbar' style='flex-wrap:wrap;'>"+
+      "<input id='pfName' placeholder='名稱(例:吉祥大樓)' style='flex:1;min-width:140px;'>"+
+      "<input id='pfAlias' placeholder='別名(逗號分隔,可空)' style='flex:1;min-width:140px;'>"+
+      "<input id='pfCity' placeholder='縣市(例:基隆市)' style='width:120px;'>"+
+      "</div>"+
+      "<div class='toolbar' style='flex-wrap:wrap;margin-top:6px;'>"+
+      "<input id='pfCoord' placeholder='座標 貼「25.033, 121.565」' style='flex:1;min-width:180px;'>"+
+      "<input id='pfAddr' placeholder='完整地址(可空,人看的)' style='flex:1;min-width:160px;'>"+
+      "</div>"+
+      "<div style='margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;'>"+
+      "<label style='font-size:13px;'><input type='checkbox' id='pfVerified'> 已驗證(打勾才給 App 用)</label>"+
+      "<button class='primary' id='pfSave'>"+(p?"儲存修改":"新增")+"</button>"+
+      "<button class='ghost' id='pfCancel'>取消</button>"+
+      "</div>";
+    if(p){
+      $('pfName').value=p.name||""; $('pfAlias').value=(p.aliases||[]).join(", ");
+      $('pfCity').value=p.city||""; $('pfCoord').value=(p.lat+", "+p.lng);
+      $('pfAddr').value=p.address||""; $('pfVerified').checked=!!p.verified;
+    }
+    $('pfCancel').addEventListener('click', function(){ box.style.display="none"; box.innerHTML=""; });
+    $('pfSave').addEventListener('click', function(){
+      var name=$('pfName').value.trim(); if(!name){ $('pfName').focus(); return; }
+      var c=parseCoord($('pfCoord').value); if(!c){ toast("座標格式:貼 25.033, 121.565"); $('pfCoord').focus(); return; }
+      var payload={ name:name, aliases:$('pfAlias').value, lat:c.lat, lng:c.lng,
+        city:$('pfCity').value.trim(), address:$('pfAddr').value.trim(), verified:$('pfVerified').checked };
+      if(p) payload.id=p.id;
+      api(p?"editPlace":"addPlace", payload).then(function(res){
+        if(res.error){ toast("失敗:"+res.error); return; }
+        toast(p?"已儲存":"已新增"); box.style.display="none"; box.innerHTML=""; loadPlaces();
+      });
+    });
+  }
+  function renderPlaces(){
+    var q=($('placeQ').value||"").trim().toLowerCase();
+    var list=PLACES.filter(function(p){
+      if(!q) return true;
+      return (p.name||"").toLowerCase().indexOf(q)>=0 || (p.aliases||[]).join(",").toLowerCase().indexOf(q)>=0 || (p.city||"").toLowerCase().indexOf(q)>=0;
+    });
+    $('placeCount').textContent = PLACES.length ? "("+PLACES.length+")" : "";
+    $('placeEmpty').classList.toggle('hide', PLACES.length>0);
+    var tb=$('placeBody'); tb.innerHTML="";
+    list.forEach(function(p){
+      var tr=document.createElement('tr');
+      var al=(p.aliases||[]).length? "<br><small class='muted'>"+esc((p.aliases||[]).join(" / "))+"</small>":"";
+      tr.innerHTML=
+        "<td><b>"+esc(p.name||"?")+"</b>"+al+"</td>"+
+        "<td class='hide-m muted'>"+esc(p.city||"—")+"</td>"+
+        "<td><a href='https://www.google.com/maps?q="+p.lat+","+p.lng+"' target='_blank' style='font-size:12px;'>"+Number(p.lat).toFixed(4)+","+Number(p.lng).toFixed(4)+"</a></td>"+
+        "<td>"+(p.hits||0)+"</td>"+
+        "<td><span class='pill "+(p.verified?"ok":"off")+"'>"+(p.verified?"已驗證":"未驗證")+"</span></td>"+
+        "<td><div class='act'>"+(ROLE==="viewer"?"<span class='muted' style='font-size:12px;'>唯讀</span>":
+          "<button data-a='vf'>"+(p.verified?"取消驗證":"✔驗證")+"</button>"+
+          "<button data-a='ed'>編輯</button>"+
+          "<button class='danger' data-a='del'>刪除</button>")+"</div></td>";
+      if(ROLE!=="viewer"){
+        tr.querySelector("[data-a='vf']").addEventListener('click',function(){ api("verifyPlace",{id:p.id,verified:!p.verified}).then(function(r){ if(r.ok){ toast(p.verified?"已取消驗證":"已驗證"); loadPlaces(); } }); });
+        tr.querySelector("[data-a='ed']").addEventListener('click',function(){ openPlaceForm(p); });
+        tr.querySelector("[data-a='del']").addEventListener('click',function(){ if(!confirm("刪除「"+(p.name||"")+"」?")) return; api("deletePlace",{id:p.id}).then(function(r){ if(r.ok){ toast("已刪除"); loadPlaces(); } }); });
+      }
+      tb.appendChild(tr);
+    });
+  }
+
+  $('repRefresh').addEventListener('click', loadReports);
+  function loadReports(){
+    api("reports").then(function(res){
+      if(res.rows){ REPORTS = res.rows; renderReports(); }
+    });
+  }
+  function renderReports(){
+    var open = REPORTS.filter(function(r){ return !r.resolved; });
+    var done = REPORTS.filter(function(r){ return !!r.resolved; });
+    var box = $('repList'); box.innerHTML = "";
+    var doneBox = $('repResolvedList'); doneBox.innerHTML = "";
+    $('repCount').textContent = open.length ? "(" + open.length + ")" : "";
+    $('repOpenCount').textContent = "(" + open.length + ")";
+    $('repEmpty').classList.toggle('hide', open.length > 0);
+    $('repResolvedCount').textContent = "(" + done.length + ")";
+    open.forEach(function(r){ box.appendChild(reportCard(r)); });
+    done.forEach(function(r){ doneBox.appendChild(reportCard(r)); });
+  }
+  $('repResolvedHead').addEventListener('click', function(){
+    var l = $('repResolvedList');
+    l.style.display = l.style.display === "none" ? "block" : "none";
+  });
+  // 問題類型配色
+  var TYPE_STYLE = {
+    "抓錯單":   { bg:"var(--red-soft)",   fg:"var(--red)" },
+    "漏抓":     { bg:"#FBF1DC",           fg:"#8A5A00" },
+    "標記失敗": { bg:"#E7E9F5",           fg:"#3B4CA0" },
+    "距離錯":   { bg:"var(--green-soft)", fg:"var(--green)" },
+    "其他":     { bg:"var(--chip)",       fg:"var(--muted)" }
+  };
+  // 相似/重複偵測:純前端,字元三連(trigram)Jaccard,不打任何 API。比對「派單原文」。
+  function normTxt(s){ return String(s||"").replace(/\s+/g,"").toLowerCase(); }
+  function triJaccard(a,b){
+    if(a.length < 3 || b.length < 3) return 0;
+    var ga={}, gb={}, i, inter=0, na=0, nb=0;
+    for(i=0;i<a.length-2;i++){ var k=a.slice(i,i+3); if(!ga[k]){ ga[k]=1; na++; } }
+    for(i=0;i<b.length-2;i++){ var k2=b.slice(i,i+3); if(!gb[k2]){ gb[k2]=1; nb++; } }
+    Object.keys(ga).forEach(function(k){ if(gb[k]) inter++; });
+    var uni = na + nb - inter;
+    return uni ? inter/uni : 0;
+  }
+  function similarReports(r){
+    var mine = normTxt(r.raw_dispatch);
+    if(mine.length < 8 || REPORTS.length > 500) return [];  // 太短不比;量太大跳過(避免 n² 卡頓)
+    var out = [];
+    REPORTS.forEach(function(o){
+      if(o.id === r.id) return;
+      var their = normTxt(o.raw_dispatch);
+      if(their.length < 8) return;
+      var sc = triJaccard(mine, their);
+      if(sc >= 0.45) out.push({ o:o, sc:sc });
+    });
+    out.sort(function(a,b){ return b.sc - a.sc; });
+    return out.slice(0, 3);
+  }
+  function reportCard(r){
+      var d = document.createElement('div');
+      d.style.cssText = "border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;" +
+        (r.resolved ? " opacity:.62;" : "");
+      var head = document.createElement('div');
+      head.style.cssText = "display:flex; align-items:center; gap:10px; cursor:pointer; flex-wrap:wrap;";
+      var sims = similarReports(r);
+      var ts = TYPE_STYLE[r.report_type] || TYPE_STYLE["其他"];
+      head.innerHTML =
+        (r.resolved ? "<span style='font-size:12px;'>✅</span>" : "")+
+        "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
+        (r.report_type ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:"+ts.bg+"; color:"+ts.fg+";'>"+esc(r.report_type)+"</span>" : "")+
+        (sims.length ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:#EDE6F5; color:#6B3FA0;'>🔁 相似×"+sims.length+"</span>" : "")+
+        "<span class='muted' style='font-size:12px;'>v"+esc(r.app_version||"?")+" ・ "+fmtD(r.created_at)+" "+p2(new Date(r.created_at).getHours())+":"+p2(new Date(r.created_at).getMinutes())+"</span>"+
+        (r.device_model? "<span style='font-size:12px; color:var(--muted);'>📱"+esc(r.device_model)+"</span>" : "")+
+        (r.image_url? "<span style='font-size:12px;'>🖼️</span>" : "")+
+        (r.note? "<span style='font-size:13px; color:var(--amber); font-weight:600;'>「"+esc(r.note)+"」</span>" : "")+
+        "<span style='margin-left:auto; font-size:12px; color:var(--faint);'>點一下展開 ▾</span>";
+      var body = document.createElement('div');
+      body.style.display = "none";
+      var simBanner = "";
+      if(sims.length){
+        var anyRes = sims.some(function(x){ return x.o.resolved; });
+        simBanner = "<div style='border-left:3px solid #6B3FA0; background:#F3EEFA; border-radius:0 8px 8px 0; padding:8px 12px; margin:10px 0; font-size:12.5px; line-height:1.6;'>"+
+          "🔁 <b>疑似與 "+sims.length+" 筆相似</b>"+(anyRes? " ・其中有<b>已修復</b>的,可能同一個 bug,先看那筆的修法" : "")+"<br>"+
+          sims.map(function(x){ var o=x.o;
+            return "・"+(o.resolved?"✅ ":"🔧 ")+esc(o.driver_name||o.license_key||"?")+" "+(o.report_type?"["+esc(o.report_type)+"] ":"")+fmtD(o.created_at)+" <span style='color:var(--faint);'>(相似度 "+Math.round(x.sc*100)+"%)</span>";
+          }).join("<br>")+
+          "</div>";
+      }
+      var preCss = "white-space:pre-wrap; font-size:12px; background:var(--chip); border-radius:8px; padding:10px; overflow:auto; margin:0 0 4px;";
+      var lblCss = "font-size:12px; color:var(--muted); font-weight:600; margin:10px 0 3px;";
+      body.innerHTML =
+        (r.image_url? "<a href='"+esc(r.image_url)+"' target='_blank'><img src='"+esc(r.image_url)+"' style='max-width:100%; max-height:360px; border-radius:8px; margin:10px 0; border:1px solid var(--line);'></a>" : "")+
+        simBanner+
+        (r.parse_snapshot? "<div style='"+lblCss+"'>🔎 App 當下解析</div><pre style='"+preCss+"'>"+esc(r.parse_snapshot)+"</pre>" : "")+
+        (r.raw_dispatch? "<div style='"+lblCss+"'>📩 派單原文(最近接單・自動附上)</div><pre style='"+preCss+" max-height:220px;'>"+esc(r.raw_dispatch)+"</pre>" : "")+
+        "<div style='"+lblCss+" color:var(--faint);'>🐞 完整偵錯</div>"+
+        "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>";
+      var actions = document.createElement('div');
+      actions.className = "act";
+      actions.innerHTML = (ROLE === "viewer" ? "" :
+        "<button data-a='res'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 標記已修復")+"</button>"+
+        "<button data-a='edit'>✏️ 編輯內容</button>")+
+        "<button data-a='copy'>複製報告</button>"+
+        (ROLE === "viewer" ? "" : "<button class='danger' data-a='del'>刪除</button>");
+      if (ROLE !== "viewer") actions.querySelector("[data-a='res']").addEventListener('click', function(){
+        api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
+          if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記為已修復"); loadReports(); }
+        });
+      });
+      if (ROLE !== "viewer") actions.querySelector("[data-a='edit']").addEventListener('click', function(){
+        var note = prompt("修改「司機描述」(補字/改錯字;留空=清空):", r.note || "");
+        if(note===null) return;
+        var patch = { id:r.id, note:note };
+        var raw = prompt("修改「派單原文」(自動附上的常抓錯張,可貼上正確那張;不改請按取消):", r.raw_dispatch || "");
+        if(raw!==null) patch.raw_dispatch = raw;
+        api("editReport", patch).then(function(res){ res.ok ? (toast("已更新回報內容"), loadReports()) : toast("失敗:"+(res.error||"?")); });
+      });
+      actions.querySelector("[data-a='copy']").addEventListener('click', function(){
+        navigator.clipboard.writeText(r.report||"").then(function(){ toast("報告已複製,可直接貼給 Claude 除錯"); });
+      });
+      if (ROLE !== "viewer") actions.querySelector("[data-a='del']").addEventListener('click', function(){
+        if(!confirm("刪除這筆回報?")) return;
+        api("deleteReport",{id:r.id}).then(function(res){ if(res.ok){ toast("已刪除"); loadReports(); } });
+      });
+      body.appendChild(actions);
+      head.addEventListener('click', function(){ body.style.display = body.style.display==="none" ? "block" : "none"; });
+      d.appendChild(head); d.appendChild(body);
+      return d;
+  }
+  $('logoutBtn').addEventListener('click', function(){
+    sessionStorage.removeItem("tr_pw"); location.reload();
+  });
+  // 已登入過 → 自動進入
+  if (PW) { api("list").then(function(res){ if(res.rows) enter(res.rows, res.role); else { PW=""; sessionStorage.removeItem("tr_pw"); } }); }
+
+  // ── 發金鑰 ──
+  var LAST_KEY = null;
+  var PLAN_MONTHS = { "月繳":"1", "季繳":"3", "年繳":"12", "測試":"1" };
+  // 選方案 → 自動帶期數,並記住你上次填的價格(存在瀏覽器)
+  $('cPlan').addEventListener('change', function(){
+    var p = this.value;
+    $('cMonths').value = PLAN_MONTHS[p] || "1";
+    if(p === "測試"){ $('cPrice').value = ""; $('cPrice').disabled = true; }
+    else { $('cPrice').disabled = false; $('cPrice').value = localStorage.getItem("tr_price_"+p) || ""; }
+  });
+  $('cPlan').dispatchEvent(new Event('change'));
+  $('createBtn').addEventListener('click', function(){
+    var name = $('cName').value.trim();
+    if(!name){ $('cName').focus(); return; }
+    // 0706:贈送天數=加購(不再覆蓋成免費鑰)。免費封測=方案選「測試」。
+    var days = parseInt($('cDays').value||"0",10)||0;
+    var plan = $('cPlan').value, price = parseInt($('cPrice').value||"0",10)||0;
+    if(plan !== "測試" && price <= 0){ $('cPrice').focus(); toast("付費鑰要先填每期收費"); return; }
+    if(plan !== "測試") localStorage.setItem("tr_price_"+plan, String(price));
+    api("create", { driver_name:name, months:$('cMonths').value, plan:plan, price:price, days:days }).then(function(res){
+      if(res.error || !res.row){ toast("失敗:"+(res.error||"?")); return; }
+      LAST_KEY = res.row;
+      $('newkey').style.display = "block";
+      $('nkKey').textContent = res.row.key;
+      var bonus = (res.bonus_days>0) ? " (含贈"+res.bonus_days+"天)" : "";
+      var money = (plan!=="測試" && price>0) ? " $"+price.toLocaleString() : "";
+      $('nkMeta').textContent = name + " ・ " + plan + money + bonus + " ・ 到期 " + fmtD(res.row.expires_at);
+      $('cName').value = ""; $('cDays').value = "";
+      reload();
+    });
+  });
+  $('nkCopy').addEventListener('click', function(){
+    if(!LAST_KEY) return;
+    var text = (LAST_KEY.driver_name || "") + " " + LAST_KEY.key;
+    navigator.clipboard.writeText(text.trim()).then(function(){ toast("已複製:" + text.trim()); });
+  });
+  $('nkCopyMsg').addEventListener('click', function(){
+    if(!LAST_KEY) return;
+    var msg = "您的車趟輔助授權金鑰:" + LAST_KEY.key + "\n打開 App 輸入一次即可啟用(會綁定這支手機)\n效期至 " + fmtD(LAST_KEY.expires_at);
+    navigator.clipboard.writeText(msg).then(function(){ toast("訊息已複製,直接貼給司機"); });
+  });
+
+  // ── 篩選/搜尋 ──
+  $('stats').addEventListener('click', function(e){
+    var t = e.target.closest('.stat'); if(!t) return;
+    document.querySelectorAll('.stat').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active'); FILTER = t.getAttribute('data-f'); render();
+  });
+  $('q').addEventListener('input', function(){ QUERY = this.value.trim().toLowerCase(); render(); });
+  $('refreshBtn').addEventListener('click', reload);
+  function reload(){ api("list").then(function(res){ if(res.rows){ ROWS=res.rows; render(); } }); }
+
+  // 自動刷新:主畫面可見且分頁在前景時,每 20 秒重抓一次司機清單(接單狀態自動更新,不用手動按)。
+  // 分頁切到背景就暫停,不浪費呼叫;回到前景立刻補抓一次。
+  setInterval(function(){
+    if(!$('mainView').classList.contains('hide') && !document.hidden){ reload(); }
+  }, 20000);
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !$('mainView').classList.contains('hide')){ reload(); }
+  });
+
+  function statusOf(r){
+    if(!r.active) return { cls:"off", txt:"停用", cat:"expired" };
+    var dl = daysLeft(r.expires_at);
+    if(dl < 0)  return { cls:"bad",  txt:"已過期",   cat:"expired" };
+    if(dl <= 7) return { cls:"warn", txt:"剩 "+dl+" 天", cat:"soon" };
+    return { cls:"ok", txt:"有效", cat:"active" };
+  }
+  // 司機活動狀態:最近接單(≤45分)=接單中;有心跳但沒接單=等單中;心跳太久(>20分)=離線
+  function activityOf(r){
+    if(!r.last_seen_at) return null;
+    var now = Date.now();
+    var seen = new Date(r.last_seen_at).getTime();
+    if(now - seen > 20*60000) return { txt:"離線", color:"#9AA0A6" };
+    var acc = r.last_accept_at ? new Date(r.last_accept_at).getTime() : 0;
+    if(acc && now - acc <= 45*60000) return { txt:"🟢 接單中", color:"#0D7A5F" };
+    return { txt:"🔵 等單中", color:"#2A6FB0" };
+  }
+
+  function render(){
+    // 統計
+    var c = { all:ROWS.length, active:0, soon:0, expired:0 };
+    ROWS.forEach(function(r){
+      var cat = statusOf(r).cat;
+      if(cat==="active"||cat==="soon") c.active++;
+      if(cat==="soon") c.soon++;
+      if(cat==="expired") c.expired++;
+    });
+    $('nAll').textContent=c.all; $('nActive').textContent=c.active;
+    $('nSoon').textContent=c.soon; $('nExpired').textContent=c.expired;
+    $('subline').textContent = "共 " + c.all + " 位司機 ・ " + c.active + " 位有效" + (ROLE === "viewer" ? " ・ 👁 唯讀監控" : "");
+
+    // ── 營收統計:只算「有效(含快到期)」授權;測試不計費 ──
+    var PLAN_DIV = { "月繳":1, "季繳":3, "年繳":12 };  // 每期收費 ÷ 幾個月 = 月攤
+    var rev = { "月繳":{n:0,sum:0}, "季繳":{n:0,sum:0}, "年繳":{n:0,sum:0}, "測試":{n:0,sum:0} };
+    ROWS.forEach(function(r){
+      var cat = statusOf(r).cat;
+      if(cat==="expired") return;              // 過期/停用不計
+      var p = rev[r.plan] ? r.plan : "測試";
+      rev[p].n++;
+      rev[p].sum += (r.price||0);
+    });
+    var monthly = 0, rb = $('revBody'); rb.innerHTML = "";
+    ["月繳","季繳","年繳","測試"].forEach(function(p){
+      var e = rev[p];
+      var m = p==="測試" ? 0 : Math.round(e.sum / PLAN_DIV[p]);
+      monthly += m;
+      var tr2 = document.createElement('tr');
+      tr2.innerHTML = "<td><b>"+p+"</b></td><td>"+e.n+" 人</td>"+
+        "<td>"+(p==="測試" ? "—" : "$"+e.sum.toLocaleString())+"</td>"+
+        "<td>"+(p==="測試" ? "不計費" : "$"+m.toLocaleString())+"</td>";
+      rb.appendChild(tr2);
+    });
+    $('revMonth').textContent = "$" + monthly.toLocaleString();
+    $('revYear').textContent  = "$" + (monthly*12).toLocaleString();
+
+    // 清單
+    var list = ROWS.filter(function(r){
+      var st = statusOf(r);
+      if(FILTER==="active" && !(st.cat==="active"||st.cat==="soon")) return false;
+      if(FILTER==="soon" && st.cat!=="soon") return false;
+      if(FILTER==="expired" && st.cat!=="expired") return false;
+      if(QUERY){
+        var hay = ((r.driver_name||"")+" "+r.key+" "+(r.phone||"")).toLowerCase();
+        if(hay.indexOf(QUERY)<0) return false;
+      }
+      return true;
+    });
+    // 排序(0706 最優化):①付費司機(非測試且有收費)最上面,之間「到期近→遠」= 過期沒續的置頂、
+    // 該催誰一眼看到;②免費/測試其後,「剩餘天數多→少」= 剛開通的體驗鑰(潛在客戶)在上,
+    // 快過期的測試自然沉底;③停用的一律墊底。
+    list.sort(function(a,b){
+      var da = a.active ? 0 : 1, db = b.active ? 0 : 1;
+      if(da !== db) return da - db;                                   // 停用墊底
+      var pa = (a.plan !== "測試" && (a.price||0) > 0) ? 0 : 1;
+      var pb = (b.plan !== "測試" && (b.price||0) > 0) ? 0 : 1;
+      if(pa !== pb) return pa - pb;                                   // 付費最上面
+      if(pa === 0) return new Date(a.expires_at) - new Date(b.expires_at); // 付費:到期近→遠(催收)
+      return new Date(b.expires_at) - new Date(a.expires_at);             // 免費:剩越多天越上面
+    });
+
+    var tb=$('tbody'); tb.innerHTML="";
+    $('empty').classList.toggle('hide', list.length>0);
+    list.forEach(function(r){
+      var st=statusOf(r);
+      var dl=daysLeft(r.expires_at);
+      var tr=document.createElement('tr');
+      var plan = r.plan || "測試";
+      var planTxt = plan === "測試" ? "測試" : plan + " $" + (r.price||0).toLocaleString();
+      tr.innerHTML =
+        "<td><div class='drv'>"+esc(r.driver_name||"—")+
+          (r.phone? "<small style='color:var(--muted);'>📱 "+esc(r.phone)+"</small>" : (r.device_id? "" : "<small>尚未綁定手機</small>"))+"</div></td>"+
+        "<td><span class='key' title='點一下複製'>"+esc(r.key)+"</span></td>"+
+        "<td><span class='pill "+(plan==="測試"?"off":"ok")+"' style='cursor:pointer' title='點一下改方案' data-a='plan'>"+esc(planTxt)+"</span></td>"+
+        "<td class='exp'"+(ROLE!=="viewer"?" style='cursor:pointer' title='點一下改到期日' data-a='expiry'":"")+"><b>"+fmtD(r.expires_at)+"</b><small>"+(dl>=0? "剩 "+dl+" 天":"過期 "+(-dl)+" 天")+"</small></td>"+
+        "<td class='muted hide-m'>"+
+          (function(){ var a=activityOf(r); return a? "<b style='color:"+a.color+";'>"+a.txt+"</b><br>" : ""; })()+
+          rel(r.last_seen_at)+
+          (r.last_app_version? "<br><small style='color:var(--faint);'>v"+esc(r.last_app_version)+"</small>" : "")+
+          (function(){
+            var tw = new Date(Date.now()+8*3600000).toISOString().slice(0,10);
+            var n = (r.today_accepts_date===tw) ? (r.today_accepts||0) : 0;
+            return n>0 ? "<br><small style='color:var(--green);font-weight:600;'>今日接 "+n+" 單</small>" : "";
+          })()+"</td>"+
+        "<td><span class='pill "+st.cls+"'>"+st.txt+"</span></td>"+
+        "<td><div class='act'>"+
+          (ROLE === "viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" :
+          "<button data-a='rename'>改名</button>"+
+          "<button data-a='tier'>"+((r.tier==="pro")?"⭐進階":"基本")+"</button>"+
+          "<button data-a='renew'>續約</button>"+
+          "<button data-a='toggle'>"+(r.active?"停用":"啟用")+"</button>"+
+          "<button data-a='unbind'>換機</button>"+
+          "<button class='danger' data-a='delete'>刪除</button>")+
+        "</div></td>";
+      if (ROLE !== "viewer") tr.querySelector("[data-a='plan']").addEventListener('click', function(){ doAction('plan', r); });
+      if (ROLE !== "viewer") { var ec=tr.querySelector("[data-a='expiry']"); if(ec) ec.addEventListener('click', function(){ doAction('expiry', r); }); }
+      tr.querySelector(".key").addEventListener('click', function(){
+        var text = ((r.driver_name || "") + " " + r.key).trim();
+        navigator.clipboard.writeText(text).then(function(){ toast("已複製:" + text); });
+      });
+      tr.querySelectorAll(".act button").forEach(function(b){
+        b.addEventListener('click', function(){ doAction(b.getAttribute('data-a'), r); });
+      });
+      tb.appendChild(tr);
+    });
+  }
+
+  function doAction(a, r){
+    var who = r.driver_name || r.key;
+    if(a==="rename"){
+      var nm = prompt("改「"+who+"」的名字:", r.driver_name || "");
+      if(nm===null) return;
+      api("setName",{key:r.key, driver_name:nm.trim()}).then(function(res){ res.ok? (toast("已改名為「"+(nm.trim()||"—")+"」"),reload()) : toast("失敗"); });
+    } else if(a==="renew"){
+      var m=$('renewMonths').value;
+      api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
+    } else if(a==="toggle"){
+      var on=!r.active;
+      if(!on && !confirm("停用「"+who+"」?App 下次驗證就進不去。")) return;
+      api("setActive",{key:r.key,active:on}).then(function(res){ if(res.ok){ toast(on?"已啟用":"已停用"); reload(); } });
+    } else if(a==="unbind"){
+      if(!confirm("清除「"+who+"」的手機綁定?他可用同一把金鑰綁新手機。")) return;
+      api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } });
+    } else if(a==="delete"){
+      if(!confirm("永久刪除「"+who+"」?建議用停用保留紀錄。")) return;
+      api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
+    } else if(a==="expiry"){
+      var cur = r.expires_at ? new Date(r.expires_at) : new Date();
+      var curStr = cur.getFullYear()+"-"+p2(cur.getMonth()+1)+"-"+p2(cur.getDate());
+      var inp = prompt("改「"+who+"」的到期日。\n輸入日期 YYYY-MM-DD,或用 +天數 / -天數(例 +30 加30天、-7 減7天):", curStr);
+      if(inp===null) return;
+      inp = inp.trim();
+      var iso;
+      var m = inp.match(/^([+-])(\d{1,4})$/);
+      if(m){
+        var base = new Date(cur); base.setDate(base.getDate() + (m[1]==="-"?-1:1)*parseInt(m[2],10));
+        iso = base.toISOString();
+      } else if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(inp)){
+        var d = new Date(inp+"T23:59:59"); if(isNaN(d)){ toast("日期格式錯"); return; }
+        iso = d.toISOString();
+      } else { toast("格式:YYYY-MM-DD 或 +天數/-天數"); return; }
+      api("setExpiry",{key:r.key, expires_at:iso}).then(function(res){
+        res.ok? (toast("「"+who+"」到期日已改"),reload()) : toast("失敗(伺服器要重部署 admin)");
+      });
+    } else if(a==="tier"){
+      var toPro = (r.tier!=="pro");
+      if(!confirm("把「"+who+"」切成 "+(toPro?"⭐進階版(開放高速喊單)":"基本版(關閉高速喊單)")+"?")) return;
+      api("setTier",{key:r.key,tier:(toPro?"pro":"basic")}).then(function(res){
+        res.ok? (toast("「"+who+"」已改為 "+(toPro?"進階版":"基本版")),reload()) : toast("失敗(伺服器要先加 tier 欄位+重部署 admin)");
+      });
+    } else if(a==="plan"){
+      var p = prompt("「"+who+"」的方案(月繳 / 季繳 / 年繳 / 測試):", r.plan || "月繳");
+      if(p===null) return;
+      p = p.trim();
+      if(["月繳","季繳","年繳","測試"].indexOf(p) < 0){ toast("方案只能是:月繳 / 季繳 / 年繳 / 測試"); return; }
+      var price = 0;
+      if(p !== "測試"){
+        var s = prompt("每期收費(NT$):", r.price || localStorage.getItem("tr_price_"+p) || "");
+        if(s===null) return;
+        price = parseInt(s,10)||0;
+        if(price<=0){ toast("價格要大於 0"); return; }
+        localStorage.setItem("tr_price_"+p, String(price));
+      }
+      api("setPlan",{key:r.key,plan:p,price:price}).then(function(res){
+        res.ok? (toast("「"+who+"」改為 "+p+(price>0?" $"+price.toLocaleString():"")),reload()) : toast("失敗");
+      });
+    }
+  }
+</script>
+</body>
+</html>
