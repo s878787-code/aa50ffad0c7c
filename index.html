@@ -627,7 +627,7 @@
       "</div>"+
       "<div style='margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;'>"+
       "<label style='font-size:13px;'><input type='checkbox' id='pfVerified'> 已驗證(打勾才給 App 用)</label>"+
-      "<button class='primary' id='pfSave'>"+(p?"儲存修改":"新增")+"</button>"+
+      "<button class='primary' id='pfSave'>"+((p&&p.id)?"儲存修改":"新增")+"</button>"+
       "<button class='ghost' id='pfCancel'>取消</button>"+
       "</div>";
     if(p){
@@ -641,8 +641,8 @@
       var c=parseCoord($('pfCoord').value); if(!c){ toast("座標格式:貼 25.033, 121.565"); $('pfCoord').focus(); return; }
       var payload={ name:name, aliases:$('pfAlias').value, lat:c.lat, lng:c.lng,
         city:$('pfCity').value.trim(), address:$('pfAddr').value.trim(), verified:$('pfVerified').checked };
-      if(p) payload.id=p.id;
-      api(p?"editPlace":"addPlace", payload).then(function(res){
+      if(p&&p.id) payload.id=p.id;
+      api((p&&p.id)?"editPlace":"addPlace", payload).then(function(res){
         if(res.error){ toast("失敗:"+res.error); return; }
         toast(p?"已儲存":"已新增"); box.style.display="none"; box.innerHTML=""; loadPlaces();
       });
