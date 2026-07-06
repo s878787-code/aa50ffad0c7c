@@ -234,7 +234,7 @@
         <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
       </div>
       <div id="missWrap" class="hide">
-      <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「還查不到座標」的地址(近14天,已解決的自動移除)。<b>越多不同司機查過=越常用=越值得補</b>。已查成功過的不出現(已進快取)。點「補這個」貼座標。</div>
+      <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「還查不到座標」的地址(近14天,已解決的自動移除)。<b>越多不同司機查過=越常用=越值得補</b>。已查成功過的不出現(已進快取)。<b>📩 原文</b>=那張單的整段訊息(新版 App 才有),缺路名時看原文就知道是哪條路。點「補這個」貼座標。</div>
       <div style="overflow-x:auto;">
         <table>
           <thead><tr><th>地址 / 地標</th><th>熱門度</th><th>動作</th></tr></thead>
@@ -614,7 +614,9 @@
         var src = "";
         if(r.drivers && r.drivers.length) src += r.drivers.map(esc).join("、");
         if(r.last){ var d=new Date(r.last); src += (src?" · ":"")+"最後 "+(d.getMonth()+1)+"/"+d.getDate()+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
-        tr.innerHTML = "<td>"+esc(r.q)+(src?"<br><small style='color:var(--faint);'>來源:"+src+"</small>":"")+"</td>"+
+        var rawLine = r.raw ? "<br><small style='color:var(--muted);'>📩 原文:"+esc(r.raw)+"</small>" : "";
+        var varLine = (r.variants && r.variants.length) ? "<br><small style='color:var(--faint);'>原字:"+r.variants.map(esc).join("、")+"</small>" : "";
+        tr.innerHTML = "<td><b>"+esc(r.q)+"</b>"+varLine+rawLine+(src?"<br><small style='color:var(--faint);'>來源:"+src+"</small>":"")+"</td>"+
           "<td><b style='color:var(--green);'>"+(r.dn||1)+" 位司機</b><br><small style='color:var(--muted);'>共 "+r.n+" 次</small></td>"+
           "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button> <button class='ghost' data-mig='"+i+"'>噪音</button>")+"</td>";
         tb.appendChild(tr);
@@ -623,7 +625,7 @@
         tb.querySelectorAll("[data-mi]").forEach(function(b){
           b.addEventListener('click', function(){
             var r = MISS[parseInt(b.getAttribute('data-mi'),10)];
-            openPlaceForm({ name: r.q, aliases: [], lat: "", lng: "", city: "", address: "", verified: true });
+            openPlaceForm({ name: r.q, aliases: (r.variants||[]), lat: "", lng: "", city: "", address: "", verified: true });
             $('placesCard').scrollIntoView({behavior:"smooth", block:"center"});
             setTimeout(function(){ var c=$('pfCoord'); if(c) c.focus(); }, 400);
           });
@@ -632,7 +634,7 @@
           b.addEventListener('click', function(){
             var r = MISS[parseInt(b.getAttribute('data-mig'),10)];
             if(!confirm("把「"+r.q+"」標為噪音?以後不再出現在待補地標。")) return;
-            api("ignoreMiss",{q:r.q}).then(function(res){ res.ok?(toast("已歸噪音"),loadMissQueue()):toast("失敗"); });
+            api("ignoreMiss",{q:r.q, qs:(r.variants||[]).concat([r.q])}).then(function(res){ res.ok?(toast("已歸噪音"),loadMissQueue()):toast("失敗"); });
           });
         });
       }
@@ -672,10 +674,21 @@
       var payload={ name:name, aliases:$('pfAlias').value, lat:c.lat, lng:c.lng,
         city:$('pfCity').value.trim(), address:$('pfAddr').value.trim(), verified:$('pfVerified').checked };
       if(p&&p.id) payload.id=p.id;
-      api((p&&p.id)?"editPlace":"addPlace", payload).then(function(res){
-        if(res.error){ toast("失敗:"+res.error); return; }
-        toast(p?"已儲存":"已新增"); box.style.display="none"; box.innerHTML=""; loadPlaces();
-      });
+      var submit=function(force){
+        if(force) payload.force=true;
+        api((p&&p.id)?"editPlace":"addPlace", payload).then(function(res){
+          if(res.error==="dup_alias" && res.conflict){
+            var cf=res.conflict;
+            if(confirm("別名「"+(cf.keys||[]).join("、")+"」已經屬於另一筆:「"+cf.name+"」("+Number(cf.lat).toFixed(4)+","+Number(cf.lng).toFixed(4)+")。\n\n兩筆同名會讓 App 隨機挑座標。\n\n按【確定】仍要新增(兩筆並存,不建議);按【取消】回去改別名或改去編輯那筆。")){
+              submit(true);
+            }
+            return;
+          }
+          if(res.error){ toast("失敗:"+res.error); return; }
+          toast(p?"已儲存":"已新增"); box.style.display="none"; box.innerHTML=""; loadPlaces();
+        });
+      };
+      submit(false);
     });
   }
   function renderPlaces(){
