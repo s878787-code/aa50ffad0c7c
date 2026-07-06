@@ -92,6 +92,8 @@
   .toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:22px; font-size:14px; opacity:0; transition:opacity .18s; pointer-events:none; z-index:9; }
   .toast.show { opacity:1; }
   .hide { display:none !important; }
+  .foldarrow { display:inline-block; transition:transform .15s; }
+  .foldarrow.open { transform:rotate(90deg); }
 
   @media (max-width:720px) {
     .stats { grid-template-columns:repeat(2,1fr); }
@@ -227,26 +229,29 @@
     <!-- 待補地標(失敗地址金礦) -->
     <div class="card" id="missCard">
       <div style="display:flex; align-items:center; gap:10px;">
-        <label>🏗 待補地標 <span id="missCount" style="color:var(--muted);"></span></label>
+        <label style="cursor:pointer;" data-fold="missWrap"><span class="foldarrow">▸</span> 🏗 待補地標 <span id="missCount" style="color:var(--muted);"></span></label>
         <label style="margin-left:auto;font-size:12px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="missAll"> 顯示全部(含完整地址)</label>
         <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
       </div>
-      <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「查最多次卻查不到座標」的地址(近14天)。次數越高越值得補——補一次全隊以後查它都免費又秒回。點「補這個」→ 帶名字開表單,你貼上座標(Google 地圖右鍵該點→複製座標)就完成。</div>
+      <div id="missWrap" class="hide">
+      <div class="muted" style="font-size:12px; margin:6px 0 10px;">全隊「還查不到座標」的地址(近14天,已解決的自動移除)。<b>越多不同司機查過=越常用=越值得補</b>。已查成功過的不出現(已進快取)。點「補這個」貼座標。</div>
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr><th>地址 / 地標</th><th>被查次數</th><th>動作</th></tr></thead>
+          <thead><tr><th>地址 / 地標</th><th>熱門度</th><th>動作</th></tr></thead>
           <tbody id="missBody"></tbody>
         </table>
       </div>
       <div class="empty hide" id="missEmpty" style="padding:8px 0 4px;">目前沒有值得補的查無地標(很好,快取很成熟)。</div>
+      </div>
     </div>
 
     <!-- 社區/大樓 位置庫 -->
     <div class="card" id="placesCard">
       <div style="display:flex; align-items:center; gap:10px;">
-        <label>🏢 社區/大樓 位置庫 <span id="placeCount" style="color:var(--muted);"></span></label>
+        <label style="cursor:pointer;" data-fold="placesWrap"><span class="foldarrow">▸</span> 🏢 社區/大樓 位置庫 <span id="placeCount" style="color:var(--muted);"></span></label>
         <button class="linkbtn" id="placeRefresh" style="margin-left:auto;">↻ 重新整理</button>
       </div>
+      <div id="placesWrap" class="hide">
       <div class="muted" style="font-size:12px; margin:6px 0 10px;">派單只寫「XX社區/大樓/店名」Google 定不到 → 在這補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 →「這是哪裡」→ 點座標複製「25.033, 121.565」貼進來。**驗證**打勾才會被 App 採用。</div>
       <div id="placeAdd" style="display:none; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--chip);"></div>
       <div class="toolbar" style="margin-bottom:8px;">
@@ -260,6 +265,7 @@
         </table>
       </div>
       <div class="empty hide" id="placeEmpty" style="padding:8px 0 4px;">還沒有任何社區。從上面「新增地點」開始建,或從定位失敗的回報一筆筆補。</div>
+      </div>
     </div>
 
     <!-- 發新金鑰 -->
@@ -587,6 +593,15 @@
   var MISS = [];
   document.addEventListener('click', function(e){ if(e.target && e.target.id==='missRefresh') loadMissQueue(); });
   document.addEventListener('change', function(e){ if(e.target && e.target.id==='missAll') loadMissQueue(); });
+  document.addEventListener('click', function(e){
+    var lab = e.target.closest && e.target.closest('[data-fold]');
+    if(!lab) return;
+    var wrap = document.getElementById(lab.getAttribute('data-fold'));
+    if(!wrap) return;
+    var opening = wrap.classList.contains('hide');
+    wrap.classList.toggle('hide');
+    var ar = lab.querySelector('.foldarrow'); if(ar) ar.classList.toggle('open', opening);
+  });
   function loadMissQueue(){
     var all = !!($('missAll') && $('missAll').checked);
     api("missQueue", { all: all }).then(function(res){
@@ -596,8 +611,11 @@
       $('missEmpty').classList.toggle('hide', MISS.length>0);
       MISS.forEach(function(r, i){
         var tr=document.createElement('tr');
-        tr.innerHTML = "<td>"+esc(r.q)+"</td>"+
-          "<td><b style='color:var(--green);'>"+r.n+" 次</b></td>"+
+        var src = "";
+        if(r.drivers && r.drivers.length) src += r.drivers.map(esc).join("、");
+        if(r.last){ var d=new Date(r.last); src += (src?" · ":"")+"最後 "+(d.getMonth()+1)+"/"+d.getDate()+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
+        tr.innerHTML = "<td>"+esc(r.q)+(src?"<br><small style='color:var(--faint);'>來源:"+src+"</small>":"")+"</td>"+
+          "<td><b style='color:var(--green);'>"+(r.dn||1)+" 位司機</b><br><small style='color:var(--muted);'>共 "+r.n+" 次</small></td>"+
           "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button> <button class='ghost' data-mig='"+i+"'>噪音</button>")+"</td>";
         tb.appendChild(tr);
       });
