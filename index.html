@@ -246,6 +246,23 @@
       </div>
     </div>
 
+    <!-- 🚨 異常流量榜(防灌單濫用) -->
+    <div class="card" id="abuseCard">
+      <div class="toolbar" style="justify-content:space-between;">
+        <label style="cursor:pointer;" data-fold="abuseWrap"><span class="foldarrow">▸</span> 🚨 異常流量榜 <span id="abuseCount" style="color:var(--muted);"></span></label>
+        <a href="#" id="abuseReload" style="font-size:13px;">↻ 重新整理</a>
+      </div>
+      <div id="abuseWrap" class="hide">
+      <div class="muted" style="font-size:12px; margin:6px 0 10px;">近 24 小時各司機用量。怕的是:買一組序號自建群狂貼假地址燒 Google 錢。<b>風險指數越高越可疑</b>(高量+高查無)、<b>查無率越高越可疑</b>(假地址查不到)、<b>接單越少越可疑</b>(只灌單不接)。🔴≥60 高風險、🟡30-59 注意。超過每日上限那組會自動停查。</div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>司機</th><th>次數</th><th>查無率</th><th>接單</th><th>風險指數</th><th>動作</th></tr></thead>
+          <tbody id="abuseBody"></tbody>
+        </table>
+      </div>
+      </div>
+    </div>
+
     <!-- 社區/大樓 位置庫 -->
     <div class="card" id="placesCard">
       <div style="display:flex; align-items:center; gap:10px;">
@@ -377,6 +394,7 @@
       $('geoCap').disabled = true;
       $('geoCapBtn').disabled = true;
       $('placeNewBtn').classList.add('hide');   // 唯讀:社區庫只能看不能改
+      $('abuseCard').classList.add('hide');     // 異常流量榜=admin 專用(含完整金鑰+停用)
     }
     $('loginView').classList.add('hide');
     $('mainView').classList.remove('hide');
@@ -385,7 +403,44 @@
     loadGeoUsage();
     loadPlaces();
     loadMissQueue();
+    if (ROLE === "admin") loadAbuseWatch();
   }
+
+  // ── 🚨 異常流量榜(防灌單濫用;admin 專用)──
+  function loadAbuseWatch(){
+    api("abuseWatch").then(function(res){
+      if(!res || res.error){ return; }
+      var rows = res.rows || [];
+      var risky = rows.filter(function(r){ return r.score>=30; }).length;
+      $('abuseCount').textContent = risky ? "("+risky+" 個需注意)" : "(正常)";
+      var tb=$('abuseBody'); tb.innerHTML="";
+      rows.forEach(function(r){
+        var col = r.score>=60 ? "#C94A3A" : (r.score>=30 ? "#C48A1E" : "var(--muted)");
+        var flag = r.test ? "🧪測試機" : (r.score>=60 ? "🔴" : (r.score>=30 ? "🟡" : "🟢"));
+        var tr=document.createElement('tr');
+        tr.innerHTML =
+          "<td><b>"+esc(r.name)+"</b><br><small style='color:var(--faint);'>"+esc(r.key)+"　不重複查詢 "+r.distinctQ+"</small></td>"+
+          "<td>"+r.geo+"<br><small style='color:var(--faint);'>總 "+r.total+"</small></td>"+
+          "<td style='color:"+(r.missRate>=50?'#C94A3A':'var(--muted)')+";'>"+r.missRate+"%</td>"+
+          "<td style='color:"+(!r.test&&r.accepts===0&&r.geo>=500?'#C94A3A':'var(--muted)')+";'>"+r.accepts+"</td>"+
+          "<td style='font-weight:700;color:"+col+";'>"+flag+" "+r.score+"%</td>"+
+          "<td>"+(r.test ? "<span class='muted' style='font-size:12px;'>免管</span>" : "<button class='ghost' data-stop='"+esc(r.key)+"'>停用</button>")+"</td>";
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll("[data-stop]").forEach(function(b){
+        b.addEventListener('click', function(){
+          var key=b.getAttribute('data-stop');
+          if(!confirm("確定停用序號 "+key+" ?(該司機 App 下次驗證就會被擋)")) return;
+          api("setActive",{key:key, active:false}).then(function(res){
+            res.ok?(toast("已停用 "+key),loadAbuseWatch(),render()):toast("失敗:"+(res.error||"?"));
+          });
+        });
+      });
+    });
+  }
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id==='abuseReload'){ e.preventDefault(); loadAbuseWatch(); }
+  });
 
   // ── Google 定位用量(即時監控)──
   // 單價 = 2025/03 Google Maps Platform 新制參考價;實際帳單以 Google Cloud Console 為準。
