@@ -200,7 +200,7 @@
       <div id="geoAdvice" style="margin-top:12px;"></div>
       <div style="overflow-x:auto; margin-top:10px;">
         <table>
-          <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th></tr></thead>
+          <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th><th>本月花費</th></tr></thead>
           <tbody id="geoBody"></tbody>
         </table>
       </div>
@@ -461,6 +461,9 @@
     aiparse_blocked:    { free: 0,     per1000: 0,  label: "🤖 AI 超每日上限被擋" }
   };
   var GOOGLE_APIS = ["geocode", "places", "distance_google"];
+  // 匯率(約估,要調就改這裡):US$1 ≈ NT$32。把美金換台幣直觀顯示(US$32/千次 ≈ NT$1/次)。
+  var NT_PER_USD = 32;
+  function nt(usd){ return "NT$" + Math.round(usd * NT_PER_USD).toLocaleString(); }
   $('geoRefresh').addEventListener('click', loadGeoUsage);
   $('geoCapBtn').addEventListener('click', function(){
     var cap = parseInt($('geoCap').value || "0", 10) || 0;
@@ -487,6 +490,9 @@
   function geoSum(arr, apis){ var s = 0; (arr||[]).forEach(function(r){ if(apis.indexOf(r.api) >= 0) s += r.n; }); return s; }
   function licName(k){
     for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
+    // 用量榜照 geo_usage 算,可能出現「今天有用量、但授權已被刪」的殘留金鑰 → 標「已刪除」,不再顯示成謎樣裸金鑰。
+    // 只在授權清單已載入時才敢這樣判(ROWS 空=還沒載,先原樣顯示免誤標所有人)。這種殘留隔天(換日)就不再出現。
+    if(ROWS.length) return (k && k.length>8 ? k.slice(0,8)+"····" : k) + " (已刪除)";
     return k;
   }
   function loadGeoUsage(){
@@ -502,7 +508,11 @@
       $('geoHitRate').textContent = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
       var cost = 0;
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
-      $('geoCost').textContent = "US$" + cost.toFixed(2);
+      $('geoCost').innerHTML = nt(cost) + " <span style='font-size:12px;color:var(--muted);font-weight:400;'>(US$" + cost.toFixed(2) + ")</span>";
+      // 免費架構省下多少:所有免費 API 的本月次數,若全走 Google($5/千)要多少 → 反映自架+快取的價值
+      var freeHits = 0;
+      month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && !p.per1000 && r.api.indexOf("blocked") < 0) freeHits += r.n; });
+      var saved = freeHits * 5 / 1000;
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       // 🤖 AI 看單開關狀態(viewer 隱藏控制項)
       aiEnabled = res.ai_enabled !== false;
@@ -528,8 +538,14 @@
       });
       apiRows.forEach(function(row){
         var p = row.p, tr = document.createElement('tr');
+        var rowCost = p.per1000 ? Math.max(0, row.m - p.free) * p.per1000 / 1000 : 0;
+        var priceCell = p.per1000
+          ? "US$" + p.per1000 + "/千次<br><span style='color:var(--faint);font-size:11px;'>≈ " + nt(p.per1000) + "/千次</span>"
+          : "免費";
+        var costCell = !p.per1000 ? "<span style='color:var(--green);'>免費</span>"
+          : (rowCost > 0 ? "<b style='color:var(--amber);'>" + nt(rowCost) + "</b>" : "NT$0");
         tr.innerHTML = "<td>" + esc(p.label) + "</td><td>" + row.t + "</td><td>" + row.m + "</td><td>" +
-          (p.free ? p.free : "—") + "</td><td>" + (p.per1000 ? "US$" + p.per1000 + "/千次" : "免費") + "</td>";
+          (p.free ? p.free : "—") + "</td><td>" + priceCell + "</td><td>" + costCell + "</td>";
         tb.appendChild(tr);
       });
       var dv = $('geoDrivers'); dv.innerHTML = "";
@@ -538,7 +554,7 @@
         tr.innerHTML = "<td>" + esc(licName(r.lic)) + "</td><td>" + r.n + "</td>";
         dv.appendChild(tr);
       });
-      $('geoNote').textContent = "地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、90 天閒置才清)。免費額/單價為 2025 新制參考:Geocoding 與距離每月各 1 萬次免費、Places 文字搜尋 5 千次免費;實際以 Google Cloud 帳單為準。";
+      $('geoNote').innerHTML = "💚 <b>免費架構</b>(自架 OSRM/Nominatim + 快取 + 位置庫)本月處理 <b>" + freeHits.toLocaleString() + "</b> 次 —— 若這些全走 Google 約要 <b>" + nt(saved) + "</b>。<b>免費那幾列越大越好 = 幫你擋掉的付費查詢越多</b>,不是負擔。<br>地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、<b>90 天閒置自動清、不會無限膨脹</b>)。單價為 2025 新制參考,實際以 Google Cloud 帳單為準。匯率約估 US$1≈NT$" + NT_PER_USD + "。";
       renderGeoAdvice({ today: today, month: month, cost: cost, gToday: gToday, hits: hits, cap: s.cap, drivers: s.today_by_driver || [] });
     });
   }
@@ -556,13 +572,13 @@
 
     // R1 本月成本頭條
     if(c.cost <= 0.005){
-      tips.push({ s:0, h:"🟢 本月目前 <b>US$0</b> —— 查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
+      tips.push({ s:0, h:"🟢 本月目前 <b>NT$0</b> —— 查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
     } else {
       var paid = [["Google Geocoding", Math.max(0, geoM-10000)*5/1000],
                   ["Places", Math.max(0, placesM-5000)*32/1000],
                   ["Google 距離", Math.max(0, distGM-10000)*5/1000]];
       paid.sort(function(a,b){ return b[1]-a[1]; });
-      tips.push({ s:3, h:"🔴 本月已產生 <b>US$"+c.cost.toFixed(2)+"</b>,主要來自 <b>"+esc(paid[0][0])+"</b>。往下看哪裡能砍。" });
+      tips.push({ s:3, h:"🔴 本月已產生 <b>"+nt(c.cost)+"</b>(US$"+c.cost.toFixed(2)+"),主要來自 <b>"+esc(paid[0][0])+"</b>("+nt(paid[0][1])+")。往下看哪裡能砍。" });
     }
 
     // R2 照今日速度推估月底費用
@@ -570,7 +586,7 @@
     function proj(m){ return Math.round(m / dom * dim); }
     var pc = Math.max(0, proj(geoM)-10000)*5/1000 + Math.max(0, proj(placesM)-5000)*32/1000 + Math.max(0, proj(distGM)-10000)*5/1000;
     if(pc >= c.cost + 1){
-      tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~US$"+pc.toFixed(0)+"</b>(現在 $"+c.cost.toFixed(2)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
+      tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~"+nt(pc)+"</b>(現在 "+nt(c.cost)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
     }
 
     // R3 查座標還有多少在花付費 Google
@@ -724,6 +740,7 @@
       "</div>"+
       "<div class='toolbar' style='flex-wrap:wrap;margin-top:6px;'>"+
       "<input id='pfCoord' placeholder='座標 貼「25.033, 121.565」' style='flex:1;min-width:180px;'>"+
+      "<button class='ghost' id='pfGeo' title='用地名自動查座標(OSM,免費),填好請核對'>🔍 查座標</button>"+
       "<input id='pfAddr' placeholder='完整地址(可空,人看的)' style='flex:1;min-width:160px;'>"+
       "</div>"+
       "<div style='margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;'>"+
@@ -737,6 +754,21 @@
       $('pfAddr').value=p.address||""; $('pfVerified').checked=!!p.verified;
     }
     $('pfCancel').addEventListener('click', function(){ box.style.display="none"; box.innerHTML=""; });
+    // 🔍 查座標:拿名稱(+縣市)去 OSM 免費查,預填座標讓策展人核對(不自動存)。查無就留空手填。
+    var doSuggest=function(){
+      var nm=$('pfName').value.trim(); if(!nm){ $('pfName').focus(); return; }
+      var g=$('pfGeo'), old=g.textContent; g.textContent="查詢中…"; g.disabled=true;
+      api("suggestCoords",{ q:nm, city:$('pfCity').value.trim() }).then(function(res){
+        g.textContent=old; g.disabled=false;
+        if(res&&res.ok){
+          $('pfCoord').value=res.lat+", "+res.lng;
+          toast("OSM 建議座標,請核對:"+String(res.display||"").slice(0,40));
+        } else { toast("OSM 查無座標,請手動填(貼 25.033, 121.565)"); }
+      });
+    };
+    $('pfGeo').addEventListener('click', doSuggest);
+    // 從待補「補這個」開啟、且還沒座標 → 自動查一次(一鍵預填)
+    if(p && (p.lat===""||p.lat==null) && (p.name||"").trim()){ doSuggest(); }
     $('pfSave').addEventListener('click', function(){
       var name=$('pfName').value.trim(); if(!name){ $('pfName').focus(); return; }
       var c=parseCoord($('pfCoord').value); if(!c){ toast("座標格式:貼 25.033, 121.565"); $('pfCoord').focus(); return; }
@@ -861,7 +893,8 @@
         (sims.length ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:#EDE6F5; color:#6B3FA0;'>🔁 相似×"+sims.length+"</span>" : "")+
         "<span class='muted' style='font-size:12px;'>v"+esc(r.app_version||"?")+" ・ "+fmtD(r.created_at)+" "+p2(new Date(r.created_at).getHours())+":"+p2(new Date(r.created_at).getMinutes())+"</span>"+
         (r.device_model? "<span style='font-size:12px; color:var(--muted);'>📱"+esc(r.device_model)+"</span>" : "")+
-        (r.image_url? "<span style='font-size:12px;'>🖼️</span>" : "")+
+        ((Array.isArray(r.image_urls)&&r.image_urls.length)||r.image_url? "<span style='font-size:12px;'>🖼️"+((Array.isArray(r.image_urls)&&r.image_urls.length>1)?r.image_urls.length:"")+"</span>" : "")+
+        (r.video_url? "<span style='font-size:12px;'>🎬</span>" : "")+
         (r.note? "<span style='font-size:13px; color:var(--amber); font-weight:600;'>「"+esc(r.note)+"」</span>" : "")+
         "<span style='margin-left:auto; font-size:12px; color:var(--faint);'>點一下展開 ▾</span>";
       var body = document.createElement('div');
@@ -879,7 +912,8 @@
       var preCss = "white-space:pre-wrap; font-size:12px; background:var(--chip); border-radius:8px; padding:10px; overflow:auto; margin:0 0 4px;";
       var lblCss = "font-size:12px; color:var(--muted); font-weight:600; margin:10px 0 3px;";
       body.innerHTML =
-        (r.image_url? "<a href='"+esc(r.image_url)+"' target='_blank'><img src='"+esc(r.image_url)+"' style='max-width:100%; max-height:360px; border-radius:8px; margin:10px 0; border:1px solid var(--line);'></a>" : "")+
+        (function(){ var imgs=(Array.isArray(r.image_urls)&&r.image_urls.length)?r.image_urls:(r.image_url?[r.image_url]:[]); var w=imgs.length>1?"48%":"100%"; return imgs.map(function(u){ return "<a href='"+esc(u)+"' target='_blank'><img src='"+esc(u)+"' style='max-width:"+w+"; max-height:360px; border-radius:8px; margin:10px 6px 0 0; border:1px solid var(--line); vertical-align:top;'></a>"; }).join(""); })()+
+        (r.video_url? "<video controls preload='metadata' src='"+esc(r.video_url)+"' style='max-width:100%; max-height:420px; border-radius:8px; margin:10px 0; border:1px solid var(--line); display:block;'></video>" : "")+
         simBanner+
         (r.parse_snapshot? "<div style='"+lblCss+"'>🔎 App 當下解析</div><pre style='"+preCss+"'>"+esc(r.parse_snapshot)+"</pre>" : "")+
         (r.raw_dispatch? "<div style='"+lblCss+"'>📩 派單原文(最近接單・自動附上)</div><pre style='"+preCss+" max-height:220px;'>"+esc(r.raw_dispatch)+"</pre>" : "")+
@@ -1117,7 +1151,11 @@
       if(nm===null) return;
       api("setName",{key:r.key, driver_name:nm.trim()}).then(function(res){ res.ok? (toast("已改名為「"+(nm.trim()||"—")+"」"),reload()) : toast("失敗"); });
     } else if(a==="renew"){
-      var m=$('renewMonths').value;
+      var m=parseInt($('renewMonths').value,10);
+      // 防呆:續約會改到期日(等同延長付費),先確認並預覽新到期日(與伺服器算法一致:未過期從到期日加、已過期從今天加)
+      var base = (r.expires_at && new Date(r.expires_at) > new Date()) ? new Date(r.expires_at) : new Date();
+      var nd = new Date(base); nd.setMonth(nd.getMonth()+m);
+      if(!confirm("確定幫「"+who+"」續約 "+m+" 個月?\n\n到期日:"+fmtD(r.expires_at)+"  →  "+fmtD(nd.toISOString()))) return;
       api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
     } else if(a==="toggle"){
       var on=!r.active;
@@ -1127,7 +1165,10 @@
       if(!confirm("清除「"+who+"」的手機綁定?他可用同一把金鑰綁新手機。")) return;
       api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } });
     } else if(a==="delete"){
-      if(!confirm("永久刪除「"+who+"」?建議用停用保留紀錄。")) return;
+      // 防呆:刪除永久不可復原,且按鈕緊鄰停用/換機,易誤觸 → 改「打字確認」(要輸入司機名稱才刪),擋一鍵誤刪
+      var ans = prompt("⚠️ 永久刪除「"+who+"」,無法復原!\n(建議改用「停用」,保留紀錄與接單數)\n\n若確定要刪除,請輸入司機名稱「"+who+"」:");
+      if(ans===null) return;
+      if(ans.trim() !== who){ toast("名稱不符,已取消刪除"); return; }
       api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
     } else if(a==="expiry"){
       var cur = r.expires_at ? new Date(r.expires_at) : new Date();
