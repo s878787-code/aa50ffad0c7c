@@ -144,6 +144,8 @@
   tbody tr:hover td{ background:var(--surface-2); }
   .drv{ font-weight:600; font-size:14px; }
   .drv small{ display:block; font-weight:400; font-size:11.5px; color:var(--faint); margin-top:1px; }
+  .drv .acc{ display:inline-block; margin-top:4px; font-size:11px; font-weight:700; padding:1px 7px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--faint); font-variant-numeric:tabular-nums; }
+  .drv .acc.hot{ background:var(--teal-soft); color:var(--teal-ink); }
   .key{ font-family:var(--mono); font-size:12px; background:var(--chip); border:1px solid var(--line); padding:2px 7px; border-radius:5px; cursor:pointer; white-space:nowrap; transition:border-color var(--dur),color var(--dur); }
   .key:hover{ border-color:var(--teal-line); color:var(--teal-ink); }
   .exp b{ font-weight:600; font-variant-numeric:tabular-nums; } .exp small{ display:block; font-size:11.5px; color:var(--faint); }
@@ -280,6 +282,7 @@
       <div class="pagehead"><h1>總覽</h1><div class="sub" id="homeSub">—</div></div>
       <div class="kpis">
         <div class="kpi good" data-go="keys"><div class="n" id="kActive">0</div><div class="t">有效司機</div></div>
+        <div class="kpi" data-go="keys"><div class="n" id="kAccToday">—</div><div class="t">今日接單(全體)</div></div>
         <div class="kpi warn" data-go="keys" data-f="soon"><div class="n" id="kSoon">0</div><div class="t">7 天內到期</div></div>
         <div class="kpi bad" data-go="reports"><div class="n" id="kOpenRep">0</div><div class="t">未修復回報</div></div>
         <div class="kpi" data-go="usage"><div class="n" id="kGeoToday">—</div><div class="t">今日 Google 呼叫</div></div>
@@ -666,6 +669,12 @@
     if(acc && now - acc <= 45*60000) return { txt:"🟢 接單中", color:"var(--teal)", k:"busy" };
     return { txt:"🔵 等單中", color:"var(--blue)", k:"idle" };
   }
+  function acceptsToday(r){
+    // 今日接單數:App 每次心跳送當日累計;伺服器存 today_accepts + 台灣日期戳。
+    // 只認台灣今天 → 昨天活躍今天沒上線的司機,舊數字不顯示(跨日自動歸零)。
+    var td = new Date(Date.now() + 8*3600000).toISOString().slice(0,10);
+    return r.today_accepts_date === td ? (r.today_accepts||0) : null; // null = 今天沒回報(離線/舊版 App)
+  }
 
   function render(){
     var c = { all:ROWS.length, active:0, soon:0, expired:0 };
@@ -677,6 +686,8 @@
     });
     $('nAll').textContent=c.all; $('nActive').textContent=c.active;
     $('nSoon').textContent=c.soon; $('nExpired').textContent=c.expired;
+    var todayAcc=0; ROWS.forEach(function(r){ var n=acceptsToday(r); if(n) todayAcc+=n; });
+    if($('kAccToday')) $('kAccToday').textContent = todayAcc.toLocaleString();
     $('kActive').textContent=c.active; $('kSoon').textContent=c.soon;
     $('homeSub').textContent = "共 " + c.all + " 位司機 ・ " + c.active + " 位有效" + (ROLE==="viewer" ? " ・ 👁 唯讀監控" : "");
 
@@ -715,10 +726,10 @@
       if(a.k==="busy") busy.push(r); else if(a.k==="idle") idle.push(r);
     });
     busy.forEach(function(r){
-      var s=document.createElement('span'); s.className="pill ok"; s.textContent="🟢 "+(r.driver_name||r.key); strip.appendChild(s);
+      var s=document.createElement('span'); s.className="pill ok"; var n=acceptsToday(r); s.textContent="🟢 "+(r.driver_name||r.key)+(n?" · "+n+" 單":""); strip.appendChild(s);
     });
     idle.forEach(function(r){
-      var s=document.createElement('span'); s.className="pill"; s.style.background="var(--blue-soft)"; s.style.color="var(--blue)"; s.textContent="🔵 "+(r.driver_name||r.key); strip.appendChild(s);
+      var s=document.createElement('span'); s.className="pill"; s.style.background="var(--blue-soft)"; s.style.color="var(--blue)"; var n=acceptsToday(r); s.textContent="🔵 "+(r.driver_name||r.key)+(n?" · "+n+" 單":""); strip.appendChild(s);
     });
     if(!busy.length && !idle.length){
       var s=document.createElement('span'); s.className="muted"; s.textContent="現在沒有司機在線上。"; strip.appendChild(s);
@@ -802,7 +813,7 @@
       var tr=document.createElement('tr');
       tr.innerHTML =
         "<td><div class='drv'>"+esc(r.driver_name||"—")+
-          (r.device_id? "" : "<small>尚未綁定手機</small>")+"</div></td>"+
+          (r.device_id? "" : "<small>尚未綁定手機</small>")+(function(){ var n=acceptsToday(r); return n!=null ? "<span class='acc"+(n>0?" hot":"")+"'>今日 "+n+" 單</span>" : ""; })()+"</div></td>"+
         "<td><span class='key' title='點一下複製'>"+esc(r.key)+"</span></td>"+
         "<td><span class='pill "+(plan==="測試"?"off":"ok")+"' style='cursor:pointer' title='點一下改方案' data-a='plan'>"+esc(planTxt)+"</span></td>"+
         "<td class='exp'><b>"+fmtD(r.expires_at)+"</b><small>"+(dl>=0? "剩 "+dl+" 天":"過期 "+(-dl)+" 天")+"</small></td>"+
