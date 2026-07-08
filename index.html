@@ -431,11 +431,12 @@
             <button data-u="google" class="on">Google 呼叫</button>
             <button data-u="cache">快取命中</button>
             <button data-u="ai">AI 看單</button>
+            <button data-u="rate">命中率</button>
           </div>
         </div>
         <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
         <div class="chartbox" id="usageChart"></div>
-        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=需付費的 geocode／places／距離;快取命中與 AI 看單另計。</div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;命中率=快取命中÷(命中+Google 呼叫),越高越省。</div>
       </div>
 
       <div class="card" id="capCard">
@@ -1417,11 +1418,11 @@
   });
 
   /* ── 每日用量趨勢(讀 geo_usage_stats 的 days;共用 scoped SVG 繪圖)── */
-  function trendSVG(host, labels, vals, fmt){
-    var maxV = Math.max.apply(null, vals) || 1;
+  function trendSVG(host, labels, vals, fmt, fixedMax){
+    var top = fixedMax || ((Math.max.apply(null, vals) || 1) * 1.08);
     var W = 700, H = 140, padT = 10, padB = 18, padX = 6, innerW = W - padX*2, innerH = H - padT - padB;
     function X(i){ return padX + (vals.length<2 ? 0 : innerW*i/(vals.length-1)); }
-    function Y(v){ return padT + innerH*(1 - v/(maxV*1.08)); }
+    function Y(v){ return padT + innerH*(1 - v/top); }
     var line = "", area = "M" + X(0) + " " + (padT+innerH) + " ";
     vals.forEach(function(v,i){ var x = X(i), y = Y(v); line += (i?"L":"M") + x.toFixed(1) + " " + y.toFixed(1) + " "; area += "L" + x.toFixed(1) + " " + y.toFixed(1) + " "; });
     area += "L" + X(vals.length-1).toFixed(1) + " " + (padT+innerH) + " Z";
@@ -1452,17 +1453,24 @@
       else if(r.api === "cache_hit") m.cache += r.n;
       else if(r.api === "aiparse") m.ai += r.n;
     });
-    return order.map(function(d){ return map[d]; });
+    return order.map(function(d){ var m=map[d]; m.rate = (m.cache+m.google)>0 ? Math.round(m.cache*100/(m.cache+m.google)) : 0; return m; });
   }
   function renderUsageTrend(){
     var host = $('usageChart'); if(!host) return;
     var rows = computeUsageDaily();
     if(!rows || rows.length < 2){ host.innerHTML = "<div class='muted' style='padding:22px 0; text-align:center;'>每日資料累積中(需跨兩天以上才畫得出)。</div>"; if($('usageNow')) $('usageNow').textContent = "—"; if($('usageSub')) $('usageSub').textContent = ""; return; }
-    var key = USAGE_METRIC, vals = rows.map(function(r){ return r[key]; }), labels = rows.map(function(r){ return r.day; });
-    trendSVG(host, labels, vals, function(v){ return v.toLocaleString() + " 次"; });
-    var total = vals.reduce(function(a,b){ return a+b; }, 0);
-    if($('usageNow')) $('usageNow').textContent = vals[vals.length-1].toLocaleString() + " 次";
-    if($('usageSub')) $('usageSub').textContent = "最新一天 · 近 " + rows.length + " 天共 " + total.toLocaleString() + " 次";
+    var key = USAGE_METRIC, vals = rows.map(function(r){ return r[key]; }), labels = rows.map(function(r){ return r.day; }), li = vals.length-1;
+    var isRate = key === 'rate';
+    trendSVG(host, labels, vals, isRate ? function(v){ return v + "%"; } : function(v){ return v.toLocaleString() + " 次"; }, isRate ? 100 : 0);
+    if(isRate){
+      var avg = Math.round(vals.reduce(function(a,b){ return a+b; }, 0) / vals.length);
+      if($('usageNow')) $('usageNow').textContent = vals[li] + "%";
+      if($('usageSub')) $('usageSub').textContent = "最新一天 · 近 " + rows.length + " 天平均 " + avg + "%";
+    } else {
+      var total = vals.reduce(function(a,b){ return a+b; }, 0);
+      if($('usageNow')) $('usageNow').textContent = vals[li].toLocaleString() + " 次";
+      if($('usageSub')) $('usageSub').textContent = "最新一天 · 近 " + rows.length + " 天共 " + total.toLocaleString() + " 次";
+    }
   }
   var _useg = $('usageSeg');
   if(_useg) _useg.addEventListener('click', function(ev){
