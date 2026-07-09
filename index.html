@@ -4,357 +4,575 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripRadar 後台</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
-  :root {
-    --green:#0D7A5F; --green-soft:#E1F0EB; --ink:#16201C; --muted:#6A756F; --faint:#9BA6A0;
-    --line:#E4E8E6; --bg:#F4F6F5; --chip:#EEF2F0; --red:#C94A3A; --red-soft:#FBE7E4;
-    --amber:#C48A1E; --amber-soft:#FBF0DA;
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#EEF3F1; --chip:#EFF3F1;
+    --ink:#131C19; --muted:#54645E; --faint:#65746D;
+    --line:#E4EAE7; --line-2:#D4DCD8;
+    --teal:#0D7A6E; --teal-ink:#0A5A51; --teal-lt:#3AA99B; --teal-soft:#DBEDE8; --teal-line:#B2DAD1; --on-teal:#FFFFFF;
+    --red:#AE3823; --red-soft:#F5E1DB; --amber:#8A5D0F; --amber-soft:#F3E9D2; --amber2:#9A6B18;
+    --blue:#2A6299; --blue-soft:#E0E9F2; --purple:#6A4A9C; --purple-soft:#EAE3F5; --gray:#8A968F;
+    --type-mark-bg:#E4E9F3; --type-mark-fg:#3B4CA0; --type-miss-fg:#8A5D0F;
+    --side:#0E1A16; --side-tx:#93A8A1; --side-strong:#E9F1EE; --side-accent:#3AD6C2;
+    --sel-bg:#182420; --sel-tx:#FFFFFF;
+    --r:8px; --r-sm:6px; --r-pill:999px;
+    --shadow-1:0 1px 2px rgba(19,28,25,.05); --shadow-pop:0 14px 34px -10px rgba(19,28,25,.30);
+    --dur:.16s; --ease:cubic-bezier(.22,.61,.36,1);
+    --z-sticky:20; --z-modal:50; --z-toast:60; --z-err:99;
   }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; background:var(--bg); color:var(--ink); }
-  .wrap { max-width:960px; margin:0 auto; padding:20px 16px 80px; }
+  :root[data-theme="dark"]{
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621; --chip:#111A16;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#2DD4BF; --teal-ink:#7DE9DA; --teal-lt:#25A491; --teal-soft:#12302A; --teal-line:#1F4A41; --on-teal:#06231F;
+    --red:#EF8368; --red-soft:#37201A; --amber:#E0B24E; --amber-soft:#2C230F; --amber2:#E0B24E;
+    --blue:#7FB0E0; --blue-soft:#15283A; --purple:#B79BE0; --purple-soft:#241A34; --gray:#8A968F;
+    --type-mark-bg:#1B2740; --type-mark-fg:#9DB4E8; --type-miss-fg:#E0B24E;
+    --side:#0A100E; --side-tx:#8AA099; --side-strong:#E7EFEC; --side-accent:#3AD6C2;
+    --sel-bg:#E6EEEA; --sel-tx:#131C19; --shadow-1:none; --shadow-pop:0 16px 40px -8px rgba(0,0,0,.6);
+  }
+  @media(prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621; --chip:#111A16;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#2DD4BF; --teal-ink:#7DE9DA; --teal-lt:#25A491; --teal-soft:#12302A; --teal-line:#1F4A41; --on-teal:#06231F;
+    --red:#EF8368; --red-soft:#37201A; --amber:#E0B24E; --amber-soft:#2C230F; --amber2:#E0B24E;
+    --blue:#7FB0E0; --blue-soft:#15283A; --purple:#B79BE0; --purple-soft:#241A34; --gray:#8A968F;
+    --type-mark-bg:#1B2740; --type-mark-fg:#9DB4E8; --type-miss-fg:#E0B24E;
+    --side:#0A100E; --side-tx:#8AA099; --side-strong:#E7EFEC; --side-accent:#3AD6C2;
+    --sel-bg:#E6EEEA; --sel-tx:#131C19; --shadow-1:none; --shadow-pop:0 16px 40px -8px rgba(0,0,0,.6);
+  } }
 
-  header { display:flex; align-items:center; gap:10px; margin:4px 0 18px; }
-  header .logo { width:40px; height:40px; border-radius:12px; background:var(--green); display:flex; align-items:center; justify-content:center; font-size:20px; }
-  header h1 { font-size:19px; margin:0; }
-  header .sub { color:var(--muted); font-size:12.5px; margin-top:1px; }
-  header .right { margin-left:auto; }
-  .linkbtn { background:none; border:none; color:var(--muted); font-size:13px; cursor:pointer; text-decoration:underline; padding:6px; }
-
-  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
-  label { font-size:12.5px; font-weight:600; color:var(--muted); }
-  input, select { font-size:15px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; outline:none; background:#fff; color:var(--ink); }
-  input:focus, select:focus { border-color:var(--green); box-shadow:0 0 0 3px var(--green-soft); }
-  button { font-family:inherit; cursor:pointer; }
-  .primary { background:var(--green); color:#fff; border:none; padding:11px 20px; font-size:15px; font-weight:700; border-radius:9px; }
-  .primary:active { transform:scale(.98); }
-  .ghost { background:#fff; color:var(--green); border:1px solid var(--green); padding:9px 14px; font-size:14px; font-weight:600; border-radius:9px; }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; }
+  body{ font-family:var(--font); background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased; }
+  button{ font-family:inherit; cursor:pointer; color:inherit; }
+  a{ color:var(--teal); text-decoration:none; }
+  a:hover{ text-decoration:underline; text-underline-offset:2px; }
+  :focus-visible{ outline:2px solid var(--teal); outline-offset:2px; border-radius:3px; }
+  input,select,textarea{ font-family:inherit; font-size:14px; padding:8px 11px; border:1px solid var(--line-2); border-radius:var(--r-sm); background:var(--surface); color:var(--ink); transition:border-color var(--dur),box-shadow var(--dur); }
+  input::placeholder,textarea::placeholder{ color:var(--faint); }
+  input:focus,select:focus,textarea:focus{ outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-soft); }
+  input:disabled,select:disabled{ background:var(--surface-2); color:var(--faint); cursor:not-allowed; }
+  .hide{ display:none !important; }
 
   /* 登入 */
-  .login { max-width:400px; margin:10vh auto 0; text-align:center; }
-  .login .logo-lg { font-size:44px; }
-  .login h2 { font-size:20px; margin:8px 0 2px; }
-  .login p { color:var(--muted); font-size:13px; margin:0 0 18px; }
-  .login input { width:100%; text-align:center; font-size:17px; letter-spacing:2px; }
-  .login .primary { width:100%; margin-top:10px; }
-  .err { color:var(--red); font-size:13px; min-height:18px; margin-top:8px; }
+  .login{ max-width:380px; margin:14vh auto 0; text-align:center; padding:0 18px; }
+  .login .logo-lg{ width:56px; height:56px; margin:0 auto 14px; border-radius:15px; object-fit:cover; display:block; }
+  .login .logo-lg svg{ width:26px; height:26px; }
+  .login h2{ font-size:20px; font-weight:700; letter-spacing:-.01em; margin:0 0 3px; }
+  .login p{ color:var(--muted); font-size:13px; margin:0 0 20px; }
+  .login .card{ padding:20px; text-align:left; }
+  .login input{ width:100%; font-size:15px; letter-spacing:1px; text-align:center; }
+  .login .primary{ width:100%; margin-top:10px; }
+  .login .linkbtn{ display:block; width:100%; text-align:center; margin-top:14px; }
+  .err{ color:var(--red); font-size:12.5px; min-height:16px; margin-top:8px; }
 
-  /* 統計卡 = 篩選器 */
-  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
-  .stat { background:#fff; border:1px solid var(--line); border-radius:12px; padding:12px 14px; cursor:pointer; transition:border-color .12s; position:relative; overflow:hidden; }
-  .stat::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:transparent; }
-  .stat .n { font-size:24px; font-weight:800; line-height:1.1; }
-  .stat .t { font-size:12.5px; color:var(--muted); font-weight:600; margin-top:2px; }
-  .stat.active { border-color:var(--green); }
-  .stat.active::before { background:var(--green); }
-  .stat[data-f="soon"] .n { color:var(--amber); }
-  .stat[data-f="expired"] .n { color:var(--red); }
-  .stat[data-f="active"] .n { color:var(--green); }
+  /* 殼 */
+  #app{ display:flex; min-height:100vh; }
+  aside{ width:216px; flex:none; background:var(--side); color:var(--side-tx); display:flex; flex-direction:column; padding:16px 12px 14px; position:sticky; top:0; height:100vh; border-right:1px solid var(--line); }
+  aside .brand{ display:flex; align-items:center; gap:10px; padding:4px 8px 18px; }
+  aside .brand .lg{ width:32px; height:32px; border-radius:9px; object-fit:cover; flex:none; display:block; }
+  aside .brand .lg svg{ width:19px; height:19px; }
+  aside .brand b{ color:var(--side-strong); font-size:15px; font-weight:650; display:block; line-height:1.15; letter-spacing:-.01em; }
+  aside .brand small{ font-size:11px; color:var(--side-tx); font-weight:400; }
+  .nav{ display:flex; flex-direction:column; gap:1px; }
+  .nav button{ display:flex; align-items:center; gap:10px; background:none; border:none; color:var(--side-tx); font-size:13.5px; font-weight:500; padding:8px 10px; border-radius:var(--r-sm); text-align:left; width:100%; transition:background var(--dur),color var(--dur); }
+  .nav button .ic{ display:flex; width:18px; height:18px; flex:none; }
+  .nav button .ic svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  .nav button .bdg{ margin-left:auto; background:var(--red); color:#fff; font-size:11px; font-weight:700; border-radius:var(--r-pill); padding:0 6px; min-width:18px; text-align:center; font-variant-numeric:tabular-nums; }
+  .nav button:hover{ background:rgba(255,255,255,.06); color:var(--side-strong); }
+  .nav button.on{ background:rgba(45,212,191,.13); color:var(--side-strong); }
+  .nav button.on .ic svg{ stroke:var(--side-accent); }
+  aside .grow{ flex:1; }
+  aside .foot{ display:flex; flex-direction:column; gap:1px; border-top:1px solid rgba(255,255,255,.08); padding-top:8px; margin-top:8px; }
+  aside .foot .who{ font-size:11.5px; color:var(--side-tx); padding:4px 10px 6px; }
+  aside .foot a, aside .foot button{ display:block; background:none; border:none; color:var(--side-tx); font-size:12.5px; font-weight:500; padding:7px 10px; border-radius:var(--r-sm); text-align:left; text-decoration:none; transition:background var(--dur),color var(--dur); width:100%; }
+  aside .foot a:hover, aside .foot button:hover{ background:rgba(255,255,255,.06); color:var(--side-strong); text-decoration:none; }
 
-  /* 工具列 */
-  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:2px; }
-  .toolbar .search { flex:1; min-width:180px; position:relative; }
-  .toolbar .search input { width:100%; padding-left:34px; }
-  .toolbar .search::before { content:"🔍"; position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; opacity:.55; }
-  .toolbar .grp { display:flex; gap:6px; align-items:center; }
-  .toolbar .grp span { font-size:12.5px; color:var(--muted); }
+  main{ flex:1; min-width:0; padding:26px 28px 90px; max-width:1120px; }
+  .pagehead{ margin:0 0 20px; }
+  .pagehead h1{ font-size:20px; font-weight:700; letter-spacing:-.015em; margin:0; }
+  .pagehead .sub{ color:var(--muted); font-size:13px; margin-top:3px; max-width:72ch; }
 
-  /* 清單 */
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th { text-align:left; color:var(--faint); font-weight:600; font-size:11.5px; letter-spacing:.4px; padding:10px 8px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  td { padding:12px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
-  tr:last-child td { border-bottom:none; }
-  tr:hover td { background:#FAFBFA; }
-  .drv { font-weight:700; font-size:15px; }
-  .drv small { display:block; font-weight:500; font-size:11.5px; color:var(--faint); margin-top:1px; }
-  .key { font-family:ui-monospace,SFMono-Regular,monospace; font-size:12.5px; background:var(--chip); padding:3px 8px; border-radius:6px; cursor:pointer; white-space:nowrap; }
-  .key:hover { background:var(--green-soft); }
-  .exp b { font-weight:600; }
-  .exp small { display:block; font-size:11.5px; color:var(--faint); }
-  .pill { font-size:12px; font-weight:700; padding:3px 10px; border-radius:20px; display:inline-block; white-space:nowrap; }
-  .ok   { background:var(--green-soft); color:var(--green); }
-  .warn { background:var(--amber-soft); color:var(--amber); }
-  .bad  { background:var(--red-soft);   color:var(--red); }
-  .off  { background:var(--chip);       color:var(--muted); }
-  .act { display:flex; gap:5px; }
-  .act button { font-size:12.5px; font-weight:600; padding:6px 10px; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:7px; white-space:nowrap; }
-  .act button:hover { border-color:var(--green); color:var(--green); }
-  .act .danger:hover { border-color:var(--red); color:var(--red); }
-  .muted { color:var(--muted); font-size:13px; }
-  .empty { text-align:center; color:var(--faint); padding:34px 0 20px; font-size:14px; }
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:14px; box-shadow:var(--shadow-1); }
+  .cardtitle, .card>label{ font-size:13px; font-weight:650; color:var(--ink); letter-spacing:-.005em; }
+  .rowline{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .primary{ background:var(--teal); color:var(--on-teal); border:1px solid transparent; padding:8px 16px; font-size:13.5px; font-weight:600; border-radius:var(--r-sm); transition:background var(--dur); }
+  .primary:hover{ background:var(--teal-ink); }
+  .primary:active{ transform:translateY(.5px); }
+  .primary:disabled{ background:var(--surface-2); color:var(--faint); cursor:not-allowed; }
+  .ghost{ background:var(--surface); color:var(--ink); border:1px solid var(--line-2); padding:7px 13px; font-size:13px; font-weight:550; border-radius:var(--r-sm); transition:border-color var(--dur),background var(--dur); }
+  .ghost:hover{ border-color:var(--faint); background:var(--surface-2); }
+  .linkbtn{ background:none; border:none; color:var(--muted); font-size:12.5px; padding:4px 6px; border-radius:4px; transition:color var(--dur); }
+  .linkbtn:hover{ color:var(--teal); text-decoration:none; }
 
-  /* 發金鑰結果 */
-  .newkey { background:var(--green-soft); border:1px solid #9FD8C4; border-radius:12px; padding:14px 16px; margin-top:12px; display:none; }
-  .newkey .k { font-size:24px; font-weight:800; letter-spacing:1.5px; font-family:ui-monospace,monospace; }
-  .newkey .row2 { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
-  .newkey .ghost { padding:8px 12px; font-size:13.5px; }
+  /* KPI 摘要條(單一面板,分隔非卡片) */
+  .kpis{ display:flex; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow-1); margin-bottom:14px; overflow:hidden; }
+  .kpi{ flex:1; min-width:140px; padding:13px 16px; border-right:1px solid var(--line); cursor:pointer; transition:background var(--dur); }
+  .kpi:last-child{ border-right:none; }
+  .kpi:hover{ background:var(--surface-2); }
+  .kpi .n{ font-size:22px; font-weight:700; line-height:1.1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .kpi .t{ font-size:11.5px; color:var(--muted); font-weight:500; margin-top:3px; }
+  .kpi.good .n{ color:var(--teal); } .kpi.warn .n{ color:var(--amber); } .kpi.bad .n{ color:var(--red); }
 
-  .toast { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 20px; border-radius:22px; font-size:14px; opacity:0; transition:opacity .18s; pointer-events:none; z-index:9; }
-  .toast.show { opacity:1; }
-  .hide { display:none !important; }
-  .foldarrow { display:inline-block; transition:transform .15s; }
-  .foldarrow.open { transform:rotate(90deg); }
+  /* 篩選(分段控制) */
+  .stats{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .stat{ flex:1; min-width:118px; padding:10px 14px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm); cursor:pointer; transition:border-color var(--dur),background var(--dur); }
+  .stat:hover{ border-color:var(--line-2); }
+  .stat .n{ font-size:19px; font-weight:700; line-height:1; font-variant-numeric:tabular-nums; }
+  .stat .t{ font-size:12px; color:var(--muted); font-weight:500; margin-top:3px; }
+  .stat.active{ border-color:var(--teal); background:var(--teal-soft); }
+  .stat.active .t{ color:var(--teal-ink); }
+  .stat[data-f="soon"] .n{ color:var(--amber); } .stat[data-f="expired"] .n{ color:var(--red); } .stat[data-f="active"] .n{ color:var(--teal); }
 
-  @media (max-width:720px) {
-    .stats { grid-template-columns:repeat(2,1fr); }
-    .hide-m { display:none; }
-    td, th { padding:10px 6px; }
-    .act button { padding:6px 8px; }
+  .toolbar{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .toolbar .search{ flex:1; min-width:170px; position:relative; }
+  .toolbar .search input{ width:100%; padding-left:32px; }
+  .toolbar .search::before{ content:""; position:absolute; left:11px; top:50%; width:14px; height:14px; transform:translateY(-50%); background:var(--faint); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") center/contain no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.3-4.3'/%3E%3C/svg%3E") center/contain no-repeat; }
+  .toolbar .grp{ display:flex; gap:6px; align-items:center; }
+  .toolbar .grp span{ font-size:12.5px; color:var(--muted); }
+
+  .tablewrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  th{ text-align:left; color:var(--faint); font-weight:600; font-size:11px; letter-spacing:.02em; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  td{ padding:11px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tr:last-child td{ border-bottom:none; }
+  tbody tr{ transition:background var(--dur); }
+  tbody tr:hover td{ background:var(--surface-2); }
+  .drv{ font-weight:600; font-size:14px; }
+  .drv small{ display:block; font-weight:400; font-size:11.5px; color:var(--faint); margin-top:1px; }
+  .drv .acc{ display:inline-block; margin-top:4px; font-size:11px; font-weight:700; padding:1px 7px; border-radius:var(--r-pill); background:var(--surface-2); color:var(--faint); font-variant-numeric:tabular-nums; }
+  .drv .acc.hot{ background:var(--teal-soft); color:var(--teal-ink); }
+  .key{ font-family:var(--mono); font-size:12px; background:var(--chip); border:1px solid var(--line); padding:2px 7px; border-radius:5px; cursor:pointer; white-space:nowrap; transition:border-color var(--dur),color var(--dur); }
+  .key:hover{ border-color:var(--teal-line); color:var(--teal-ink); }
+  .exp b{ font-weight:600; font-variant-numeric:tabular-nums; } .exp small{ display:block; font-size:11.5px; color:var(--faint); }
+  .pill{ font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:var(--r-pill); display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+  .pill.ok{ background:var(--teal-soft); color:var(--teal-ink); }
+  .pill.warn{ background:var(--amber-soft); color:var(--amber); }
+  .pill.bad{ background:var(--red-soft); color:var(--red); }
+  .pill.off{ background:var(--surface-2); color:var(--muted); }
+  .act{ display:flex; gap:5px; flex-wrap:wrap; }
+  .act button{ font-size:12px; font-weight:550; padding:5px 9px; border:1px solid var(--line-2); background:var(--surface); color:var(--ink); border-radius:var(--r-sm); white-space:nowrap; transition:border-color var(--dur),color var(--dur),background var(--dur); }
+  .act button:hover{ border-color:var(--teal-line); color:var(--teal-ink); background:var(--surface-2); }
+  .act .danger:hover{ border-color:var(--red); color:var(--red); }
+  .muted{ color:var(--muted); font-size:12.5px; }
+  .empty{ text-align:center; color:var(--faint); padding:28px 0 20px; font-size:13.5px; }
+  .miss{ display:flex; gap:12px; align-items:flex-start; padding:11px 2px; border-bottom:1px solid var(--line); }
+  .miss:last-child{ border-bottom:none; }
+  .miss-main{ flex:1; min-width:0; }
+  .miss-main b{ font-size:14px; }
+  .miss-sub{ font-size:11.5px; color:var(--faint); margin-top:2px; }
+  .miss-raw{ font-size:12px; color:var(--muted); background:var(--surface-2); border-radius:6px; padding:5px 8px; margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .miss-raw.open{ white-space:pre-wrap; word-break:break-all; }
+  .miss-hot{ text-align:right; font-size:11.5px; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; padding-top:2px; }
+  .miss-hot b{ display:block; color:var(--ink); font-size:14px; }
+
+  .newkey{ background:var(--teal-soft); border:1px solid var(--teal-line); border-radius:var(--r); padding:14px 16px; margin-top:12px; display:none; }
+  .newkey .k{ font-size:22px; font-weight:700; letter-spacing:1px; font-family:var(--mono); color:var(--teal-ink); }
+  .newkey .row2{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+
+  .repcard{ border:1px solid var(--line); border-radius:var(--r); padding:11px 13px; margin-bottom:8px; background:var(--surface); box-shadow:var(--shadow-1); transition:border-color var(--dur); }
+  .repcard:hover{ border-color:var(--line-2); }
+  .repcard.resolved{ opacity:.62; }
+  .rephead{ display:flex; align-items:center; gap:9px; cursor:pointer; flex-wrap:wrap; }
+  .chips{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .chips button{ font-size:12.5px; font-weight:550; padding:5px 12px; border-radius:var(--r-pill); border:1px solid var(--line-2); background:var(--surface); color:var(--muted); transition:border-color var(--dur),color var(--dur),background var(--dur); }
+  .chips button:hover{ border-color:var(--faint); color:var(--ink); }
+  .chips button.on{ background:var(--teal-soft); border-color:var(--teal-line); color:var(--teal-ink); }
+
+  .bars{ display:grid; gap:8px; margin-top:12px; }
+  .bar{ display:grid; grid-template-columns:190px 1fr 72px; gap:12px; align-items:center; font-size:12.5px; }
+  .bar .lb{ color:var(--ink); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar .tr{ display:block; background:var(--chip); border-radius:var(--r-sm); height:14px; overflow:hidden; }
+  .bar .fl{ display:block; background:var(--teal); height:100%; min-width:2px; border-radius:var(--r-sm); }
+  .bar .fl.free{ background:var(--teal-line); }
+  .bar .vv{ text-align:right; font-variant-numeric:tabular-nums; color:var(--muted); }
+
+  .advice{ border:1px solid var(--line); background:var(--surface-2); border-radius:var(--r-sm); padding:9px 12px; margin-bottom:7px; font-size:13px; line-height:1.55; color:var(--ink); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--sel-bg); color:var(--sel-tx); padding:9px 16px; border-radius:var(--r-sm); font-size:13px; font-weight:500; opacity:0; transition:opacity var(--dur); pointer-events:none; z-index:var(--z-toast); box-shadow:var(--shadow-pop); }
+  .toast.show{ opacity:1; }
+
+  .mask{ position:fixed; inset:0; background:rgba(12,20,17,.5); z-index:var(--z-modal); display:flex; align-items:flex-start; justify-content:center; padding:8vh 16px 16px; overflow-y:auto; }
+  .modal{ background:var(--surface); border:1px solid var(--line); border-radius:var(--r); width:100%; max-width:440px; padding:20px; box-shadow:var(--shadow-pop); margin-bottom:40px; }
+  .modal h3{ margin:0 0 14px; font-size:16px; font-weight:650; letter-spacing:-.01em; }
+  .modal .fld{ margin-bottom:11px; }
+  .modal .fld label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px; }
+  .modal .fld input,.modal .fld select,.modal .fld textarea{ width:100%; }
+  .modal textarea{ min-height:88px; resize:vertical; font-size:13px; line-height:1.5; }
+  .modal .btns{ display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+  .errbar{ position:fixed; top:0; left:0; right:0; background:var(--red); color:#fff; font-size:13px; padding:8px 14px; z-index:var(--z-err); display:none; }
+
+  tr.grouphd td{ background:var(--surface-2); padding:9px 10px 7px; border-bottom:1px solid var(--line); }
+  .ghd-label{ font-size:12px; font-weight:700; color:var(--ink); letter-spacing:-.005em; }
+  .ghd-count{ font-size:12px; color:var(--muted); margin-left:8px; }
+  .ghd-sub{ font-size:11.5px; color:var(--faint); margin-left:10px; }
+  /* 走勢圖表 */
+  .seg{ display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm); padding:2px; gap:2px; }
+  .seg button{ background:none; border:none; font-size:12px; font-weight:550; color:var(--muted); padding:4px 11px; border-radius:4px; transition:background var(--dur),color var(--dur); }
+  .seg button.on{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow-1); }
+  .growth-readout{ display:flex; align-items:baseline; gap:10px; margin:12px 0 2px; }
+  .growth-readout .gv{ font-size:26px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+  .growth-readout .gd{ font-size:12.5px; }
+  .chartbox{ position:relative; margin-top:4px; }
+  .chartbox svg{ display:block; width:100%; height:auto; overflow:visible; }
+  .chartbox .ch-area{ fill:var(--teal); opacity:.10; }
+  .chartbox .ch-line{ fill:none; stroke:var(--teal); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+  .chartbox .ch-grid{ stroke:var(--line); stroke-width:1; }
+  .chartbox .ch-dot{ fill:var(--teal); stroke:var(--surface); stroke-width:2; }
+  .chartbox .ch-hair{ stroke:var(--line-2); stroke-width:1; stroke-dasharray:3 3; opacity:0; }
+  .chartbox .ch-hdot{ fill:var(--teal); stroke:var(--surface); stroke-width:2; opacity:0; }
+  .chartbox .ch-lab{ fill:var(--faint); font-size:10px; }
+  .chart-tip{ position:absolute; pointer-events:none; background:var(--sel-bg); color:var(--sel-tx); font-size:11.5px; font-variant-numeric:tabular-nums; padding:4px 8px; border-radius:5px; white-space:nowrap; opacity:0; transition:opacity .1s; transform:translate(-50%,-100%); z-index:5; box-shadow:var(--shadow-pop); }
+  @media(prefers-reduced-motion:reduce){ *,*::before,*::after{ transition-duration:.01ms !important; animation-duration:.01ms !important; } }
+
+  @media(max-width:860px){
+    #app{ flex-direction:column; }
+    aside{ width:100%; height:auto; position:sticky; top:0; z-index:var(--z-sticky); flex-direction:row; align-items:center; padding:8px 10px; gap:4px; overflow-x:auto; border-right:none; border-bottom:1px solid rgba(255,255,255,.08); }
+    aside .brand{ padding:0 6px 0 2px; } aside .brand div{ display:none; }
+    .nav{ flex-direction:row; gap:2px; }
+    .nav button{ padding:7px 10px; white-space:nowrap; font-size:12.5px; }
+    aside .grow{ display:none; }
+    aside .foot{ border-top:none; margin-top:0; padding-top:0; flex-direction:row; }
+    aside .foot .who{ display:none; }
+    aside .foot a, aside .foot button{ padding:7px 8px; font-size:12px; }
+    main{ padding:16px 14px 80px; }
+    .kpi{ flex-basis:50%; min-width:0; border-bottom:1px solid var(--line); }
+    .bar{ grid-template-columns:120px 1fr 60px; }
+    .hide-m{ display:none; }
   }
 </style>
+<script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
-<div class="wrap">
+<div class="errbar" id="errbar"></div>
 
-  <!-- 登入 -->
-  <div class="login" id="loginView">
-    <div class="logo-lg">🚕</div>
-    <h2>TripRadar 後台</h2>
-    <p>司機授權管理</p>
-    <div class="card" style="padding:20px;">
-      <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
-      <button class="primary" id="loginBtn">進入後台</button>
-      <div class="err" id="loginErr"></div>
-    </div>
-  </div>
-
-  <!-- 主畫面 -->
-  <div id="mainView" class="hide">
-    <header>
-      <div class="logo">🚕</div>
-      <div>
-        <h1>TripRadar 後台</h1>
-        <div class="sub" id="subline">司機授權管理</div>
-      </div>
-      <div class="right"><button class="linkbtn" style="margin-right:16px;" onclick="location.href='AI待審區.html'">🤖 AI 待審難單 →</button><button class="linkbtn" id="logoutBtn">登出</button></div>
-    </header>
-
-    <!-- 統計 = 篩選 -->
-    <div class="stats" id="stats">
-      <div class="stat active" data-f="all"><div class="n" id="nAll">0</div><div class="t">全部</div></div>
-      <div class="stat" data-f="active"><div class="n" id="nActive">0</div><div class="t">有效</div></div>
-      <div class="stat" data-f="soon"><div class="n" id="nSoon">0</div><div class="t">7 天內到期</div></div>
-      <div class="stat" data-f="expired"><div class="n" id="nExpired">0</div><div class="t">已過期／停用</div></div>
-    </div>
-
-    <!-- 營收統計(只算有效且非測試的授權) -->
-    <div class="card" id="revCard">
-      <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-        <label>營收統計</label>
-        <span class="muted" style="font-size:12px;">只計入「有效」授權;測試不計費</span>
-      </div>
-      <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-top:10px;">
-        <div>
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">預估月營業額</div>
-          <div style="font-size:30px; font-weight:800; color:var(--green);" id="revMonth">$0</div>
-        </div>
-        <div>
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">預估年營業額</div>
-          <div style="font-size:20px; font-weight:700;" id="revYear">$0</div>
-        </div>
-      </div>
-      <div style="overflow-x:auto; margin-top:10px;">
-        <table>
-          <thead><tr>
-            <th>方案</th><th>有效人數</th><th>每期收費加總</th><th>換算每月</th>
-          </tr></thead>
-          <tbody id="revBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Google 定位用量監控 -->
-    <div class="card" id="geoCard">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <label>📡 Google 定位用量</label>
-        <span class="muted" style="font-size:12px;">即時;快取命中不花錢</span>
-        <button class="linkbtn" id="geoRefresh" style="margin-left:auto;">↻ 重新整理</button>
-      </div>
-      <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-top:10px;">
-        <div>
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">今日 Google 呼叫</div>
-          <div style="font-size:30px; font-weight:800;" id="geoToday">—</div>
-        </div>
-        <div>
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">快取命中率(今日)</div>
-          <div style="font-size:20px; font-weight:700; color:var(--green);" id="geoHitRate">—</div>
-        </div>
-        <div>
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">本月預估成本</div>
-          <div style="font-size:20px; font-weight:700;" id="geoCost">—</div>
-        </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <div style="font-size:12.5px; color:var(--muted); font-weight:600;">每日上限</div>
-          <input type="number" id="geoCap" min="0" style="width:90px;" placeholder="0=不限">
-          <button class="ghost" id="geoCapBtn" style="padding:4px 10px;">設定</button>
-        </div>
-      </div>
-      <div style="display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap;" id="aiCtl">
-        <span style="font-size:12.5px; color:var(--muted); font-weight:700;">🤖 AI 看單救援</span>
-        <button class="ghost" id="aiToggle" style="padding:4px 12px;">—</button>
-        <span style="font-size:12.5px; color:var(--muted);">每日上限</span>
-        <input type="number" id="aiCap" min="0" style="width:80px;" placeholder="0=不限">
-        <button class="ghost" id="aiCapBtn" style="padding:4px 10px;">設定</button>
-        <span class="muted" style="font-size:11.5px;">關掉 = 全隊不打 AI(退回純規則)</span>
-      </div>
-      <div id="geoAdvice" style="margin-top:12px;"></div>
-      <div style="overflow-x:auto; margin-top:10px;">
-        <table>
-          <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th><th>本月花費</th></tr></thead>
-          <tbody id="geoBody"></tbody>
-        </table>
-      </div>
-      <div style="overflow-x:auto; margin-top:8px;">
-        <table>
-          <thead><tr><th>今日各司機(前 20)</th><th>次數</th></tr></thead>
-          <tbody id="geoDrivers"></tbody>
-        </table>
-      </div>
-      <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
-    </div>
-
-    <!-- 司機問題回報 -->
-    <div class="card">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <label>🐞 司機問題回報 <span id="repCount" style="color:var(--red);"></span></label>
-        <button class="linkbtn" id="repRefresh" style="margin-left:auto;">↻ 重新整理</button>
-      </div>
-      <div id="repOpenHead" style="margin-top:10px; color:var(--red); font-size:13px; font-weight:700;">🔧 未修復 <span id="repOpenCount"></span></div>
-      <div id="repList" style="margin-top:8px;"></div>
-      <div class="empty hide" id="repEmpty" style="padding:8px 0 4px;">目前沒有未修復的回報。司機在 App 偵錯頁按「回報問題」就會出現在這裡。</div>
-      <div id="repResolvedHead" style="margin-top:12px; cursor:pointer; color:var(--muted); font-size:13px; font-weight:700; user-select:none;">✅ 已修復 <span id="repResolvedCount"></span> ▾(點一下展開)</div>
-      <div id="repResolvedList" style="display:none; margin-top:8px;"></div>
-    </div>
-
-    <!-- 待補地標(失敗地址金礦) -->
-    <div class="card" id="missCard">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <label style="cursor:pointer;" data-fold="missWrap"><span class="foldarrow">▸</span> 🏗 待補地標 <span id="missCount" style="color:var(--muted);"></span></label>
-        <label style="margin-left:auto;font-size:12px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="missAll"> 顯示全部(含完整地址)</label>
-        <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
-      </div>
-      <div id="missWrap" class="hide">
-      <div class="muted" style="font-size:12px; margin:6px 0 8px;">全隊「還查不到座標」的地址(近14天,已解決的自動移除)。<b>越多不同司機查過=越常用=越值得補</b>。已查成功過的不出現(已進快取)。<b>📩 原文</b>=那張單的整段訊息(新版 App 才有),缺路名時看原文就知道是哪條路。點「補這個」貼座標。</div>
-      <div id="missSummary" style="font-size:13px; margin:0 0 10px; padding:8px 10px; background:var(--chip-bg,#EEF2F0); border-radius:8px;"></div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead><tr><th>地址 / 地標</th><th>熱門度</th><th>動作</th></tr></thead>
-          <tbody id="missBody"></tbody>
-        </table>
-      </div>
-      <div class="empty hide" id="missEmpty" style="padding:8px 0 4px;">目前沒有值得補的查無地標(很好,快取很成熟)。</div>
-      </div>
-    </div>
-
-    <!-- 🚨 異常流量榜(防灌單濫用) -->
-    <div class="card" id="abuseCard">
-      <div class="toolbar" style="justify-content:space-between;">
-        <label style="cursor:pointer;" data-fold="abuseWrap"><span class="foldarrow">▸</span> 🚨 異常流量榜 <span id="abuseCount" style="color:var(--muted);"></span></label>
-        <a href="#" id="abuseReload" style="font-size:13px;">↻ 重新整理</a>
-      </div>
-      <div id="abuseWrap" class="hide">
-      <div class="muted" style="font-size:12px; margin:6px 0 10px;">近 24 小時各司機用量。怕的是:買一組序號自建群狂貼假地址燒 Google 錢。<b>風險指數越高越可疑</b>(高量+高查無)、<b>查無率越高越可疑</b>(假地址查不到)、<b>接單越少越可疑</b>(只灌單不接)。🔴≥60 高風險、🟡30-59 注意。超過每日上限那組會自動停查。</div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead><tr><th>司機</th><th>次數</th><th>查無率</th><th>接單</th><th>風險指數</th><th>動作</th></tr></thead>
-          <tbody id="abuseBody"></tbody>
-        </table>
-      </div>
-      </div>
-    </div>
-
-    <!-- 社區/大樓 位置庫 -->
-    <div class="card" id="placesCard">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <label style="cursor:pointer;" data-fold="placesWrap"><span class="foldarrow">▸</span> 🏢 社區/大樓 位置庫 <span id="placeCount" style="color:var(--muted);"></span></label>
-        <button class="linkbtn" id="placeRefresh" style="margin-left:auto;">↻ 重新整理</button>
-      </div>
-      <div id="placesWrap" class="hide">
-      <div class="muted" style="font-size:12px; margin:6px 0 10px;">派單只寫「XX社區/大樓/店名」Google 定不到 → 在這補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 →「這是哪裡」→ 點座標複製「25.033, 121.565」貼進來。**驗證**打勾才會被 App 採用。</div>
-      <div id="placeAdd" style="display:none; border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:var(--chip);"></div>
-      <div class="toolbar" style="margin-bottom:8px;">
-        <div class="search" style="flex:1; min-width:160px;"><input type="text" id="placeQ" placeholder="搜尋社區/大樓/別名"></div>
-        <button class="primary" id="placeNewBtn">＋ 新增地點</button>
-      </div>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead><tr><th>名稱 / 別名</th><th class="hide-m">縣市</th><th>座標</th><th>命中</th><th>狀態</th><th>動作</th></tr></thead>
-          <tbody id="placeBody"></tbody>
-        </table>
-      </div>
-      <div class="empty hide" id="placeEmpty" style="padding:8px 0 4px;">還沒有任何社區。從上面「新增地點」開始建,或從定位失敗的回報一筆筆補。</div>
-      </div>
-    </div>
-
-    <!-- 發新金鑰 -->
-    <div class="card" id="createCard">
-      <label>發一把新金鑰</label>
-      <div class="toolbar" style="margin-top:8px;">
-        <div class="search" style="flex:1; min-width:140px;"><input type="text" id="cName" placeholder="司機名字(例:阿凱)" autocomplete="off" style="padding-left:12px;"></div>
-        <select id="cPlan">
-          <option value="月繳">月繳</option><option value="季繳">季繳</option>
-          <option value="年繳">年繳</option><option value="測試">測試(免費)</option>
-        </select>
-        <input type="number" id="cPrice" placeholder="每期收費 $" min="0" style="width:110px;">
-        <select id="cMonths">
-          <option value="1">1 個月</option><option value="2">2 個月</option><option value="3">3 個月</option>
-          <option value="6">6 個月</option><option value="12">12 個月</option>
-        </select>
-        <input type="number" id="cDays" placeholder="贈送天數(可選)" min="1" max="365" title="加購在方案之上:月繳600+送1天=31天且計600營收;方案選「測試」時=免費鑰,填幾天開幾天" style="width:150px;">
-        <button class="primary" id="createBtn">產生金鑰</button>
-      </div>
-      <div class="muted" style="font-size:12px; margin-top:6px;">💡 <b>付費鑰</b>:選月/季/年繳＋填收費＋(可選)贈送天數 → 營收照計、到期＝方案月數＋贈送天數。<br>💡 <b>免費封測鑰</b>:方案選「測試」＋填贈送天數(例 7)→ 免費、到期自停、不計營收。</div>
-      <div class="newkey" id="newkey">
-        <div class="muted" id="nkMeta"></div>
-        <div class="k" id="nkKey"></div>
-        <div class="row2">
-          <button class="ghost" id="nkCopy">複製名字＋金鑰</button>
-          <button class="ghost" id="nkCopyMsg">複製給司機的訊息</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 清單 -->
-    <div class="card">
-      <div class="toolbar">
-        <div class="search"><input type="text" id="q" placeholder="搜尋司機 / 金鑰 / 手機號"></div>
-        <div class="grp"><span>續約月數</span>
-          <select id="renewMonths">
-            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-            <option value="6">6</option><option value="12">12</option>
-          </select>
-        </div>
-        <button class="ghost" id="refreshBtn">↻ 重新整理</button>
-        <span style="font-size:12px; color:var(--faint); align-self:center;">· 每 20 秒自動更新</span>
-      </div>
-      <div style="overflow-x:auto; margin-top:6px;">
-        <table>
-          <thead><tr>
-            <th>司機</th><th>金鑰</th><th>方案</th><th>到期</th><th class="hide-m">最後上線</th><th>狀態</th><th>動作</th>
-          </tr></thead>
-          <tbody id="tbody"></tbody>
-        </table>
-        <div class="empty hide" id="empty">沒有符合的司機。</div>
-      </div>
-    </div>
+<!-- 登入 -->
+<div class="login" id="loginView">
+  <img class="logo-lg" src="data:image/png;base64,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" alt="TripRadar 車趟雷達">
+  <h2>TripRadar 後台</h2>
+  <p>司機授權・回報・用量,一站管理</p>
+  <div class="card">
+    <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
+    <button class="primary" id="loginBtn">進入後台</button>
+    <div class="err" id="loginErr"></div>
+    <button class="linkbtn" id="themeBtnLogin" style="margin-top:10px;">🌙 深色模式</button>
   </div>
 </div>
+
+<!-- 主畫面 -->
+<div id="app" class="hide">
+  <aside>
+    <div class="brand"><img class="lg" src="data:image/png;base64,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" alt=""><div><b>TripRadar</b><small>管理後台</small></div></div>
+    <div class="nav" id="nav">
+      <button data-tab="home" class="on"><span class="ic"><svg viewBox='0 0 24 24'><path d='M3 10.6 12 3l9 7.6'/><path d='M5.5 9.4V20a1 1 0 0 0 1 1H17.5a1 1 0 0 0 1-1V9.4'/></svg></span>總覽</button>
+      <button data-tab="keys"><span class="ic"><svg viewBox='0 0 24 24'><circle cx='8' cy='15.5' r='3.6'/><path d='M10.6 13 20 3.6M16.2 4.4l2.6 2.6M13.4 7.2l2.2 2.2'/></svg></span>司機金鑰</button>
+      <button data-tab="reports"><span class="ic"><svg viewBox='0 0 24 24'><path d='M12 3 2.6 20h18.8L12 3Z'/><path d='M12 9.5v5M12 17.6h.01'/></svg></span>問題回報<span class="bdg hide" id="navRepBdg"></span></button>
+      <button data-tab="usage"><span class="ic"><svg viewBox='0 0 24 24'><path d='M3 13h3.5l2.5 6 4-13 2.5 7H21'/></svg></span>用量成本</button>
+      <button data-tab="places"><span class="ic"><svg viewBox='0 0 24 24'><path d='M19.5 10.2c0 5.4-7.5 11-7.5 11s-7.5-5.6-7.5-11a7.5 7.5 0 0 1 15 0Z'/><circle cx='12' cy='10' r='2.4'/></svg></span>位置庫</button>
+    </div>
+    <div class="grow"></div>
+    <div class="foot">
+      <div class="who" id="whoLine">—</div>
+      <a href="AI待審區.html">AI 待審難單 →</a>
+      <button id="themeBtn">🌙 深色模式</button>
+      <button id="logoutBtn">登出</button>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ═══ 總覽 ═══ -->
+    <section id="tab-home">
+      <div class="pagehead"><h1>總覽</h1><div class="sub" id="homeSub">—</div></div>
+      <div class="kpis">
+        <div class="kpi good" data-go="keys"><div class="n" id="kActive">0</div><div class="t">有效司機</div></div>
+        <div class="kpi" data-go="keys"><div class="n" id="kAccToday">—</div><div class="t">今日接單(全體)</div></div>
+        <div class="kpi warn" data-go="keys" data-f="soon"><div class="n" id="kSoon">0</div><div class="t">7 天內到期</div></div>
+        <div class="kpi bad" data-go="reports"><div class="n" id="kOpenRep">0</div><div class="t">未修復回報</div></div>
+        <div class="kpi" data-go="usage"><div class="n" id="kGeoToday">—</div><div class="t">今日 Google 呼叫</div></div>
+        <div class="kpi" data-go="usage"><div class="n" id="kHit">—</div><div class="t">快取命中率</div></div>
+        <div class="kpi good" data-go="keys"><div class="n" id="kRev">$0</div><div class="t">預估月營收</div></div>
+      </div>
+
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">成長趨勢</span>
+          <div class="seg" id="growthSeg" style="margin-left:auto;">
+            <button data-m="drivers" class="on">在營司機</button>
+            <button data-m="mrr">月營收</button>
+          </div>
+        </div>
+        <div class="growth-readout"><span class="gv" id="growthNow">—</span><span class="gd muted" id="growthDelta"></span></div>
+        <div class="chartbox" id="growthChart"></div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">依現有授權的開通/到期日推算,每點約一週;測試鑰不計營收。</div>
+      </div>
+
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">現在誰在跑</span><span class="muted" style="font-size:12px;">接單中=45 分內有接單;等單中=App 在線;20 分沒心跳=離線</span></div>
+        <div id="liveStrip" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">快到期/剛過期(續約提醒)</span><button class="linkbtn" data-go="keys" data-f="soon" style="margin-left:auto;">全部 →</button></div>
+        <div class="tablewrap"><table><tbody id="homeSoonBody"></tbody></table></div>
+        <div class="empty hide" id="homeSoonEmpty">最近沒有要到期的司機</div>
+      </div>
+
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">最新未修復回報</span><button class="linkbtn" data-go="reports" style="margin-left:auto;">全部 →</button></div>
+        <div id="homeRepList" style="margin-top:8px;"></div>
+        <div class="empty hide" id="homeRepEmpty">目前沒有未修復的回報</div>
+      </div>
+    </section>
+
+    <!-- ═══ 司機金鑰 ═══ -->
+    <section id="tab-keys" class="hide">
+      <div class="pagehead"><h1>司機金鑰</h1><div class="sub">發鑰、續約、換機、停用;點金鑰=複製「名字+金鑰」,點方案=改方案</div></div>
+
+      <div class="stats" id="stats">
+        <div class="stat active" data-f="all"><div class="n" id="nAll">0</div><div class="t">全部</div></div>
+        <div class="stat" data-f="active"><div class="n" id="nActive">0</div><div class="t">有效</div></div>
+        <div class="stat" data-f="soon"><div class="n" id="nSoon">0</div><div class="t">7 天內到期</div></div>
+        <div class="stat" data-f="expired"><div class="n" id="nExpired">0</div><div class="t">已過期/停用</div></div>
+      </div>
+
+      <div class="card" id="createCard">
+        <span class="cardtitle">發一把新金鑰</span>
+        <div class="toolbar" style="margin-top:10px;">
+          <div style="flex:1; min-width:140px;"><input type="text" id="cName" placeholder="司機名字(例:阿凱)" autocomplete="off" style="width:100%;"></div>
+          <select id="cPlan">
+            <option value="月繳">月繳</option><option value="季繳">季繳</option>
+            <option value="年繳">年繳</option><option value="測試">測試(免費)</option>
+          </select>
+          <input type="number" id="cPrice" placeholder="每期收費 $" min="0" style="width:110px;">
+          <select id="cMonths">
+            <option value="1">1 個月</option><option value="2">2 個月</option><option value="3">3 個月</option>
+            <option value="6">6 個月</option><option value="12">12 個月</option>
+          </select>
+          <button class="primary" id="createBtn">產生金鑰</button>
+        </div>
+        <div class="rowline" style="margin-top:8px;">
+          <span class="muted" style="font-size:12.5px;">或發免費體驗鑰:</span>
+          <input type="number" id="cDays" placeholder="體驗天數(例 7)" min="1" max="365" style="width:150px;">
+          <span class="muted" style="font-size:12px;">填了天數就發試用鑰(到期自停,不影響營收統計),忽略上面方案。</span>
+        </div>
+        <div class="newkey" id="newkey">
+          <div class="muted" id="nkMeta"></div>
+          <div class="k" id="nkKey"></div>
+          <div class="row2">
+            <button class="ghost" id="nkCopy">複製名字＋金鑰</button>
+            <button class="ghost" id="nkCopyMsg">複製給司機的訊息</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="search"><input type="text" id="q" placeholder="搜尋司機或金鑰"></div>
+          <div class="grp"><span>續約月數</span>
+            <select id="renewMonths">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+              <option value="6">6</option><option value="12">12</option>
+            </select>
+          </div>
+          <button class="ghost" id="refreshBtn">↻ 重新整理</button>
+          <span style="font-size:12px; color:var(--faint);">每 20 秒自動更新</span>
+        </div>
+        <div class="tablewrap" style="margin-top:6px;">
+          <table>
+            <thead><tr>
+              <th>司機</th><th>金鑰</th><th>方案</th><th>到期</th><th class="hide-m">狀態/最後上線</th><th>授權</th><th>動作</th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="empty hide" id="empty">沒有符合的司機。</div>
+        </div>
+      </div>
+
+      <div class="card" id="revCard">
+        <div class="rowline"><span class="cardtitle">營收統計</span><span class="muted" style="font-size:12px;">只計「有效」授權;測試不計費</span></div>
+        <div style="display:flex; gap:24px; align-items:flex-end; flex-wrap:wrap; margin-top:10px;">
+          <div><div class="muted" style="font-size:12.5px; font-weight:600;">預估月營業額</div><div style="font-size:28px; font-weight:800; color:var(--teal);" id="revMonth">$0</div></div>
+          <div><div class="muted" style="font-size:12.5px; font-weight:600;">預估年營業額</div><div style="font-size:19px; font-weight:700;" id="revYear">$0</div></div>
+        </div>
+        <div class="tablewrap" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>方案</th><th>有效人數</th><th>每期收費加總</th><th>換算每月</th></tr></thead>
+            <tbody id="revBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 問題回報 ═══ -->
+    <section id="tab-reports" class="hide">
+      <div class="pagehead"><h1>問題回報</h1><div class="sub">司機在 App 偵錯頁按「回報問題」就會出現;修好後標「已修復」,原文記得進案例庫</div></div>
+      <div class="card">
+        <div class="rowline">
+          <div class="chips" id="repChips" style="margin-bottom:0;">
+            <button data-rf="open" class="on">🔧 未修復 <span id="repOpenCount"></span></button>
+            <button data-rf="resolved">✅ 已修復 <span id="repResolvedCount"></span></button>
+            <button data-rf="all">全部</button>
+          </div>
+          <button class="linkbtn" id="repRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+        <div class="chips" id="repTypeChips" style="margin-top:10px;"></div>
+        <div id="repList" style="margin-top:6px;"></div>
+        <div class="empty hide" id="repEmpty">這個分類目前沒有回報。</div>
+      </div>
+    </section>
+
+    <!-- ═══ 用量成本 ═══ -->
+    <section id="tab-usage" class="hide">
+      <div class="pagehead"><h1>用量成本</h1><div class="sub">即時;快取命中不花錢。免費額/單價為 2025 新制參考,實際以 Google Cloud 帳單為準</div></div>
+
+      <div class="kpis" style="grid-template-columns:repeat(2,1fr);">
+        <div class="kpi" style="cursor:default;"><div class="n" id="geoToday">—</div><div class="t">今日 Google 呼叫</div></div>
+        <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">快取命中率(今日)</div></div>
+        <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
+        <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 看單救援</div></div>
+      </div>
+
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">每日用量趨勢</span>
+          <div class="seg" id="usageSeg" style="margin-left:auto;">
+            <button data-u="google" class="on">Google 呼叫</button>
+            <button data-u="cache">快取命中</button>
+            <button data-u="ai">AI 看單</button>
+            <button data-u="rate">命中率</button>
+          </div>
+        </div>
+        <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
+        <div class="chartbox" id="usageChart"></div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;命中率=快取命中÷(命中+Google 呼叫),越高越省。</div>
+      </div>
+
+      <div class="card" id="capCard">
+        <div class="rowline">
+          <span class="cardtitle">保險絲</span>
+          <span class="muted" style="font-size:12px;">超過上限當天就停打付費 API,卡片照出、只少距離</span>
+          <button class="linkbtn" id="geoRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+        <div class="rowline" style="margin-top:10px;">
+          <span class="muted" style="font-weight:700;">📡 Google 每日上限</span>
+          <input type="number" id="geoCap" min="0" style="width:100px;" placeholder="0=不限">
+          <button class="ghost" id="geoCapBtn" style="padding:5px 12px;">設定</button>
+        </div>
+        <div class="rowline" id="aiCtl" style="margin-top:8px;">
+          <span class="muted" style="font-weight:700;">🤖 AI 看單</span>
+          <button class="ghost" id="aiToggle" style="padding:5px 12px;">—</button>
+          <span class="muted" style="font-size:12.5px;">每日上限</span>
+          <input type="number" id="aiCap" min="0" style="width:90px;" placeholder="0=不限">
+          <button class="ghost" id="aiCapBtn" style="padding:5px 12px;">設定</button>
+          <span class="muted" style="font-size:11.5px;">關掉=全隊不打 AI(退回純規則)</span>
+        </div>
+      </div>
+
+      <div class="card"><span class="cardtitle">診斷 &amp; 省錢建議</span><div id="geoAdvice" style="margin-top:10px;"></div><div class="empty hide" id="advEmpty">目前沒有需要注意的事。</div></div>
+
+      <div class="card" id="abuseCard">
+        <div class="rowline">
+          <span class="cardtitle">高風險用量</span>
+          <span class="pill ok hide" id="abuseState">—</span>
+          <button class="linkbtn" id="abuseRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px;">抓「亂刷」:近 24 小時 <b>高用量 + 高查無率(假地址查不到)+ 零接單</b> = 風險越高。怕的是有人拿序號自建群狂貼假地址燒 Google 錢。點司機名可跳到金鑰頁停用。</div>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>司機</th><th>風險</th><th>24h 查詢</th><th>geocode</th><th>查無率</th><th class="hide-m">今日接單</th></tr></thead>
+            <tbody id="abuseBody"></tbody>
+          </table>
+        </div>
+        <div class="empty hide" id="abuseEmpty">近 24 小時沒有值得注意的流量。</div>
+        <div class="muted" id="abuseNote" style="font-size:11.5px; margin-top:6px;"></div>
+      </div>
+
+      <div class="card">
+        <span class="cardtitle">今日查詢組成(免費 vs 付費)</span>
+        <div class="bars" id="geoBars"></div>
+        <div class="muted" style="font-size:11.5px; margin-top:8px;">深色=付費 API・淺色=免費(快取/自架/官方免費源)。長條比例=今日次數。</div>
+      </div>
+
+      <div class="card">
+        <span class="cardtitle">明細</span>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th></tr></thead>
+            <tbody id="geoBody"></tbody>
+          </table>
+        </div>
+        <div class="tablewrap" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>今日各司機(前 20)</th><th>次數</th></tr></thead>
+            <tbody id="geoDrivers"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
+      </div>
+    </section>
+
+    <!-- ═══ 位置庫 ═══ -->
+    <section id="tab-places" class="hide">
+      <div class="pagehead"><h1>社區/大樓 位置庫</h1><div class="sub">派單只寫「XX社區/大樓/店名」Google 定不到 → 補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 → 點座標複製「25.033, 121.565」貼進來。<b>驗證打勾才會被 App 採用。</b></div></div>
+      <div class="card" id="missCard">
+        <div class="rowline">
+          <span class="cardtitle">待補地標 <span id="missN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
+          <label class="muted" style="margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="checkbox" id="missAll" style="width:auto;">顯示全部(含完整地址)</label>
+          <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px;">全隊「還查不到座標」的地址(近 14 天,已解決的自動移除)。越多不同司機查過=越常用=越值得補;已查成功的不再出現。📩 原文=那張單的整段訊息,缺路名時看原文就知道是哪條路。點「補這個」貼座標。</div>
+        <div id="missSummary" class="muted" style="font-size:12px; margin-top:9px;"></div>
+        <div id="missList" style="margin-top:4px;"></div>
+        <div class="empty hide" id="missEmpty">目前沒有待補的地標。</div>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <div class="search" style="flex:1; min-width:160px;"><input type="text" id="placeQ" placeholder="搜尋社區/大樓/別名"></div>
+          <span class="muted" id="placeCount" style="font-size:12px;"></span>
+          <button class="linkbtn" id="placeRefresh">↻ 重新整理</button>
+          <button class="primary" id="placeNewBtn">＋ 新增地點</button>
+        </div>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>名稱 / 別名</th><th class="hide-m">縣市</th><th>座標</th><th>命中</th><th>狀態</th><th>動作</th></tr></thead>
+            <tbody id="placeBody"></tbody>
+          </table>
+        </div>
+        <div class="empty hide" id="placeEmpty">還沒有任何社區。從「新增地點」開始建,或從定位失敗的回報一筆筆補。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
 <div class="toast" id="toast"></div>
+<div class="mask hide" id="mask"><div class="modal" id="modal"></div></div>
 
 <script>
+  window.onerror = function(msg, src, line){
+    var b = document.getElementById('errbar');
+    b.style.display = "block"; b.textContent = "JS 錯誤:" + msg + " @" + line;
+  };
+
   var URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
   var PW = sessionStorage.getItem("tr_pw") || "";
-  var ROWS = [], FILTER = "all", QUERY = "";
-  var ROLE = "admin";  // 伺服器依密碼判定:admin=全權 / viewer=唯讀監控(牆在伺服器,這裡只是藏按鈕)
+  var ROWS = [], REPORTS = [], PLACES = [], FILTER = "all", QUERY = "";
+  var ROLE = "admin";          // 伺服器依密碼判定;viewer=唯讀(牆在伺服器,這裡只是藏按鈕)
+  var REP_FILTER = "open", REP_TYPE = "全部";
+  var aiEnabled = true;
+  var GROWTH_METRIC = 'drivers';
+  var USAGE_METRIC = 'google';
+  var GEO_CACHE_RES = null;    // 最近一次 geoUsage 回應(總覽 KPI 共用)
 
   function $(id){ return document.getElementById(id); }
-  function toast(t){ var e=$('toast'); e.textContent=t; e.classList.add('show'); setTimeout(function(){e.classList.remove('show');},1600); }
-  function api(action, extra){
-    return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
-      .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
-      .catch(function(){ return { error:"network" }; });
-  }
+  var toastTimer = null;
+  function toast(t){ var e=$('toast'); e.textContent=t; e.classList.add('show'); if(toastTimer) clearTimeout(toastTimer); toastTimer=setTimeout(function(){e.classList.remove('show');},1600); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  function safeUrl(u){ return /^https?:\/\//i.test(String(u||"")) ? String(u) : ""; }
   function p2(n){ return ("0"+n).slice(-2); }
   function fmtD(iso){ if(!iso) return "—"; var d=new Date(iso); return d.getFullYear()+"/"+p2(d.getMonth()+1)+"/"+p2(d.getDate()); }
   function daysLeft(iso){ return Math.floor((new Date(iso)-new Date())/86400000); }
@@ -365,9 +583,77 @@
     if(diff < 2*day) return "昨天";
     return Math.floor(diff/day) + " 天前";
   }
-  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
-  // ── 登入 ──
+  function api(action, extra){
+    return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
+      .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
+      .catch(function(){ return { error:"network" }; });
+  }
+
+  /* ── 分頁切換 ── */
+  var TABS = ["home","keys","reports","usage","places"];
+  function goTab(t){
+    if(TABS.indexOf(t)<0) t="home";
+    TABS.forEach(function(x){
+      $('tab-'+x).classList.toggle('hide', x!==t);
+    });
+    document.querySelectorAll('#nav button').forEach(function(b){
+      b.classList.toggle('on', b.getAttribute('data-tab')===t);
+    });
+    window.scrollTo(0,0);
+  }
+  $('nav').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    goTab(b.getAttribute('data-tab'));
+  });
+  document.addEventListener('click', function(e){
+    var g = e.target.closest('[data-go]'); if(!g) return;
+    var f = g.getAttribute('data-f');
+    if(f){ FILTER=f; document.querySelectorAll('.stat').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-f')===f); }); render(); }
+    goTab(g.getAttribute('data-go'));
+  });
+
+  /* ── Modal ── */
+  function openModal(title, fields, onSave, saveLabel){
+    var m = $('modal'), html = "<h3>"+esc(title)+"</h3>";
+    fields.forEach(function(f){
+      html += "<div class='fld'><label>"+esc(f.label)+"</label>";
+      if(f.type==="select"){
+        html += "<select id='mf_"+f.id+"'>"+f.options.map(function(o){ return "<option value='"+esc(o)+"'"+(o===f.value?" selected":"")+">"+esc(o)+"</option>"; }).join("")+"</select>";
+      } else if(f.type==="textarea"){
+        html += "<textarea id='mf_"+f.id+"' placeholder='"+esc(f.placeholder||"")+"'>"+esc(f.value||"")+"</textarea>";
+      } else if(f.type==="checkbox"){
+        html += "<label style='display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink);font-weight:400;'><input type='checkbox' id='mf_"+f.id+"' style='width:auto;'"+(f.value?" checked":"")+"> "+esc(f.placeholder||"")+"</label>";
+      } else {
+        html += "<input id='mf_"+f.id+"' type='"+(f.type||"text")+"' value=\""+esc(f.value==null?"":f.value)+"\" placeholder='"+esc(f.placeholder||"")+"'>";
+      }
+      if(f.hint) html += "<div class='muted' style='font-size:11.5px;margin-top:3px;'>"+esc(f.hint)+"</div>";
+      html += "</div>";
+    });
+    html += "<div class='btns'><button class='ghost' id='mCancel'>取消</button><button class='primary' id='mSave'>"+esc(saveLabel||"儲存")+"</button></div>";
+    m.innerHTML = html;
+    $('mask').classList.remove('hide');
+    $('mCancel').addEventListener('click', closeModal);
+    $('mSave').addEventListener('click', function(){
+      var btn = this;
+      if(btn.disabled) return;
+      btn.disabled = true;   // 防連點重複送出;1.2 秒後解鎖以便失敗重試
+      setTimeout(function(){ if(document.body.contains(btn)) btn.disabled = false; }, 1200);
+      var vals = {};
+      fields.forEach(function(f){
+        var el = $('mf_'+f.id);
+        vals[f.id] = f.type==="checkbox" ? el.checked : el.value;
+      });
+      onSave(vals);
+    });
+    var first = m.querySelector('input,select,textarea');
+    if(first) first.focus();
+  }
+  function closeModal(){ $('mask').classList.add('hide'); $('modal').innerHTML=""; }
+  $('mask').addEventListener('click', function(e){ if(e.target===$('mask')) closeModal(); });
+
+  /* ── 登入 ── */
   $('loginBtn').addEventListener('click', login);
   $('pw').addEventListener('keydown', function(e){ if(e.key==='Enter') login(); });
   function login(){
@@ -389,82 +675,497 @@
     ROWS = rows;
     ROLE = role === "viewer" ? "viewer" : "admin";
     if (ROLE === "viewer") {
-      // 唯讀監控:藏掉所有會改資料的入口(伺服器端另有硬牆,就算改前端也打不進)
       $('createCard').classList.add('hide');
-      $('geoCap').disabled = true;
-      $('geoCapBtn').disabled = true;
-      $('placeNewBtn').classList.add('hide');   // 唯讀:社區庫只能看不能改
-      $('abuseCard').classList.add('hide');     // 異常流量榜=admin 專用(含完整金鑰+停用)
+      $('geoCap').disabled = true; $('geoCapBtn').disabled = true;
+      $('placeNewBtn').classList.add('hide');
     }
+    $('whoLine').textContent = ROLE==="viewer" ? "👁 唯讀監控" : "🔑 管理員";
     $('loginView').classList.add('hide');
-    $('mainView').classList.remove('hide');
+    $('app').classList.remove('hide');
     render();
     loadReports();
     loadGeoUsage();
     loadPlaces();
-    loadMissQueue();
-    if (ROLE === "admin") loadAbuseWatch();
+    loadMiss();
+    loadAbuse();
+  }
+  $('logoutBtn').addEventListener('click', function(){
+    sessionStorage.removeItem("tr_pw"); location.hash=""; location.reload();
+  });
+
+  /* ── 授權清單/統計/營收 ── */
+  function statusOf(r){
+    if(!r.active) return { cls:"off", txt:"停用", cat:"expired" };
+    var dl = daysLeft(r.expires_at);
+    if(dl < 0)  return { cls:"bad",  txt:"已過期",   cat:"expired" };
+    if(dl <= 7) return { cls:"warn", txt:"剩 "+dl+" 天", cat:"soon" };
+    return { cls:"ok", txt:"有效", cat:"active" };
+  }
+  function activityOf(r){
+    if(!r.last_seen_at) return null;
+    var now = Date.now(), seen = new Date(r.last_seen_at).getTime();
+    if(now - seen > 20*60000) return { txt:"離線", color:"var(--gray)", k:"off" };
+    var acc = r.last_accept_at ? new Date(r.last_accept_at).getTime() : 0;
+    if(acc && now - acc <= 45*60000) return { txt:"🟢 接單中", color:"var(--teal)", k:"busy" };
+    return { txt:"🔵 等單中", color:"var(--blue)", k:"idle" };
+  }
+  function acceptsToday(r){
+    // 今日接單數:App 每次心跳送當日累計;伺服器存 today_accepts + 台灣日期戳。
+    // 只認台灣今天 → 昨天活躍今天沒上線的司機,舊數字不顯示(跨日自動歸零)。
+    var td = new Date(Date.now() + 8*3600000).toISOString().slice(0,10);
+    return r.today_accepts_date === td ? (r.today_accepts||0) : null; // null = 今天沒回報(離線/舊版 App)
   }
 
-  // ── 🚨 異常流量榜(防灌單濫用;admin 專用)──
-  function loadAbuseWatch(){
-    api("abuseWatch").then(function(res){
-      if(!res || res.error){ return; }
-      var rows = res.rows || [];
-      var risky = rows.filter(function(r){ return r.score>=30; }).length;
-      $('abuseCount').textContent = risky ? "("+risky+" 個需注意)" : "(正常)";
-      var tb=$('abuseBody'); tb.innerHTML="";
-      rows.forEach(function(r){
-        var col = r.score>=60 ? "#C94A3A" : (r.score>=30 ? "#C48A1E" : "var(--muted)");
-        var flag = r.test ? "🧪測試機" : (r.score>=60 ? "🔴" : (r.score>=30 ? "🟡" : "🟢"));
-        var tr=document.createElement('tr');
-        tr.innerHTML =
-          "<td><b>"+esc(r.name)+"</b><br><small style='color:var(--faint);'>"+esc(r.key)+"　不重複查詢 "+r.distinctQ+"</small></td>"+
-          "<td>"+r.geo+"<br><small style='color:var(--faint);'>總 "+r.total+"</small></td>"+
-          "<td style='color:"+(r.missRate>=50?'#C94A3A':'var(--muted)')+";'>"+r.missRate+"%</td>"+
-          "<td style='color:"+(!r.test&&r.accepts===0&&r.geo>=500?'#C94A3A':'var(--muted)')+";'>"+r.accepts+"</td>"+
-          "<td style='font-weight:700;color:"+col+";'>"+flag+" "+r.score+"%</td>"+
-          "<td>"+(r.test ? "<span class='muted' style='font-size:12px;'>免管</span>" : "<button class='ghost' data-stop='"+esc(r.key)+"'>停用</button>")+"</td>";
-        tb.appendChild(tr);
+  function render(){
+    var c = { all:ROWS.length, active:0, soon:0, expired:0 };
+    ROWS.forEach(function(r){
+      var cat = statusOf(r).cat;
+      if(cat==="active"||cat==="soon") c.active++;
+      if(cat==="soon") c.soon++;
+      if(cat==="expired") c.expired++;
+    });
+    $('nAll').textContent=c.all; $('nActive').textContent=c.active;
+    $('nSoon').textContent=c.soon; $('nExpired').textContent=c.expired;
+    var todayAcc=0; ROWS.forEach(function(r){ var n=acceptsToday(r); if(n) todayAcc+=n; });
+    if($('kAccToday')) $('kAccToday').textContent = todayAcc.toLocaleString();
+    $('kActive').textContent=c.active; $('kSoon').textContent=c.soon;
+    $('homeSub').textContent = "共 " + c.all + " 位司機 ・ " + c.active + " 位有效" + (ROLE==="viewer" ? " ・ 👁 唯讀監控" : "");
+
+    // 營收(只算有效;測試不計費)
+    var PLAN_DIV = { "月繳":1, "季繳":3, "年繳":12 };
+    var rev = { "月繳":{n:0,sum:0}, "季繳":{n:0,sum:0}, "年繳":{n:0,sum:0}, "測試":{n:0,sum:0} };
+    ROWS.forEach(function(r){
+      if(statusOf(r).cat==="expired") return;
+      var p = rev[r.plan] ? r.plan : "測試";
+      rev[p].n++; rev[p].sum += (r.price||0);
+    });
+    var monthly = 0, rb = $('revBody'); rb.innerHTML = "";
+    ["月繳","季繳","年繳","測試"].forEach(function(p){
+      var e = rev[p], m = p==="測試" ? 0 : Math.round(e.sum / PLAN_DIV[p]);
+      monthly += m;
+      var tr2 = document.createElement('tr');
+      tr2.innerHTML = "<td><b>"+p+"</b></td><td>"+e.n+" 人</td>"+
+        "<td>"+(p==="測試" ? "—" : "$"+e.sum.toLocaleString())+"</td>"+
+        "<td>"+(p==="測試" ? "不計費" : "$"+m.toLocaleString())+"</td>";
+      rb.appendChild(tr2);
+    });
+    $('revMonth').textContent = "$" + monthly.toLocaleString();
+    $('revYear').textContent  = "$" + (monthly*12).toLocaleString();
+    $('kRev').textContent = "$" + monthly.toLocaleString();
+
+    renderHome();
+    renderList();
+  }
+
+  function renderHome(){
+    // 現在誰在跑
+    var strip = $('liveStrip'); strip.innerHTML = "";
+    var busy=[], idle=[];
+    ROWS.forEach(function(r){
+      var a = activityOf(r); if(!a) return;
+      if(a.k==="busy") busy.push(r); else if(a.k==="idle") idle.push(r);
+    });
+    busy.forEach(function(r){
+      var s=document.createElement('span'); s.className="pill ok"; var n=acceptsToday(r); s.textContent="🟢 "+(r.driver_name||r.key)+(n?" · "+n+" 單":""); strip.appendChild(s);
+    });
+    idle.forEach(function(r){
+      var s=document.createElement('span'); s.className="pill"; s.style.background="var(--blue-soft)"; s.style.color="var(--blue)"; var n=acceptsToday(r); s.textContent="🔵 "+(r.driver_name||r.key)+(n?" · "+n+" 單":""); strip.appendChild(s);
+    });
+    if(!busy.length && !idle.length){
+      var s=document.createElement('span'); s.className="muted"; s.textContent="現在沒有司機在線上。"; strip.appendChild(s);
+    }
+
+    // 快到期/剛過期 top 5
+    var soonList = ROWS.filter(function(r){
+      var st=statusOf(r); return st.cat==="soon" || (st.cat==="expired" && r.active && daysLeft(r.expires_at)>=-14);
+    }).sort(function(a,b){ return new Date(a.expires_at)-new Date(b.expires_at); }).slice(0,5);
+    var hb=$('homeSoonBody'); hb.innerHTML="";
+    $('homeSoonEmpty').classList.toggle('hide', soonList.length>0);
+    soonList.forEach(function(r){
+      var dl=daysLeft(r.expires_at), st=statusOf(r);
+      var tr=document.createElement('tr');
+      tr.innerHTML = "<td><b>"+esc(r.driver_name||"—")+"</b></td>"+
+        "<td class='muted'>"+esc(r.plan||"測試")+"</td>"+
+        "<td><span class='pill "+st.cls+"'>"+(dl>=0? "剩 "+dl+" 天" : "過期 "+(-dl)+" 天")+"</span></td>"+
+        "<td>"+fmtD(r.expires_at)+"</td>"+
+        "<td>"+(ROLE==="viewer" ? "" : "<div class='act'><button data-a='renew'>續約</button></div>")+"</td>";
+      if(ROLE!=="viewer") tr.querySelector("[data-a='renew']").addEventListener('click', function(){ doAction('renew', r); });
+      hb.appendChild(tr);
+    });
+
+    // 最新未修復回報 top 3
+    var open = REPORTS.filter(function(r){ return !r.resolved; }).slice(0,3);
+    var box=$('homeRepList'); box.innerHTML="";
+    $('homeRepEmpty').classList.toggle('hide', open.length>0);
+    $('kOpenRep').textContent = REPORTS.filter(function(r){ return !r.resolved; }).length;
+    open.forEach(function(r){ box.appendChild(reportCard(r, true)); });
+    var openN = REPORTS.filter(function(r){ return !r.resolved; }).length;
+    $('navRepBdg').textContent = openN;
+    $('navRepBdg').classList.toggle('hide', openN===0);
+    renderGrowth();
+  }
+
+  /* ── 篩選/搜尋/清單 ── */
+  $('stats').addEventListener('click', function(e){
+    var t = e.target.closest('.stat'); if(!t) return;
+    document.querySelectorAll('.stat').forEach(function(x){ x.classList.remove('active'); });
+    t.classList.add('active'); FILTER = t.getAttribute('data-f'); renderList();
+  });
+  $('q').addEventListener('input', function(){ QUERY = this.value.trim().toLowerCase(); renderList(); });
+  $('refreshBtn').addEventListener('click', reload);
+  function reload(){ api("list").then(function(res){ if(res.rows){ ROWS=res.rows; render(); } }); }
+  setInterval(function(){
+    if(!$('app').classList.contains('hide') && !document.hidden){ reload(); }
+  }, 20000);
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !$('app').classList.contains('hide')){ reload(); }
+  });
+
+  function renderList(){
+    var list = ROWS.filter(function(r){
+      var st = statusOf(r);
+      if(FILTER==="active" && !(st.cat==="active"||st.cat==="soon")) return false;
+      if(FILTER==="soon" && st.cat!=="soon") return false;
+      if(FILTER==="expired" && st.cat!=="expired") return false;
+      if(QUERY){
+        var hay = ((r.driver_name||"")+" "+r.key).toLowerCase();
+        if(hay.indexOf(QUERY)<0) return false;
+      }
+      return true;
+    });
+    list.sort(function(a,b){ return new Date(a.expires_at)-new Date(b.expires_at); });
+
+    var tb=$('tbody'); tb.innerHTML="";
+    $('empty').classList.toggle('hide', list.length>0);
+    var PAID=["月繳","季繳","年繳"], PLAN_DIV={ "月繳":1, "季繳":3, "年繳":12 };
+    var paid=list.filter(function(r){ return PAID.indexOf(r.plan)>=0; });
+    var test=list.filter(function(r){ return PAID.indexOf(r.plan)<0; });
+    function groupHead(label, rows, withRev){
+      var sub=""; if(withRev){ var mm=0; rows.forEach(function(r){ if(statusOf(r).cat!=="expired") mm+=Math.round((r.price||0)/(PLAN_DIV[r.plan]||1)); }); if(mm>0) sub="<span class='ghd-sub'>月營收 $"+mm.toLocaleString()+"</span>"; }
+      var h=document.createElement('tr'); h.className="grouphd";
+      h.innerHTML="<td colspan='7'><span class='ghd-label'>"+label+"</span><span class='ghd-count'>"+rows.length+" 位</span>"+sub+"</td>";
+      tb.appendChild(h);
+    }
+    function appendRow(r){
+      var st=statusOf(r), dl=daysLeft(r.expires_at);
+      var plan = r.plan || "測試";
+      var planTxt = plan === "測試" ? "測試" : plan + " $" + (r.price||0).toLocaleString();
+      var tr=document.createElement('tr');
+      tr.innerHTML =
+        "<td><div class='drv'>"+esc(r.driver_name||"—")+
+          (r.device_id? "" : "<small>尚未綁定手機</small>")+(function(){ var n=acceptsToday(r); return n!=null ? "<span class='acc"+(n>0?" hot":"")+"'>今日 "+n+" 單</span>" : ""; })()+"</div></td>"+
+        "<td><span class='key' title='點一下複製'>"+esc(r.key)+"</span></td>"+
+        "<td><span class='pill "+(plan==="測試"?"off":"ok")+"' style='cursor:pointer' title='點一下改方案' data-a='plan'>"+esc(planTxt)+"</span></td>"+
+        "<td class='exp'><b>"+fmtD(r.expires_at)+"</b><small>"+(dl>=0? "剩 "+dl+" 天":"過期 "+(-dl)+" 天")+"</small></td>"+
+        "<td class='muted hide-m'>"+
+          (function(){ var a=activityOf(r); return a? "<b style='color:"+a.color+";'>"+a.txt+"</b><br>" : ""; })()+
+          rel(r.last_seen_at)+
+          (r.last_app_version? "<br><small style='color:var(--faint);'>v"+esc(r.last_app_version)+"</small>" : "")+"</td>"+
+        "<td><span class='pill "+st.cls+"'>"+st.txt+"</span></td>"+
+        "<td><div class='act'>"+
+          (ROLE === "viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" :
+          "<button data-a='rename'>改名</button>"+
+          "<button data-a='renew'>續約</button>"+
+          "<button data-a='toggle'>"+(r.active?"停用":"啟用")+"</button>"+
+          "<button data-a='unbind'>換機</button>"+
+          "<button class='danger' data-a='delete'>刪除</button>")+
+        "</div></td>";
+      if (ROLE !== "viewer") tr.querySelector("[data-a='plan']").addEventListener('click', function(){ doAction('plan', r); });
+      tr.querySelector(".key").addEventListener('click', function(){
+        var text = ((r.driver_name || "") + " " + r.key).trim();
+        navigator.clipboard.writeText(text).then(function(){ toast("已複製:" + text); });
       });
-      tb.querySelectorAll("[data-stop]").forEach(function(b){
-        b.addEventListener('click', function(){
-          var key=b.getAttribute('data-stop');
-          if(!confirm("確定停用序號 "+key+" ?(該司機 App 下次驗證就會被擋)")) return;
-          api("setActive",{key:key, active:false}).then(function(res){
-            res.ok?(toast("已停用 "+key),loadAbuseWatch(),render()):toast("失敗:"+(res.error||"?"));
-          });
+      tr.querySelectorAll(".act button").forEach(function(b){
+        b.addEventListener('click', function(){ doAction(b.getAttribute('data-a'), r); });
+      });
+      tb.appendChild(tr);
+    }
+    if(paid.length){ groupHead("正式會員", paid, true); paid.forEach(appendRow); }
+    if(test.length){ groupHead("測試 / 體驗", test, false); test.forEach(appendRow); }
+  }
+
+  function doAction(a, r){
+    var who = r.driver_name || r.key;
+    if(a==="rename"){
+      openModal("改名:"+who, [{id:"nm", label:"司機名字", value:r.driver_name||"", placeholder:"例:阿凱"}], function(v){
+        api("setName",{key:r.key, driver_name:String(v.nm||"").trim()}).then(function(res){
+          if(res.ok){ closeModal(); toast("已改名為「"+(String(v.nm||"").trim()||"—")+"」"); reload(); }
+          else toast("失敗");
+        });
+      });
+    } else if(a==="renew"){
+      var m=$('renewMonths').value;
+      api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
+    } else if(a==="toggle"){
+      var on=!r.active;
+      if(!on && !confirm("停用「"+who+"」?App 下次驗證就進不去。")) return;
+      api("setActive",{key:r.key,active:on}).then(function(res){ if(res.ok){ toast(on?"已啟用":"已停用"); reload(); } });
+    } else if(a==="unbind"){
+      if(!confirm("清除「"+who+"」的手機綁定?他可用同一把金鑰綁新手機。")) return;
+      api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } });
+    } else if(a==="delete"){
+      if(!confirm("永久刪除「"+who+"」?建議用停用保留紀錄。")) return;
+      api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
+    } else if(a==="plan"){
+      openModal("改方案:"+who, [
+        {id:"plan", label:"方案", type:"select", options:["月繳","季繳","年繳","測試"], value:r.plan||"月繳"},
+        {id:"price", label:"每期收費(NT$,測試免填)", type:"number", value:r.price||localStorage.getItem("tr_price_"+(r.plan||"月繳"))||"", placeholder:"例 1299"}
+      ], function(v){
+        var p = v.plan, price = 0;
+        if(p !== "測試"){
+          price = parseInt(v.price,10)||0;
+          if(price<=0){ toast("價格要大於 0"); return; }
+          localStorage.setItem("tr_price_"+p, String(price));
+        }
+        api("setPlan",{key:r.key,plan:p,price:price}).then(function(res){
+          if(res.ok){ closeModal(); toast("「"+who+"」改為 "+p+(price>0?" $"+price.toLocaleString():"")); reload(); }
+          else toast("失敗");
+        });
+      });
+      // 切換方案下拉 → 價格欄自動帶該方案上次記住的價;測試則清空停用
+      var mfSel=$('mf_plan'), mfPr=$('mf_price');
+      if(mfSel && mfPr) mfSel.addEventListener('change', function(){
+        if(mfSel.value==="測試"){ mfPr.value=""; mfPr.disabled=true; }
+        else { mfPr.disabled=false; mfPr.value = localStorage.getItem("tr_price_"+mfSel.value) || ""; }
+      });
+    }
+  }
+
+  /* ── 發金鑰 ── */
+  var LAST_KEY = null;
+  var PLAN_MONTHS = { "月繳":"1", "季繳":"3", "年繳":"12", "測試":"1" };
+  $('cPlan').addEventListener('change', function(){
+    var p = this.value;
+    $('cMonths').value = PLAN_MONTHS[p] || "1";
+    if(p === "測試"){ $('cPrice').value = ""; $('cPrice').disabled = true; }
+    else { $('cPrice').disabled = false; $('cPrice').value = localStorage.getItem("tr_price_"+p) || ""; }
+  });
+  $('cPlan').dispatchEvent(new Event('change'));
+  $('createBtn').addEventListener('click', function(){
+    var name = $('cName').value.trim();
+    if(!name){ $('cName').focus(); return; }
+    var days = parseInt($('cDays').value||"0",10)||0;
+    if(days > 0){
+      api("create", { driver_name:name, days:days }).then(function(res){
+        if(res.error || !res.row){ toast("失敗:"+(res.error||"?")); return; }
+        LAST_KEY = res.row;
+        $('newkey').style.display = "block";
+        $('nkKey').textContent = res.row.key;
+        $('nkMeta').textContent = name + " ・ 體驗 " + (res.trial_days||days) + " 天 ・ 到期 " + fmtD(res.row.expires_at);
+        $('cName').value = ""; $('cDays').value = "";
+        reload();
+      });
+      return;
+    }
+    var plan = $('cPlan').value, price = parseInt($('cPrice').value||"0",10)||0;
+    if(plan !== "測試" && price <= 0){ $('cPrice').focus(); toast("先填每期收費"); return; }
+    if(plan !== "測試") localStorage.setItem("tr_price_"+plan, String(price));
+    api("create", { driver_name:name, months:$('cMonths').value, plan:plan, price:price }).then(function(res){
+      if(res.error || !res.row){ toast("失敗:"+(res.error||"?")); return; }
+      LAST_KEY = res.row;
+      $('newkey').style.display = "block";
+      $('nkKey').textContent = res.row.key;
+      $('nkMeta').textContent = name + " ・ " + plan + (price>0? " $"+price.toLocaleString():"") + " ・ 到期 " + fmtD(res.row.expires_at);
+      $('cName').value = "";
+      reload();
+    });
+  });
+  $('nkCopy').addEventListener('click', function(){
+    if(!LAST_KEY) return;
+    var text = (LAST_KEY.driver_name || "") + " " + LAST_KEY.key;
+    navigator.clipboard.writeText(text.trim()).then(function(){ toast("已複製:" + text.trim()); });
+  });
+  $('nkCopyMsg').addEventListener('click', function(){
+    if(!LAST_KEY) return;
+    var msg = "您的車趟輔助授權金鑰:" + LAST_KEY.key + "\n打開 App 輸入一次即可啟用(會綁定這支手機)\n效期至 " + fmtD(LAST_KEY.expires_at);
+    navigator.clipboard.writeText(msg).then(function(){ toast("訊息已複製,直接貼給司機"); });
+  });
+
+  /* ── 問題回報 ── */
+  var TYPE_STYLE = {
+    "抓錯單":   { bg:"var(--red-soft)",   fg:"var(--red)" },
+    "漏抓":     { bg:"var(--amber-soft)", fg:"var(--type-miss-fg)" },
+    "標記失敗": { bg:"var(--type-mark-bg)", fg:"var(--type-mark-fg)" },
+    "距離錯":   { bg:"var(--teal-soft)",  fg:"var(--teal)" },
+    "其他":     { bg:"var(--chip)",       fg:"var(--muted)" }
+  };
+  $('repRefresh').addEventListener('click', loadReports);
+  $('repChips').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    REP_FILTER = b.getAttribute('data-rf');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    renderReports();
+  });
+  function loadReports(){
+    api("reports").then(function(res){
+      if(res.rows){ REPORTS = res.rows; renderReports(); renderHome(); }
+    });
+  }
+  function renderReports(){
+    var open = REPORTS.filter(function(r){ return !r.resolved; });
+    var done = REPORTS.filter(function(r){ return !!r.resolved; });
+    $('repOpenCount').textContent = "("+open.length+")";
+    $('repResolvedCount').textContent = "("+done.length+")";
+
+    // 類型 chips(依現有資料動態產生)
+    var types = {};
+    REPORTS.forEach(function(r){ var t=r.report_type||"其他"; types[t]=(types[t]||0)+1; });
+    if(REP_TYPE!=="全部" && !types[REP_TYPE]) REP_TYPE="全部";   // 選中的類型已無資料 → 自動退回全部,避免過濾卡死
+    var tc = $('repTypeChips'); tc.innerHTML="";
+    var allB = document.createElement('button');
+    allB.textContent = "全部類型"; allB.className = REP_TYPE==="全部"?"on":"";
+    allB.addEventListener('click', function(){ REP_TYPE="全部"; renderReports(); });
+    tc.appendChild(allB);
+    Object.keys(types).forEach(function(t){
+      var b=document.createElement('button');
+      b.textContent = t+" ("+types[t]+")"; b.className = REP_TYPE===t?"on":"";
+      b.addEventListener('click', function(){ REP_TYPE=t; renderReports(); });
+      tc.appendChild(b);
+    });
+
+    var list = REPORTS.filter(function(r){
+      if(REP_FILTER==="open" && r.resolved) return false;
+      if(REP_FILTER==="resolved" && !r.resolved) return false;
+      if(REP_TYPE!=="全部" && (r.report_type||"其他")!==REP_TYPE) return false;
+      return true;
+    });
+    var box=$('repList'); box.innerHTML="";
+    $('repEmpty').classList.toggle('hide', list.length>0);
+    list.forEach(function(r){ box.appendChild(reportCard(r, false)); });
+    var openN = open.length;
+    $('navRepBdg').textContent = openN;
+    $('navRepBdg').classList.toggle('hide', openN===0);
+    $('kOpenRep').textContent = openN;
+  }
+  // 相似/重複偵測:純前端 trigram Jaccard,比「派單原文」
+  function normTxt(s){ return String(s||"").replace(/\s+/g,"").toLowerCase(); }
+  function triJaccard(a,b){
+    if(a.length < 3 || b.length < 3) return 0;
+    var ga={}, gb={}, i, inter=0, na=0, nb=0;
+    for(i=0;i<a.length-2;i++){ var k=a.slice(i,i+3); if(!ga[k]){ ga[k]=1; na++; } }
+    for(i=0;i<b.length-2;i++){ var k2=b.slice(i,i+3); if(!gb[k2]){ gb[k2]=1; nb++; } }
+    Object.keys(ga).forEach(function(k){ if(gb[k]) inter++; });
+    var uni = na + nb - inter;
+    return uni ? inter/uni : 0;
+  }
+  function similarReports(r){
+    var mine = normTxt(r.raw_dispatch);
+    if(mine.length < 8 || REPORTS.length > 500) return [];
+    var out = [];
+    REPORTS.forEach(function(o){
+      if(o.id === r.id) return;
+      var their = normTxt(o.raw_dispatch);
+      if(their.length < 8) return;
+      var sc = triJaccard(mine, their);
+      if(sc >= 0.45) out.push({ o:o, sc:sc });
+    });
+    out.sort(function(a,b){ return b.sc - a.sc; });
+    return out.slice(0, 3);
+  }
+  function reportCard(r, compact){
+    var d = document.createElement('div');
+    d.className = "repcard" + (r.resolved ? " resolved" : "");
+    var head = document.createElement('div');
+    head.className = "rephead";
+    var sims = compact ? [] : similarReports(r);
+    var ts = TYPE_STYLE[r.report_type] || TYPE_STYLE["其他"];
+    head.innerHTML =
+      (r.resolved ? "<span style='font-size:12px;'>✅</span>" : "")+
+      "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
+      (r.report_type ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:"+ts.bg+"; color:"+ts.fg+";'>"+esc(r.report_type)+"</span>" : "")+
+      (sims.length ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:var(--purple-soft); color:var(--purple);'>🔁 相似×"+sims.length+"</span>" : "")+
+      "<span class='muted' style='font-size:12px;'>v"+esc(r.app_version||"?")+" ・ "+fmtD(r.created_at)+" "+p2(new Date(r.created_at).getHours())+":"+p2(new Date(r.created_at).getMinutes())+"</span>"+
+      (r.device_model? "<span style='font-size:12px; color:var(--muted);'>📱"+esc(r.device_model)+"</span>" : "")+
+      (r.image_url? "<span style='font-size:12px;'>🖼️</span>" : "")+
+      (r.note? "<span style='font-size:13px; color:var(--amber); font-weight:600;'>「"+esc(r.note)+"」</span>" : "")+
+      "<span style='margin-left:auto; font-size:12px; color:var(--faint);'>"+(compact?"看詳情 →":"點一下展開 ▾")+"</span>";
+    if(compact){
+      head.addEventListener('click', function(){ goTab('reports'); });
+      d.appendChild(head);
+      return d;
+    }
+    var body = document.createElement('div');
+    body.style.display = "none";
+    var simBanner = "";
+    if(sims.length){
+      var anyRes = sims.some(function(x){ return x.o.resolved; });
+      simBanner = "<div style='border:1px solid var(--purple-soft); background:var(--purple-soft); border-radius:6px; padding:8px 12px; margin:10px 0; font-size:12.5px; line-height:1.6;'>"+
+        "🔁 <b>疑似與 "+sims.length+" 筆相似</b>"+(anyRes? " ・其中有<b>已修復</b>的,可能同一個 bug,先看那筆的修法" : "")+"<br>"+
+        sims.map(function(x){ var o=x.o;
+          return "・"+(o.resolved?"✅ ":"🔧 ")+esc(o.driver_name||o.license_key||"?")+" "+(o.report_type?"["+esc(o.report_type)+"] ":"")+fmtD(o.created_at)+" <span style='color:var(--faint);'>(相似度 "+Math.round(x.sc*100)+"%)</span>";
+        }).join("<br>")+
+        "</div>";
+    }
+    var preCss = "white-space:pre-wrap; font-size:12px; background:var(--chip); border-radius:8px; padding:10px; overflow:auto; margin:0 0 4px;";
+    var lblCss = "font-size:12px; color:var(--muted); font-weight:600; margin:10px 0 3px;";
+    var imgUrl = safeUrl(r.image_url);
+    body.innerHTML =
+      (imgUrl? "<a href='"+esc(imgUrl)+"' target='_blank' rel='noopener'><img src='"+esc(imgUrl)+"' style='max-width:100%; max-height:360px; border-radius:8px; margin:10px 0; border:1px solid var(--line);'></a>" : "")+
+      simBanner+
+      (r.parse_snapshot? "<div style='"+lblCss+"'>🔎 App 當下解析</div><pre style='"+preCss+"'>"+esc(r.parse_snapshot)+"</pre>" : "")+
+      (r.raw_dispatch? "<div style='"+lblCss+"'>📩 派單原文(最近接單・自動附上)</div><pre style='"+preCss+" max-height:220px;'>"+esc(r.raw_dispatch)+"</pre>" : "")+
+      "<div style='"+lblCss+" color:var(--faint);'>🐞 完整偵錯</div>"+
+      "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>";
+    var actions = document.createElement('div');
+    actions.className = "act";
+    actions.innerHTML = (ROLE === "viewer" ? "" :
+      "<button data-a='res'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 標記已修復")+"</button>"+
+      "<button data-a='edit'>✏️ 編輯內容</button>")+
+      "<button data-a='copy'>複製報告</button>"+
+      (ROLE === "viewer" ? "" : "<button class='danger' data-a='del'>刪除</button>");
+    if (ROLE !== "viewer") actions.querySelector("[data-a='res']").addEventListener('click', function(){
+      api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
+        if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記為已修復"); loadReports(); }
+      });
+    });
+    if (ROLE !== "viewer") actions.querySelector("[data-a='edit']").addEventListener('click', function(){
+      openModal("編輯回報內容", [
+        {id:"note", label:"司機描述(補字/改錯字)", type:"textarea", value:r.note||""},
+        {id:"raw", label:"派單原文(自動附上的常抓錯張,可貼上正確那張)", type:"textarea", value:r.raw_dispatch||""}
+      ], function(v){
+        var patch = { id:r.id, note:String(v.note) };
+        if(String(v.raw) !== String(r.raw_dispatch||"")) patch.raw_dispatch = String(v.raw);   // 沒動就不送,保留「不覆寫」語意
+        api("editReport", patch).then(function(res){
+          if(res.ok){ closeModal(); toast("已更新回報內容"); loadReports(); }
+          else toast("失敗:"+(res.error||"?"));
         });
       });
     });
+    actions.querySelector("[data-a='copy']").addEventListener('click', function(){
+      navigator.clipboard.writeText(r.report||"").then(function(){ toast("報告已複製,可直接貼給 Claude 除錯"); });
+    });
+    if (ROLE !== "viewer") actions.querySelector("[data-a='del']").addEventListener('click', function(){
+      if(!confirm("刪除這筆回報?")) return;
+      api("deleteReport",{id:r.id}).then(function(res){ if(res.ok){ toast("已刪除"); loadReports(); } });
+    });
+    body.appendChild(actions);
+    head.addEventListener('click', function(){ body.style.display = body.style.display==="none" ? "block" : "none"; });
+    d.appendChild(head); d.appendChild(body);
+    return d;
   }
-  document.addEventListener('click', function(e){
-    if(e.target && e.target.id==='abuseReload'){ e.preventDefault(); loadAbuseWatch(); }
-  });
 
-  // ── Google 定位用量(即時監控)──
-  // 單價 = 2025/03 Google Maps Platform 新制參考價;實際帳單以 Google Cloud Console 為準。
+  /* ── 用量成本 ── */
   var GEO_PRICING = {
-    geocode:            { free: 10000, per1000: 5,  label: "Google Geocoding(長尾退路)" },
-    geocode_nominatim:  { free: 0,     per1000: 0,  label: "自架 Nominatim 路名/地標(免費)" },
-    geocode_tgos:       { free: 0,     per1000: 0,  label: "TGOS 門牌定位(內政部官方,免費)" },
-    places:             { free: 5000,  per1000: 32, label: "Places 就近補救(⚠️最貴)" },
-    distance_google:    { free: 10000, per1000: 5,  label: "Google 距離(退路)" },
-    distance_geoapify:  { free: 0,     per1000: 0,  label: "Geoapify 距離(免費3000/日)" },
-    distance_osrm:      { free: 0,     per1000: 0,  label: "自架 OSRM 距離(免費)" },
-    cache_hit:          { free: 0,     per1000: 0,  label: "快取命中(不花錢)" },
-    cache_hit_miss:     { free: 0,     per1000: 0,  label: "🚫 失敗快取命中(查無直接回,省下 Google)" },
-    cache_hit_road:     { free: 0,     per1000: 0,  label: "🛣 路段快取命中(同路段共用座標,免費)" },
-    community_hit:      { free: 0,     per1000: 0,  label: "🏢 社區位置庫命中(免費)" },
-    budget_blocked:     { free: 0,     per1000: 0,  label: "超每日上限被擋" },
-    aiparse:            { free: 0,     per1000: 1.5, label: "🤖 AI 看單(Haiku)" },
-    aiparse_blocked:    { free: 0,     per1000: 0,  label: "🤖 AI 超每日上限被擋" }
+    geocode:            { free: 10000, per1000: 5,  paid:true,  label: "Google Geocoding(長尾退路)" },
+    geocode_nominatim:  { free: 0,     per1000: 0,  paid:false, label: "自架 Nominatim 路名/地標(免費)" },
+    geocode_tgos:       { free: 0,     per1000: 0,  paid:false, label: "TGOS 門牌定位(內政部官方,免費)" },
+    places:             { free: 5000,  per1000: 32, paid:true,  label: "Places 就近補救(⚠️最貴)" },
+    distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "Google 距離(退路)" },
+    distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "Geoapify 距離(免費3000/日)" },
+    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "自架 OSRM 距離(免費)" },
+    cache_hit:          { free: 0,     per1000: 0,  paid:false, label: "快取命中(不花錢)" },
+    community_hit:      { free: 0,     per1000: 0,  paid:false, label: "🏢 社區位置庫命中(免費)" },
+    budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "超每日上限被擋" },
+    aiparse:            { free: 0,     per1000: 1.5, paid:true, label: "🤖 AI 看單(Haiku)" },
+    aiparse_blocked:    { free: 0,     per1000: 0,  paid:false, label: "🤖 AI 超每日上限被擋" }
   };
   var GOOGLE_APIS = ["geocode", "places", "distance_google"];
-  // 匯率(約估,要調就改這裡):US$1 ≈ NT$32。把美金換台幣直觀顯示(US$32/千次 ≈ NT$1/次)。
-  var NT_PER_USD = 32;
-  function nt(usd){ return "NT$" + Math.round(usd * NT_PER_USD).toLocaleString(); }
-  $('geoRefresh').addEventListener('click', loadGeoUsage);
+  function geoSum(arr, apis){ var s = 0; (arr||[]).forEach(function(r){ if(apis.indexOf(r.api) >= 0) s += r.n; }); return s; }
+  function licName(k){
+    for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
+    return k;
+  }
+  $('geoRefresh').addEventListener('click', function(){ loadGeoUsage(); loadAbuse(); });
   $('geoCapBtn').addEventListener('click', function(){
     var cap = parseInt($('geoCap').value || "0", 10) || 0;
     api("setGeoCap", { cap: cap }).then(function(res){
@@ -472,8 +1173,6 @@
       loadGeoUsage();
     });
   });
-  // 🤖 AI 看單:開/關 + 每日上限(呼叫 setAiConfig;viewer 會被伺服器擋)
-  var aiEnabled = true;
   $('aiToggle').addEventListener('click', function(){
     api("setAiConfig", { enabled: !aiEnabled, cap: parseInt($('aiCap').value || "0", 10) || 0 }).then(function(res){
       if(res.ok){ toast(res.ai_enabled ? "🤖 AI 看單已開啟" : "⛔ AI 看單已關閉"); loadGeoUsage(); }
@@ -487,109 +1186,100 @@
       else toast("設定失敗(需管理員密碼)");
     });
   });
-  function geoSum(arr, apis){ var s = 0; (arr||[]).forEach(function(r){ if(apis.indexOf(r.api) >= 0) s += r.n; }); return s; }
-  function licName(k){
-    for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
-    // 用量榜照 geo_usage 算,可能出現「今天有用量、但授權已被刪」的殘留金鑰 → 標「已刪除」,不再顯示成謎樣裸金鑰。
-    // 只在授權清單已載入時才敢這樣判(ROWS 空=還沒載,先原樣顯示免誤標所有人)。這種殘留隔天(換日)就不再出現。
-    if(ROWS.length) return (k && k.length>8 ? k.slice(0,8)+"····" : k) + " (已刪除)";
-    return k;
-  }
   function loadGeoUsage(){
     api("geoUsage").then(function(res){
+      GEO_CACHE_RES = res;
       if(!res.ok){
         $('geoNote').textContent = "讀取失敗:" + (res.error||"?") + "(需先跑 schema v5 SQL,並重新部署 geocode + admin function)";
         return;
       }
       var s = res.stats || {}, today = s.today || [], month = s.month || [];
-      // 免費命中=舊快取+路段快取+失敗快取+社區位置庫(0706 起有多層,只算 cache_hit 會低估)
-      var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, ["cache_hit", "cache_hit_road", "cache_hit_miss", "community_hit"]);
+      var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, ["cache_hit"]);
       $('geoToday').textContent = gToday;
-      $('geoHitRate').textContent = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
+      $('kGeoToday').textContent = gToday;
+      var hitTxt = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
+      $('geoHitRate').textContent = hitTxt;
+      $('kHit').textContent = hitTxt;
       var cost = 0;
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
-      $('geoCost').innerHTML = nt(cost) + " <span style='font-size:12px;color:var(--muted);font-weight:400;'>(US$" + cost.toFixed(2) + ")</span>";
-      // 免費架構省下多少:所有免費 API 的本月次數,若全走 Google($5/千)要多少 → 反映自架+快取的價值
-      var freeHits = 0;
-      month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && !p.per1000 && r.api.indexOf("blocked") < 0) freeHits += r.n; });
-      var saved = freeHits * 5 / 1000;
+      $('geoCost').textContent = "US$" + cost.toFixed(2);
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
-      // 🤖 AI 看單開關狀態(viewer 隱藏控制項)
       aiEnabled = res.ai_enabled !== false;
       $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
-      $('aiToggle').style.color = aiEnabled ? "var(--green)" : "var(--red)";
+      $('aiToggle').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
+      $('aiState').textContent = aiEnabled ? "開啟" : "關閉";
+      $('aiState').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
       if(document.activeElement !== $('aiCap')) $('aiCap').value = res.ai_daily_cap != null ? res.ai_daily_cap : 0;
       $('aiCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
+
+      // 明細表
       var tb = $('geoBody'); tb.innerHTML = "";
-      // 排序(0706):要付錢的 API 一律最上面(錢先看),免費的其後;同層都按「今日次數」大→小
-      var apiRows = [];
       Object.keys(GEO_PRICING).forEach(function(k){
         var t = 0, m = 0;
         today.forEach(function(r){ if(r.api === k) t = r.n; });
         month.forEach(function(r){ if(r.api === k) m = r.n; });
         if(!t && !m) return;
-        apiRows.push({ k: k, t: t, m: m, p: GEO_PRICING[k] });
-      });
-      apiRows.sort(function(a,b){
-        var pa = a.p.per1000 ? 0 : 1, pb = b.p.per1000 ? 0 : 1;
-        if(pa !== pb) return pa - pb;          // 付費最上面
-        if(b.t !== a.t) return b.t - a.t;      // 今日次數大→小
-        return b.m - a.m;                      // 同今日看本月
-      });
-      apiRows.forEach(function(row){
-        var p = row.p, tr = document.createElement('tr');
-        var rowCost = p.per1000 ? Math.max(0, row.m - p.free) * p.per1000 / 1000 : 0;
-        var priceCell = p.per1000
-          ? "US$" + p.per1000 + "/千次<br><span style='color:var(--faint);font-size:11px;'>≈ " + nt(p.per1000) + "/千次</span>"
-          : "免費";
-        var costCell = !p.per1000 ? "<span style='color:var(--green);'>免費</span>"
-          : (rowCost > 0 ? "<b style='color:var(--amber);'>" + nt(rowCost) + "</b>" : "NT$0");
-        tr.innerHTML = "<td>" + esc(p.label) + "</td><td>" + row.t + "</td><td>" + row.m + "</td><td>" +
-          (p.free ? p.free : "—") + "</td><td>" + priceCell + "</td><td>" + costCell + "</td>";
+        var p = GEO_PRICING[k], tr = document.createElement('tr');
+        tr.innerHTML = "<td>" + esc(p.label) + "</td><td>" + t + "</td><td>" + m + "</td><td>" +
+          (p.free ? p.free : "—") + "</td><td>" + (p.per1000 ? "US$" + p.per1000 + "/千次" : "免費") + "</td>";
         tb.appendChild(tr);
       });
+
+      // 長條:今日組成(單一色相,深=付費、淺=免費)
+      var bars = $('geoBars'); bars.innerHTML = "";
+      var rows = [];
+      Object.keys(GEO_PRICING).forEach(function(k){
+        var t = 0; today.forEach(function(r){ if(r.api === k) t = r.n; });
+        if(t > 0) rows.push({ k:k, n:t, paid:GEO_PRICING[k].paid, label:GEO_PRICING[k].label });
+      });
+      rows.sort(function(a,b){ return b.n - a.n; });
+      var mx = rows.length ? rows[0].n : 1;
+      rows.forEach(function(r){
+        var d = document.createElement('div'); d.className = "bar";
+        d.innerHTML = "<span class='lb' title='"+esc(r.label)+"'>"+esc(r.label)+"</span>"+
+          "<span class='tr'><span class='fl"+(r.paid?"":" free")+"' style='width:"+Math.max(2, Math.round(r.n*100/mx))+"%;'></span></span>"+
+          "<span class='vv'>"+r.n.toLocaleString()+"</span>";
+        bars.appendChild(d);
+      });
+      if(!rows.length) bars.innerHTML = "<div class='muted'>今天還沒有任何查詢。</div>";
+
       var dv = $('geoDrivers'); dv.innerHTML = "";
       (s.today_by_driver || []).forEach(function(r){
         var tr = document.createElement('tr');
         tr.innerHTML = "<td>" + esc(licName(r.lic)) + "</td><td>" + r.n + "</td>";
         dv.appendChild(tr);
       });
-      $('geoNote').innerHTML = "💚 <b>免費架構</b>(自架 OSRM/Nominatim + 快取 + 位置庫)本月處理 <b>" + freeHits.toLocaleString() + "</b> 次 —— 若這些全走 Google 約要 <b>" + nt(saved) + "</b>。<b>免費那幾列越大越好 = 幫你擋掉的付費查詢越多</b>,不是負擔。<br>地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、<b>90 天閒置自動清、不會無限膨脹</b>)。單價為 2025 新制參考,實際以 Google Cloud 帳單為準。匯率約估 US$1≈NT$" + NT_PER_USD + "。";
+      $('geoNote').textContent = "地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、90 天閒置才清)。免費額/單價為 2025 新制參考:Geocoding 與距離每月各 1 萬次免費、Places 文字搜尋 5 千次免費;實際以 Google Cloud 帳單為準。";
       renderGeoAdvice({ today: today, month: month, cost: cost, gToday: gToday, hits: hits, cap: s.cap, drivers: s.today_by_driver || [] });
+      renderUsageTrend();
     });
   }
-
-  // ── 自動診斷 & 省錢建議(讀即時用量,翻成白話)──
+  // 自動診斷 & 省錢建議(規則 R1–R8,與原版一致)
   function renderGeoAdvice(c){
     var box = $('geoAdvice'); if(!box) return;
     var T = c.today, M = c.month, tips = [];
-    function g1(arr, a){ return geoSum(arr, [a]); }         // 單一 api 今日/本月次數
+    function g1(arr, a){ return geoSum(arr, [a]); }
     function pctf(x){ return Math.round(x * 100); }
     var geoT = g1(T,'geocode'), nomiT = g1(T,'geocode_nominatim'), placesT = g1(T,'places'),
         geoapifyT = g1(T,'distance_geoapify'), osrmT = g1(T,'distance_osrm'), blockedT = g1(T,'budget_blocked');
     var geoM = g1(M,'geocode'), placesM = g1(M,'places'), distGM = g1(M,'distance_google');
     var hitDen = c.gToday + c.hits, hitRate = hitDen ? c.hits / hitDen : null;
 
-    // R1 本月成本頭條
     if(c.cost <= 0.005){
-      tips.push({ s:0, h:"🟢 本月目前 <b>NT$0</b> —— 查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
+      tips.push({ s:0, h:"🟢 本月目前 <b>US$0</b>，查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
     } else {
       var paid = [["Google Geocoding", Math.max(0, geoM-10000)*5/1000],
                   ["Places", Math.max(0, placesM-5000)*32/1000],
                   ["Google 距離", Math.max(0, distGM-10000)*5/1000]];
       paid.sort(function(a,b){ return b[1]-a[1]; });
-      tips.push({ s:3, h:"🔴 本月已產生 <b>"+nt(c.cost)+"</b>(US$"+c.cost.toFixed(2)+"),主要來自 <b>"+esc(paid[0][0])+"</b>("+nt(paid[0][1])+")。往下看哪裡能砍。" });
+      tips.push({ s:3, h:"🔴 本月已產生 <b>US$"+c.cost.toFixed(2)+"</b>,主要來自 <b>"+esc(paid[0][0])+"</b>。往下看哪裡能砍。" });
     }
-
-    // R2 照今日速度推估月底費用
     var now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     function proj(m){ return Math.round(m / dom * dim); }
     var pc = Math.max(0, proj(geoM)-10000)*5/1000 + Math.max(0, proj(placesM)-5000)*32/1000 + Math.max(0, proj(distGM)-10000)*5/1000;
     if(pc >= c.cost + 1){
-      tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~"+nt(pc)+"</b>(現在 "+nt(c.cost)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
+      tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~US$"+pc.toFixed(0)+"</b>(現在 $"+c.cost.toFixed(2)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
     }
-
-    // R3 查座標還有多少在花付費 Google
     var geoDen = geoT + nomiT;
     if(geoT > 0 && geoDen > 0){
       var share = geoT / geoDen;
@@ -599,26 +1289,20 @@
         tips.push({ s:0, h:"🟢 查座標 <b>"+pctf(nomiT/geoDen)+"%</b> 已走免費自架 Nominatim,只剩少數長尾退 Google。" });
       }
     }
-
-    // R4 距離:Geoapify 爆日限 / OSRM 接手
     if(geoapifyT > 3000){
       if(osrmT > 0){
         tips.push({ s:1, h:"🔵 距離正從 Geoapify 切到自架 OSRM;Geoapify 今日 "+geoapifyT+" 次(超過免費 3000/日的部分退了直線),切完會歸零。" });
       } else {
-        tips.push({ s:3, h:"🔴 Geoapify 距離今日 <b>"+geoapifyT+"</b> 次,超過免費 3000/日 —— 超出的退直線(不準)。啟用<b>自架 OSRM</b> 可無限免費。" });
+        tips.push({ s:3, h:"🔴 Geoapify 距離今日 <b>"+geoapifyT+"</b> 次,超過免費 3000/日，超出的退直線(不準)。啟用<b>自架 OSRM</b> 可無限免費。" });
       }
     } else if(osrmT > 0 && geoapifyT < 200){
       tips.push({ s:0, h:"🟢 距離已走自架 OSRM(免費無限),Geoapify 幾乎歸零。" });
     }
-
-    // R5 Places 最貴
     if(placesM > 5000){
       tips.push({ s:3, h:"🔴 Places 本月 "+placesM+" 次已破免費 5,000($32/千,全表最貴)。把常漏查的裸路名補進地標庫最有效。" });
     } else if(placesT > 0){
-      tips.push({ s:2, h:"🟡 Places(最貴 $32/千)今日 "+placesT+" 次 —— 通常是裸路名查不到才退它。量若持續,值得補地標庫。" });
+      tips.push({ s:2, h:"🟡 Places(最貴 $32/千)今日 "+placesT+" 次，通常是裸路名查不到才退它。量若持續,值得補地標庫。" });
     }
-
-    // R6 快取命中率
     if(hitRate != null){
       if(hitRate < 0.5){
         tips.push({ s:1, h:"🔵 快取命中率 "+pctf(hitRate)+"%,冷啟動偏低是正常的;地址累積後會自己升到 85–95%,不用管。" });
@@ -626,180 +1310,87 @@
         tips.push({ s:0, h:"🟢 快取命中率 "+pctf(hitRate)+"%,很成熟,大量查詢是白撿的。" });
       }
     }
-
-    // R7 每日上限保險絲 / 被擋
     if(!c.cap){
       tips.push({ s:1, h:"🔵 沒設每日上限保險絲。建議設一個(例 8000):萬一程式 bug 狂打 API,也不會爆帳單。上方欄位填數字按「設定」即可。" });
     }
     if(blockedT > 0){
       tips.push({ s:2, h:"🟡 今日有 <b>"+blockedT+"</b> 次因超每日上限被擋(卡片退了直線)。正常量就調高上限;異常先查是哪個司機在狂打。" });
     }
-
-    // R8 單一司機用量異常
     var dr = (c.drivers || []).slice();
     if(dr.length >= 2 && dr[0].n > 200 && dr[0].n > dr[1].n * 3){
-      tips.push({ s:2, h:"🟡 司機 <b>"+esc(licName(dr[0].lic))+"</b> 今日 "+dr[0].n+" 次,遠高於其他人 —— 可能一直查不到在重打,值得看他的單。" });
+      tips.push({ s:2, h:"🟡 司機 <b>"+esc(licName(dr[0].lic))+"</b> 今日 "+dr[0].n+" 次,遠高於其他人，可能一直查不到在重打,值得看他的單。" });
     }
-
     tips.sort(function(a,b){ return b.s - a.s; });
-    var SEV = { 3:{bd:'var(--red)',bg:'var(--red-soft)'}, 2:{bd:'#C9962F',bg:'#FBF1DC'}, 1:{bd:'var(--faint)',bg:'var(--chip)'}, 0:{bd:'var(--green)',bg:'var(--green-soft)'} };
-    if(!tips.length){ box.innerHTML = ""; return; }
-    var html = '<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-bottom:6px;">💡 診斷 &amp; 省錢建議</div>';
+    var SEV = { 3:{bd:'var(--red)',bg:'var(--red-soft)'}, 2:{bd:'var(--amber2)',bg:'var(--amber-soft)'}, 1:{bd:'var(--faint)',bg:'var(--chip)'}, 0:{bd:'var(--teal)',bg:'var(--teal-soft)'} };
+    box.innerHTML = "";
+    $('advEmpty').classList.toggle('hide', tips.length>0);
     tips.forEach(function(t){
-      var st = SEV[t.s];
-      html += '<div style="border-left:3px solid '+st.bd+';background:'+st.bg+';border-radius:0 8px 8px 0;padding:8px 12px;margin-bottom:6px;font-size:13px;line-height:1.55;">'+t.h+'</div>';
+      var st = SEV[t.s], d = document.createElement('div');
+      d.className = "advice"; d.style.borderColor = st.bd; d.style.background = st.bg;
+      d.innerHTML = t.h;
+      box.appendChild(d);
     });
-    box.innerHTML = html;
   }
 
-  // ── 司機問題回報 ──
-  var REPORTS = [];
-  // ── 社區/大樓 位置庫(策展)──
-  var PLACES = [];
+  /* ── 位置庫 ── */
   $('placeRefresh').addEventListener('click', loadPlaces);
   $('placeQ').addEventListener('input', renderPlaces);
   $('placeNewBtn').addEventListener('click', function(){ openPlaceForm(null); });
   function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); }
-
-  // 🏗 待補地標:全隊查最多次卻查不到 → 一鍵帶名字開位置庫表單
-  var MISS = [];
-  document.addEventListener('click', function(e){ if(e.target && e.target.id==='missRefresh') loadMissQueue(); });
-  document.addEventListener('change', function(e){ if(e.target && e.target.id==='missAll') loadMissQueue(); });
-  document.addEventListener('click', function(e){
-    var lab = e.target.closest && e.target.closest('[data-fold]');
-    if(!lab) return;
-    var wrap = document.getElementById(lab.getAttribute('data-fold'));
-    if(!wrap) return;
-    var opening = wrap.classList.contains('hide');
-    wrap.classList.toggle('hide');
-    var ar = lab.querySelector('.foldarrow'); if(ar) ar.classList.toggle('open', opening);
-  });
-  function loadMissQueue(){
-    var all = !!($('missAll') && $('missAll').checked);
-    api("missQueue", { all: all }).then(function(res){
-      MISS = (res && res.rows) ? res.rows : [];
-      $('missCount').textContent = MISS.length ? "("+MISS.length+" 個待補)" : "";
-      // 分類小結:一眼看出「真正該手補的只有幾個」
-      var sm = (res && res.summary) ? res.summary : null;
-      var sEl = $('missSummary');
-      if(sEl){
-        sEl.innerHTML = sm ? (
-          "<b style='color:var(--green);'>🏛 地標 "+(sm.landmark||0)+"</b>(建議補) &nbsp;·&nbsp; "+
-          "🏠 地址 "+(sm.address||0)+"(交給程式,免補) &nbsp;·&nbsp; "+
-          "✂️ 殘段 "+(sm.fragment||0)+"(缺路名,看原文或噪音)"
-        ) : "";
-      }
-      var KIND = { landmark:{t:"🏛地標",c:"#0D7A5F"}, address:{t:"🏠地址",c:"#9BA6A0"}, fragment:{t:"✂️殘段",c:"#E4632A"} };
-      var tb=$('missBody'); tb.innerHTML="";
-      $('missEmpty').classList.toggle('hide', MISS.length>0);
-      MISS.forEach(function(r, i){
-        var tr=document.createElement('tr');
-        var src = "";
-        if(r.drivers && r.drivers.length) src += r.drivers.map(esc).join("、");
-        if(r.last){ var d=new Date(r.last); src += (src?" · ":"")+"最後 "+(d.getMonth()+1)+"/"+d.getDate()+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
-        var rawLine = r.raw ? "<br><small style='color:var(--muted);'>📩 原文:"+esc(r.raw)+"</small>" : "";
-        var varLine = (r.variants && r.variants.length) ? "<br><small style='color:var(--faint);'>原字:"+r.variants.map(esc).join("、")+"</small>" : "";
-        var k = KIND[r.kind] || KIND.landmark;
-        var badge = "<span style='font-size:11px;font-weight:600;color:"+k.c+";border:1px solid "+k.c+";border-radius:5px;padding:1px 5px;margin-right:6px;'>"+k.t+"</span>";
-        tr.innerHTML = "<td>"+badge+"<b>"+esc(r.q)+"</b>"+varLine+rawLine+(src?"<br><small style='color:var(--faint);'>來源:"+src+"</small>":"")+"</td>"+
-          "<td><b style='color:var(--green);'>"+(r.dn||1)+" 位司機</b><br><small style='color:var(--muted);'>共 "+r.n+" 次</small></td>"+
-          "<td>"+(ROLE==="viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" : "<button data-mi='"+i+"'>補這個</button> <button class='ghost' data-mig='"+i+"'>噪音</button>")+"</td>";
-        tb.appendChild(tr);
-      });
-      if(ROLE!=="viewer"){
-        tb.querySelectorAll("[data-mi]").forEach(function(b){
-          b.addEventListener('click', function(){
-            var r = MISS[parseInt(b.getAttribute('data-mi'),10)];
-            openPlaceForm({ name: r.q, aliases: (r.variants||[]), lat: "", lng: "", city: "", address: "", verified: true });
-            $('placesCard').scrollIntoView({behavior:"smooth", block:"center"});
-            setTimeout(function(){ var c=$('pfCoord'); if(c) c.focus(); }, 400);
-          });
-        });
-        tb.querySelectorAll("[data-mig]").forEach(function(b){
-          b.addEventListener('click', function(){
-            var r = MISS[parseInt(b.getAttribute('data-mig'),10)];
-            if(!confirm("把「"+r.q+"」標為噪音?以後不再出現在待補地標。")) return;
-            api("ignoreMiss",{q:r.q, qs:(r.variants||[]).concat([r.q])}).then(function(res){ res.ok?(toast("已歸噪音"),loadMissQueue()):toast("失敗"); });
-          });
-        });
-      }
-    });
-  }
   function parseCoord(s){
-    var t = String(s||"").replace(/，/g, ",");   // 全形逗號(中文輸入常見)→ 半形
-    var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);  // 整數座標也收
+    var t = String(s||"").replace(/，/g, ",");
+    var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
     return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
   }
-  function openPlaceForm(p){
-    var box = $('placeAdd'); box.style.display = "block";
-    box.innerHTML =
-      "<div class='toolbar' style='flex-wrap:wrap;'>"+
-      "<input id='pfName' placeholder='名稱(例:吉祥大樓)' style='flex:1;min-width:140px;'>"+
-      "<input id='pfAlias' placeholder='別名(逗號分隔,可空)' style='flex:1;min-width:140px;'>"+
-      "<input id='pfCity' placeholder='縣市(例:基隆市)' style='width:120px;'>"+
-      "</div>"+
-      "<div class='toolbar' style='flex-wrap:wrap;margin-top:6px;'>"+
-      "<input id='pfCoord' placeholder='座標 貼「25.033, 121.565」' style='flex:1;min-width:180px;'>"+
-      "<button class='ghost' id='pfGeo' title='用地名自動查座標(OSM,免費),填好請核對'>🔍 查座標</button>"+
-      "<input id='pfAddr' placeholder='完整地址(可空,人看的)' style='flex:1;min-width:160px;'>"+
-      "</div>"+
-      "<div style='margin-top:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;'>"+
-      "<label style='font-size:13px;'><input type='checkbox' id='pfVerified'> 已驗證(打勾才給 App 用)</label>"+
-      "<button class='primary' id='pfSave'>"+((p&&p.id)?"儲存修改":"新增")+"</button>"+
-      "<button class='ghost' id='pfCancel'>取消</button>"+
-      "</div>";
-    if(p){
-      $('pfName').value=p.name||""; $('pfAlias').value=(p.aliases||[]).join(", ");
-      $('pfCity').value=p.city||""; $('pfCoord').value=(p.lat!==""&&p.lat!=null)?(p.lat+", "+p.lng):"";
-      $('pfAddr').value=p.address||""; $('pfVerified').checked=!!p.verified;
-    }
-    $('pfCancel').addEventListener('click', function(){ box.style.display="none"; box.innerHTML=""; });
-    // 🔍 查座標:拿名稱(+縣市)去 OSM 免費查,預填座標讓策展人核對(不自動存)。查無就留空手填。
-    var doSuggest=function(){
-      var nm=$('pfName').value.trim(); if(!nm){ $('pfName').focus(); return; }
-      var g=$('pfGeo'), old=g.textContent; g.textContent="查詢中…"; g.disabled=true;
-      api("suggestCoords",{ q:nm, city:$('pfCity').value.trim() }).then(function(res){
-        g.textContent=old; g.disabled=false;
-        if(res&&res.ok){
-          $('pfCoord').value=res.lat+", "+res.lng;
-          toast("OSM 建議座標,請核對:"+String(res.display||"").slice(0,40));
-        } else { toast("OSM 查無座標,請手動填(貼 25.033, 121.565)"); }
+  function openPlaceForm(p, pre){
+    openModal(p ? "編輯地點:"+(p.name||"") : "新增地點", [
+      {id:"name", label:"名稱", value:p?p.name:(pre&&pre.name||""), placeholder:"例:吉祥大樓"},
+      {id:"alias", label:"別名(逗號分隔,可空)", value:p?(p.aliases||[]).join(", "):(pre&&pre.alias||""), placeholder:"例:吉祥社區, 吉祥"},
+      {id:"city", label:"縣市", value:p?(p.city||""):"", placeholder:"例:基隆市"},
+      {id:"coord", label:"座標(Google 地圖右鍵複製貼上)", value:p?(p.lat+", "+p.lng):"", placeholder:"25.033, 121.565"},
+      {id:"addr", label:"完整地址(可空,人看的)", value:p?(p.address||""):""},
+      {id:"verified", label:"驗證", type:"checkbox", value:p?!!p.verified:false, placeholder:"已驗證(打勾才給 App 用)"}
+    ], function(v){
+      var name = String(v.name||"").trim();
+      if(!name){ toast("先填名稱"); return; }
+      var c = parseCoord(v.coord);
+      if(!c){ toast("座標格式:貼 25.033, 121.565"); return; }
+      var payload = { name:name, aliases:v.alias, lat:c.lat, lng:c.lng,
+        city:String(v.city||"").trim(), address:String(v.addr||"").trim(), verified:!!v.verified };
+      if(p) payload.id = p.id;
+      api(p?"editPlace":"addPlace", payload).then(function(res){
+        if(res.error){ toast("失敗:"+res.error); return; }
+        closeModal(); toast(p?"已儲存":"已新增"); loadPlaces();
       });
-    };
-    $('pfGeo').addEventListener('click', doSuggest);
-    // 0709:打開【不】自動查座標。原本會用「自動清出來的名字」先查一次,但那名字常不乾淨 → 先塞錯座標干擾。
-    //   改成:你先把名稱改成正確地標名,再自己按「查座標」→ 用對的名字查(Google Places)才準。
-    $('pfSave').addEventListener('click', function(){
-      var name=$('pfName').value.trim(); if(!name){ $('pfName').focus(); return; }
-      var c=parseCoord($('pfCoord').value); if(!c){ toast("座標格式:貼 25.033, 121.565"); $('pfCoord').focus(); return; }
-      var payload={ name:name, aliases:$('pfAlias').value, lat:c.lat, lng:c.lng,
-        city:$('pfCity').value.trim(), address:$('pfAddr').value.trim(), verified:$('pfVerified').checked };
-      if(p&&p.id) payload.id=p.id;
-      var submit=function(force){
-        if(force) payload.force=true;
-        api((p&&p.id)?"editPlace":"addPlace", payload).then(function(res){
-          if(res.error==="dup_alias" && res.conflict){
-            var cf=res.conflict;
-            if(confirm("別名「"+(cf.keys||[]).join("、")+"」已經屬於另一筆:「"+cf.name+"」("+Number(cf.lat).toFixed(4)+","+Number(cf.lng).toFixed(4)+")。\n\n兩筆同名會讓 App 隨機挑座標。\n\n按【確定】仍要新增(兩筆並存,不建議);按【取消】回去改別名或改去編輯那筆。")){
-              submit(true);
-            }
-            return;
-          }
-          if(res.error){ toast("失敗:"+res.error); return; }
-          toast(p?"已儲存":"已新增"); box.style.display="none"; box.innerHTML=""; loadPlaces();
+    }, p ? "儲存修改" : "新增");
+    // 查座標:免開 Google 地圖,先用免費 OSM 找;找不到再自己貼
+    var coordEl = $('mf_coord');
+    if(coordEl){
+      var sb = document.createElement('button');
+      sb.className = "ghost"; sb.textContent = "🔍 查座標";
+      sb.style.cssText = "margin-top:6px; padding:5px 12px; font-size:12.5px;";
+      sb.addEventListener('click', function(){
+        var nm = ($('mf_name').value||"").trim();
+        if(!nm){ toast("先填名稱再查"); return; }
+        sb.disabled = true; sb.textContent = "查詢中…";
+        api("suggestCoords", { q:nm, city:($('mf_city').value||"").trim() }).then(function(r){
+          sb.disabled = false; sb.textContent = "🔍 查座標";
+          if(r && r.ok){ coordEl.value = r.lat + ", " + r.lng; toast("找到:" + String(r.display||"").slice(0,60)); }
+          else toast("查不到,請用 Google 地圖右鍵複製座標");
         });
-      };
-      submit(false);
-    });
+      });
+      coordEl.parentNode.appendChild(sb);
+    }
   }
   function renderPlaces(){
-    var q=($('placeQ').value||"").trim().toLowerCase();
-    var list=PLACES.filter(function(p){
+    var q = ($('placeQ').value||"").trim().toLowerCase();
+    var list = PLACES.filter(function(p){
       if(!q) return true;
       return (p.name||"").toLowerCase().indexOf(q)>=0 || (p.aliases||[]).join(",").toLowerCase().indexOf(q)>=0 || (p.city||"").toLowerCase().indexOf(q)>=0;
     });
-    $('placeCount').textContent = PLACES.length ? "("+PLACES.length+")" : "";
-    $('placeEmpty').classList.toggle('hide', PLACES.length>0);
+    $('placeCount').textContent = PLACES.length ? "共 "+PLACES.length+" 筆"+(q? "・符合 "+list.length+" 筆":"") : "";
+    $('placeEmpty').textContent = PLACES.length===0 ? "還沒有任何社區。從「新增地點」開始建,或從定位失敗的回報一筆筆補。" : "沒有符合搜尋的地點。";
+    $('placeEmpty').classList.toggle('hide', list.length>0);
     var tb=$('placeBody'); tb.innerHTML="";
     list.forEach(function(p){
       var tr=document.createElement('tr');
@@ -807,7 +1398,7 @@
       tr.innerHTML=
         "<td><b>"+esc(p.name||"?")+"</b>"+al+"</td>"+
         "<td class='hide-m muted'>"+esc(p.city||"—")+"</td>"+
-        "<td><a href='https://www.google.com/maps?q="+p.lat+","+p.lng+"' target='_blank' style='font-size:12px;'>"+Number(p.lat).toFixed(4)+","+Number(p.lng).toFixed(4)+"</a></td>"+
+        "<td><a href='https://www.google.com/maps?q="+Number(p.lat)+","+Number(p.lng)+"' target='_blank' rel='noopener' style='font-size:12px;'>"+Number(p.lat).toFixed(4)+","+Number(p.lng).toFixed(4)+"</a></td>"+
         "<td>"+(p.hits||0)+"</td>"+
         "<td><span class='pill "+(p.verified?"ok":"off")+"'>"+(p.verified?"已驗證":"未驗證")+"</span></td>"+
         "<td><div class='act'>"+(ROLE==="viewer"?"<span class='muted' style='font-size:12px;'>唯讀</span>":
@@ -823,395 +1414,233 @@
     });
   }
 
-  $('repRefresh').addEventListener('click', loadReports);
-  function loadReports(){
-    api("reports").then(function(res){
-      if(res.rows){ REPORTS = res.rows; renderReports(); }
+  /* ── 待補地標(全隊查無座標的熱門地址) ── */
+  var MISS = [], MISS_SUM = null;
+  $('missRefresh').addEventListener('click', loadMiss);
+  $('missAll').addEventListener('change', loadMiss);
+  function loadMiss(){
+    $('missList').innerHTML = "<div class='muted' style='padding:10px 0; font-size:12.5px;'>整理中…(掃近 14 天查無紀錄)</div>";
+    $('missEmpty').classList.add('hide');
+    api("missQueue", { all: $('missAll').checked }).then(function(res){
+      if(res.error){ $('missList').innerHTML = "<div class='muted' style='padding:10px 0; font-size:12.5px;'>載入失敗:" + esc(res.error) + "</div>"; return; }
+      MISS = res.rows || []; MISS_SUM = res.summary || null; renderMiss();
     });
   }
-  function renderReports(){
-    var open = REPORTS.filter(function(r){ return !r.resolved; });
-    var done = REPORTS.filter(function(r){ return !!r.resolved; });
-    var box = $('repList'); box.innerHTML = "";
-    var doneBox = $('repResolvedList'); doneBox.innerHTML = "";
-    $('repCount').textContent = open.length ? "(" + open.length + ")" : "";
-    $('repOpenCount').textContent = "(" + open.length + ")";
-    $('repEmpty').classList.toggle('hide', open.length > 0);
-    $('repResolvedCount').textContent = "(" + done.length + ")";
-    open.forEach(function(r){ box.appendChild(reportCard(r)); });
-    done.forEach(function(r){ doneBox.appendChild(reportCard(r)); });
-  }
-  $('repResolvedHead').addEventListener('click', function(){
-    var l = $('repResolvedList');
-    l.style.display = l.style.display === "none" ? "block" : "none";
-  });
-  // 問題類型配色
-  var TYPE_STYLE = {
-    "抓錯單":   { bg:"var(--red-soft)",   fg:"var(--red)" },
-    "漏抓":     { bg:"#FBF1DC",           fg:"#8A5A00" },
-    "標記失敗": { bg:"#E7E9F5",           fg:"#3B4CA0" },
-    "距離錯":   { bg:"var(--green-soft)", fg:"var(--green)" },
-    "其他":     { bg:"var(--chip)",       fg:"var(--muted)" }
-  };
-  // 相似/重複偵測:純前端,字元三連(trigram)Jaccard,不打任何 API。比對「派單原文」。
-  function normTxt(s){ return String(s||"").replace(/\s+/g,"").toLowerCase(); }
-  function triJaccard(a,b){
-    if(a.length < 3 || b.length < 3) return 0;
-    var ga={}, gb={}, i, inter=0, na=0, nb=0;
-    for(i=0;i<a.length-2;i++){ var k=a.slice(i,i+3); if(!ga[k]){ ga[k]=1; na++; } }
-    for(i=0;i<b.length-2;i++){ var k2=b.slice(i,i+3); if(!gb[k2]){ gb[k2]=1; nb++; } }
-    Object.keys(ga).forEach(function(k){ if(gb[k]) inter++; });
-    var uni = na + nb - inter;
-    return uni ? inter/uni : 0;
-  }
-  function similarReports(r){
-    var mine = normTxt(r.raw_dispatch);
-    if(mine.length < 8 || REPORTS.length > 500) return [];  // 太短不比;量太大跳過(避免 n² 卡頓)
-    var out = [];
-    REPORTS.forEach(function(o){
-      if(o.id === r.id) return;
-      var their = normTxt(o.raw_dispatch);
-      if(their.length < 8) return;
-      var sc = triJaccard(mine, their);
-      if(sc >= 0.45) out.push({ o:o, sc:sc });
-    });
-    out.sort(function(a,b){ return b.sc - a.sc; });
-    return out.slice(0, 3);
-  }
-  function reportCard(r){
-      var d = document.createElement('div');
-      d.style.cssText = "border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:8px;" +
-        (r.resolved ? " opacity:.62;" : "");
-      var head = document.createElement('div');
-      head.style.cssText = "display:flex; align-items:center; gap:10px; cursor:pointer; flex-wrap:wrap;";
-      var sims = similarReports(r);
-      var ts = TYPE_STYLE[r.report_type] || TYPE_STYLE["其他"];
-      head.innerHTML =
-        (r.resolved ? "<span style='font-size:12px;'>✅</span>" : "")+
-        "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
-        (r.report_type ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:"+ts.bg+"; color:"+ts.fg+";'>"+esc(r.report_type)+"</span>" : "")+
-        (sims.length ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:#EDE6F5; color:#6B3FA0;'>🔁 相似×"+sims.length+"</span>" : "")+
-        "<span class='muted' style='font-size:12px;'>v"+esc(r.app_version||"?")+" ・ "+fmtD(r.created_at)+" "+p2(new Date(r.created_at).getHours())+":"+p2(new Date(r.created_at).getMinutes())+"</span>"+
-        (r.device_model? "<span style='font-size:12px; color:var(--muted);'>📱"+esc(r.device_model)+"</span>" : "")+
-        ((Array.isArray(r.image_urls)&&r.image_urls.length)||r.image_url? "<span style='font-size:12px;'>🖼️"+((Array.isArray(r.image_urls)&&r.image_urls.length>1)?r.image_urls.length:"")+"</span>" : "")+
-        (r.video_url? "<span style='font-size:12px;'>🎬</span>" : "")+
-        (r.note? "<span style='font-size:13px; color:var(--amber); font-weight:600;'>「"+esc(r.note)+"」</span>" : "")+
-        "<span style='margin-left:auto; font-size:12px; color:var(--faint);'>點一下展開 ▾</span>";
-      var body = document.createElement('div');
-      body.style.display = "none";
-      var simBanner = "";
-      if(sims.length){
-        var anyRes = sims.some(function(x){ return x.o.resolved; });
-        simBanner = "<div style='border-left:3px solid #6B3FA0; background:#F3EEFA; border-radius:0 8px 8px 0; padding:8px 12px; margin:10px 0; font-size:12.5px; line-height:1.6;'>"+
-          "🔁 <b>疑似與 "+sims.length+" 筆相似</b>"+(anyRes? " ・其中有<b>已修復</b>的,可能同一個 bug,先看那筆的修法" : "")+"<br>"+
-          sims.map(function(x){ var o=x.o;
-            return "・"+(o.resolved?"✅ ":"🔧 ")+esc(o.driver_name||o.license_key||"?")+" "+(o.report_type?"["+esc(o.report_type)+"] ":"")+fmtD(o.created_at)+" <span style='color:var(--faint);'>(相似度 "+Math.round(x.sc*100)+"%)</span>";
-          }).join("<br>")+
-          "</div>";
-      }
-      var preCss = "white-space:pre-wrap; font-size:12px; background:var(--chip); border-radius:8px; padding:10px; overflow:auto; margin:0 0 4px;";
-      var lblCss = "font-size:12px; color:var(--muted); font-weight:600; margin:10px 0 3px;";
-      body.innerHTML =
-        (function(){ var imgs=(Array.isArray(r.image_urls)&&r.image_urls.length)?r.image_urls:(r.image_url?[r.image_url]:[]); var w=imgs.length>1?"48%":"100%"; return imgs.map(function(u){ return "<a href='"+esc(u)+"' target='_blank'><img src='"+esc(u)+"' style='max-width:"+w+"; max-height:360px; border-radius:8px; margin:10px 6px 0 0; border:1px solid var(--line); vertical-align:top;'></a>"; }).join(""); })()+
-        (r.video_url? "<video controls preload='metadata' src='"+esc(r.video_url)+"' style='max-width:100%; max-height:420px; border-radius:8px; margin:10px 0; border:1px solid var(--line); display:block;'></video>" : "")+
-        simBanner+
-        (r.parse_snapshot? "<div style='"+lblCss+"'>🔎 App 當下解析</div><pre style='"+preCss+"'>"+esc(r.parse_snapshot)+"</pre>" : "")+
-        (r.raw_dispatch? "<div style='"+lblCss+"'>📩 派單原文(最近接單・自動附上)</div><pre style='"+preCss+" max-height:220px;'>"+esc(r.raw_dispatch)+"</pre>" : "")+
-        "<div style='"+lblCss+" color:var(--faint);'>🐞 完整偵錯</div>"+
-        "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>";
-      var actions = document.createElement('div');
-      actions.className = "act";
-      actions.innerHTML = (ROLE === "viewer" ? "" :
-        "<button data-a='res'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 標記已修復")+"</button>"+
-        "<button data-a='edit'>✏️ 編輯內容</button>")+
-        "<button data-a='copy'>複製報告</button>"+
-        (ROLE === "viewer" ? "" : "<button class='danger' data-a='del'>刪除</button>");
-      if (ROLE !== "viewer") actions.querySelector("[data-a='res']").addEventListener('click', function(){
-        api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
-          if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記為已修復"); loadReports(); }
+  function renderMiss(){
+    var box = $('missList'); box.innerHTML = "";
+    $('missN').textContent = MISS.length ? "(" + MISS.length + " 個待補)" : "";
+    var sm = $('missSummary');
+    if(MISS_SUM){
+      sm.innerHTML = "🏞 地標 <b>" + (MISS_SUM.landmark||0) + "</b>(建議補) ・ 🏠 地址 <b>" + (MISS_SUM.address||0) + "</b>(交給程式,免補) ・ 🧩 殘段 <b>" + (MISS_SUM.fragment||0) + "</b>(缺路名,看原文或噪音)";
+    } else sm.textContent = "";
+    $('missEmpty').classList.toggle('hide', MISS.length > 0);
+    var KIND = { landmark:{ t:"地標", cls:"ok" }, address:{ t:"地址", cls:"warn" }, fragment:{ t:"殘段", cls:"off" } };
+    MISS.forEach(function(m){
+      var k = KIND[m.kind] || KIND.fragment;
+      var row = document.createElement('div'); row.className = "miss";
+      var vars = (m.variants||[]).slice(0,3).join("、");
+      row.innerHTML =
+        "<div class='miss-main'>" +
+          "<span class='pill " + k.cls + "' style='margin-right:6px;'>" + k.t + "</span><b>" + esc(m.q) + "</b>" +
+          (vars ? "<div class='miss-sub'>原字:" + esc(vars) + "</div>" : "") +
+          (m.raw ? "<div class='miss-raw' title='點一下展開/收合'>📩 " + esc(m.raw) + "</div>" : "") +
+          "<div class='miss-sub'>來源:" + esc((m.drivers||[]).join("、") || "—") + " ・ 最後 " + rel(m.last) + "</div>" +
+        "</div>" +
+        "<div class='miss-hot'><b>" + (m.dn||0) + " 位司機</b>共 " + (m.n||0) + " 次</div>" +
+        (ROLE === "viewer" ? "" :
+        "<div class='act'><button data-a='fill'>補這個</button><button data-a='noise'>噪音</button></div>");
+      var rawEl = row.querySelector('.miss-raw');
+      if(rawEl) rawEl.addEventListener('click', function(){ rawEl.classList.toggle('open'); });
+      if(ROLE !== "viewer"){
+        row.querySelector("[data-a='fill']").addEventListener('click', function(){
+          openPlaceForm(null, { name: m.q, alias: (m.variants||[]).filter(function(v){ return v !== m.q; }).join(", ") });
         });
-      });
-      if (ROLE !== "viewer") actions.querySelector("[data-a='edit']").addEventListener('click', function(){
-        var note = prompt("修改「司機描述」(補字/改錯字;留空=清空):", r.note || "");
-        if(note===null) return;
-        var patch = { id:r.id, note:note };
-        var raw = prompt("修改「派單原文」(自動附上的常抓錯張,可貼上正確那張;不改請按取消):", r.raw_dispatch || "");
-        if(raw!==null) patch.raw_dispatch = raw;
-        api("editReport", patch).then(function(res){ res.ok ? (toast("已更新回報內容"), loadReports()) : toast("失敗:"+(res.error||"?")); });
-      });
-      actions.querySelector("[data-a='copy']").addEventListener('click', function(){
-        navigator.clipboard.writeText(r.report||"").then(function(){ toast("報告已複製,可直接貼給 Claude 除錯"); });
-      });
-      if (ROLE !== "viewer") actions.querySelector("[data-a='del']").addEventListener('click', function(){
-        if(!confirm("刪除這筆回報?")) return;
-        api("deleteReport",{id:r.id}).then(function(res){ if(res.ok){ toast("已刪除"); loadReports(); } });
-      });
-      body.appendChild(actions);
-      head.addEventListener('click', function(){ body.style.display = body.style.display==="none" ? "block" : "none"; });
-      d.appendChild(head); d.appendChild(body);
-      return d;
-  }
-  $('logoutBtn').addEventListener('click', function(){
-    sessionStorage.removeItem("tr_pw"); location.reload();
-  });
-  // 已登入過 → 自動進入
-  if (PW) { api("list").then(function(res){ if(res.rows) enter(res.rows, res.role); else { PW=""; sessionStorage.removeItem("tr_pw"); } }); }
-
-  // ── 發金鑰 ──
-  var LAST_KEY = null;
-  var PLAN_MONTHS = { "月繳":"1", "季繳":"3", "年繳":"12", "測試":"1" };
-  // 選方案 → 自動帶期數,並記住你上次填的價格(存在瀏覽器)
-  $('cPlan').addEventListener('change', function(){
-    var p = this.value;
-    $('cMonths').value = PLAN_MONTHS[p] || "1";
-    if(p === "測試"){ $('cPrice').value = ""; $('cPrice').disabled = true; }
-    else { $('cPrice').disabled = false; $('cPrice').value = localStorage.getItem("tr_price_"+p) || ""; }
-  });
-  $('cPlan').dispatchEvent(new Event('change'));
-  $('createBtn').addEventListener('click', function(){
-    var name = $('cName').value.trim();
-    if(!name){ $('cName').focus(); return; }
-    // 0706:贈送天數=加購(不再覆蓋成免費鑰)。免費封測=方案選「測試」。
-    var days = parseInt($('cDays').value||"0",10)||0;
-    var plan = $('cPlan').value, price = parseInt($('cPrice').value||"0",10)||0;
-    if(plan !== "測試" && price <= 0){ $('cPrice').focus(); toast("付費鑰要先填每期收費"); return; }
-    if(plan !== "測試") localStorage.setItem("tr_price_"+plan, String(price));
-    api("create", { driver_name:name, months:$('cMonths').value, plan:plan, price:price, days:days }).then(function(res){
-      if(res.error || !res.row){ toast("失敗:"+(res.error||"?")); return; }
-      LAST_KEY = res.row;
-      $('newkey').style.display = "block";
-      $('nkKey').textContent = res.row.key;
-      var bonus = (res.bonus_days>0) ? " (含贈"+res.bonus_days+"天)" : "";
-      var money = (plan!=="測試" && price>0) ? " $"+price.toLocaleString() : "";
-      $('nkMeta').textContent = name + " ・ " + plan + money + bonus + " ・ 到期 " + fmtD(res.row.expires_at);
-      $('cName').value = ""; $('cDays').value = "";
-      reload();
-    });
-  });
-  $('nkCopy').addEventListener('click', function(){
-    if(!LAST_KEY) return;
-    var text = (LAST_KEY.driver_name || "") + " " + LAST_KEY.key;
-    navigator.clipboard.writeText(text.trim()).then(function(){ toast("已複製:" + text.trim()); });
-  });
-  $('nkCopyMsg').addEventListener('click', function(){
-    if(!LAST_KEY) return;
-    var msg = "您的車趟輔助授權金鑰:" + LAST_KEY.key + "\n打開 App 輸入一次即可啟用(會綁定這支手機)\n效期至 " + fmtD(LAST_KEY.expires_at);
-    navigator.clipboard.writeText(msg).then(function(){ toast("訊息已複製,直接貼給司機"); });
-  });
-
-  // ── 篩選/搜尋 ──
-  $('stats').addEventListener('click', function(e){
-    var t = e.target.closest('.stat'); if(!t) return;
-    document.querySelectorAll('.stat').forEach(function(x){ x.classList.remove('active'); });
-    t.classList.add('active'); FILTER = t.getAttribute('data-f'); render();
-  });
-  $('q').addEventListener('input', function(){ QUERY = this.value.trim().toLowerCase(); render(); });
-  $('refreshBtn').addEventListener('click', reload);
-  function reload(){ api("list").then(function(res){ if(res.rows){ ROWS=res.rows; render(); } }); }
-
-  // 自動刷新:主畫面可見且分頁在前景時,每 20 秒重抓一次司機清單(接單狀態自動更新,不用手動按)。
-  // 分頁切到背景就暫停,不浪費呼叫;回到前景立刻補抓一次。
-  setInterval(function(){
-    if(!$('mainView').classList.contains('hide') && !document.hidden){ reload(); }
-  }, 20000);
-  document.addEventListener('visibilitychange', function(){
-    if(!document.hidden && !$('mainView').classList.contains('hide')){ reload(); }
-  });
-
-  function statusOf(r){
-    if(!r.active) return { cls:"off", txt:"停用", cat:"expired" };
-    var dl = daysLeft(r.expires_at);
-    if(dl < 0)  return { cls:"bad",  txt:"已過期",   cat:"expired" };
-    if(dl <= 7) return { cls:"warn", txt:"剩 "+dl+" 天", cat:"soon" };
-    return { cls:"ok", txt:"有效", cat:"active" };
-  }
-  // 司機活動狀態:最近接單(≤45分)=接單中;有心跳但沒接單=等單中;心跳太久(>20分)=離線
-  function activityOf(r){
-    if(!r.last_seen_at) return null;
-    var now = Date.now();
-    var seen = new Date(r.last_seen_at).getTime();
-    if(now - seen > 20*60000) return { txt:"離線", color:"#9AA0A6" };
-    var acc = r.last_accept_at ? new Date(r.last_accept_at).getTime() : 0;
-    if(acc && now - acc <= 45*60000) return { txt:"🟢 接單中", color:"#0D7A5F" };
-    return { txt:"🔵 等單中", color:"#2A6FB0" };
-  }
-
-  function render(){
-    // 統計
-    var c = { all:ROWS.length, active:0, soon:0, expired:0 };
-    ROWS.forEach(function(r){
-      var cat = statusOf(r).cat;
-      if(cat==="active"||cat==="soon") c.active++;
-      if(cat==="soon") c.soon++;
-      if(cat==="expired") c.expired++;
-    });
-    $('nAll').textContent=c.all; $('nActive').textContent=c.active;
-    $('nSoon').textContent=c.soon; $('nExpired').textContent=c.expired;
-    $('subline').textContent = "共 " + c.all + " 位司機 ・ " + c.active + " 位有效" + (ROLE === "viewer" ? " ・ 👁 唯讀監控" : "");
-
-    // ── 營收統計:只算「有效(含快到期)」授權;測試不計費 ──
-    var PLAN_DIV = { "月繳":1, "季繳":3, "年繳":12 };  // 每期收費 ÷ 幾個月 = 月攤
-    var rev = { "月繳":{n:0,sum:0}, "季繳":{n:0,sum:0}, "年繳":{n:0,sum:0}, "測試":{n:0,sum:0} };
-    ROWS.forEach(function(r){
-      var cat = statusOf(r).cat;
-      if(cat==="expired") return;              // 過期/停用不計
-      var p = rev[r.plan] ? r.plan : "測試";
-      rev[p].n++;
-      rev[p].sum += (r.price||0);
-    });
-    var monthly = 0, rb = $('revBody'); rb.innerHTML = "";
-    ["月繳","季繳","年繳","測試"].forEach(function(p){
-      var e = rev[p];
-      var m = p==="測試" ? 0 : Math.round(e.sum / PLAN_DIV[p]);
-      monthly += m;
-      var tr2 = document.createElement('tr');
-      tr2.innerHTML = "<td><b>"+p+"</b></td><td>"+e.n+" 人</td>"+
-        "<td>"+(p==="測試" ? "—" : "$"+e.sum.toLocaleString())+"</td>"+
-        "<td>"+(p==="測試" ? "不計費" : "$"+m.toLocaleString())+"</td>";
-      rb.appendChild(tr2);
-    });
-    $('revMonth').textContent = "$" + monthly.toLocaleString();
-    $('revYear').textContent  = "$" + (monthly*12).toLocaleString();
-
-    // 清單
-    var list = ROWS.filter(function(r){
-      var st = statusOf(r);
-      if(FILTER==="active" && !(st.cat==="active"||st.cat==="soon")) return false;
-      if(FILTER==="soon" && st.cat!=="soon") return false;
-      if(FILTER==="expired" && st.cat!=="expired") return false;
-      if(QUERY){
-        var hay = ((r.driver_name||"")+" "+r.key+" "+(r.phone||"")).toLowerCase();
-        if(hay.indexOf(QUERY)<0) return false;
+        row.querySelector("[data-a='noise']").addEventListener('click', function(){
+          if(!confirm("把「" + m.q + "」標為噪音?之後永久不再出現在待補清單。")) return;
+          api("ignoreMiss", { q: m.q, qs: m.variants||[] }).then(function(r){
+            if(r.ok){ toast("已標為噪音"); loadMiss(); } else toast("失敗:" + (r.error||""));
+          });
+        });
       }
-      return true;
-    });
-    // 排序(0706 最優化):①付費司機(非測試且有收費)最上面,之間「到期近→遠」= 過期沒續的置頂、
-    // 該催誰一眼看到;②免費/測試其後,「剩餘天數多→少」= 剛開通的體驗鑰(潛在客戶)在上,
-    // 快過期的測試自然沉底;③停用的一律墊底。
-    list.sort(function(a,b){
-      var da = a.active ? 0 : 1, db = b.active ? 0 : 1;
-      if(da !== db) return da - db;                                   // 停用墊底
-      var pa = (a.plan !== "測試" && (a.price||0) > 0) ? 0 : 1;
-      var pb = (b.plan !== "測試" && (b.price||0) > 0) ? 0 : 1;
-      if(pa !== pb) return pa - pb;                                   // 付費最上面
-      if(pa === 0) return new Date(a.expires_at) - new Date(b.expires_at); // 付費:到期近→遠(催收)
-      return new Date(b.expires_at) - new Date(a.expires_at);             // 免費:剩越多天越上面
-    });
-
-    var tb=$('tbody'); tb.innerHTML="";
-    $('empty').classList.toggle('hide', list.length>0);
-    list.forEach(function(r){
-      var st=statusOf(r);
-      var dl=daysLeft(r.expires_at);
-      var tr=document.createElement('tr');
-      var plan = r.plan || "測試";
-      var planTxt = plan === "測試" ? "測試" : plan + " $" + (r.price||0).toLocaleString();
-      tr.innerHTML =
-        "<td><div class='drv'>"+esc(r.driver_name||"—")+
-          (r.phone? "<small style='color:var(--muted);'>📱 "+esc(r.phone)+"</small>" : (r.device_id? "" : "<small>尚未綁定手機</small>"))+"</div></td>"+
-        "<td><span class='key' title='點一下複製'>"+esc(r.key)+"</span></td>"+
-        "<td><span class='pill "+(plan==="測試"?"off":"ok")+"' style='cursor:pointer' title='點一下改方案' data-a='plan'>"+esc(planTxt)+"</span></td>"+
-        "<td class='exp'"+(ROLE!=="viewer"?" style='cursor:pointer' title='點一下改到期日' data-a='expiry'":"")+"><b>"+fmtD(r.expires_at)+"</b><small>"+(dl>=0? "剩 "+dl+" 天":"過期 "+(-dl)+" 天")+"</small></td>"+
-        "<td class='muted hide-m'>"+
-          (function(){ var a=activityOf(r); return a? "<b style='color:"+a.color+";'>"+a.txt+"</b><br>" : ""; })()+
-          rel(r.last_seen_at)+
-          (r.last_app_version? "<br><small style='color:var(--faint);'>v"+esc(r.last_app_version)+"</small>" : "")+
-          (function(){
-            var tw = new Date(Date.now()+8*3600000).toISOString().slice(0,10);
-            var n = (r.today_accepts_date===tw) ? (r.today_accepts||0) : 0;
-            return n>0 ? "<br><small style='color:var(--green);font-weight:600;'>今日接 "+n+" 單</small>" : "";
-          })()+"</td>"+
-        "<td><span class='pill "+st.cls+"'>"+st.txt+"</span></td>"+
-        "<td><div class='act'>"+
-          (ROLE === "viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" :
-          "<button data-a='rename'>改名</button>"+
-          "<button data-a='tier'>"+((r.tier==="pro")?"⭐進階":"基本")+"</button>"+
-          "<button data-a='renew'>續約</button>"+
-          "<button data-a='toggle'>"+(r.active?"停用":"啟用")+"</button>"+
-          "<button data-a='unbind'>換機</button>"+
-          "<button class='danger' data-a='delete'>刪除</button>")+
-        "</div></td>";
-      if (ROLE !== "viewer") tr.querySelector("[data-a='plan']").addEventListener('click', function(){ doAction('plan', r); });
-      if (ROLE !== "viewer") { var ec=tr.querySelector("[data-a='expiry']"); if(ec) ec.addEventListener('click', function(){ doAction('expiry', r); }); }
-      tr.querySelector(".key").addEventListener('click', function(){
-        var text = ((r.driver_name || "") + " " + r.key).trim();
-        navigator.clipboard.writeText(text).then(function(){ toast("已複製:" + text); });
-      });
-      tr.querySelectorAll(".act button").forEach(function(b){
-        b.addEventListener('click', function(){ doAction(b.getAttribute('data-a'), r); });
-      });
-      tb.appendChild(tr);
+      box.appendChild(row);
     });
   }
 
-  function doAction(a, r){
-    var who = r.driver_name || r.key;
-    if(a==="rename"){
-      var nm = prompt("改「"+who+"」的名字:", r.driver_name || "");
-      if(nm===null) return;
-      api("setName",{key:r.key, driver_name:nm.trim()}).then(function(res){ res.ok? (toast("已改名為「"+(nm.trim()||"—")+"」"),reload()) : toast("失敗"); });
-    } else if(a==="renew"){
-      var m=parseInt($('renewMonths').value,10);
-      // 防呆:續約會改到期日(等同延長付費),先確認並預覽新到期日(與伺服器算法一致:未過期從到期日加、已過期從今天加)
-      var base = (r.expires_at && new Date(r.expires_at) > new Date()) ? new Date(r.expires_at) : new Date();
-      var nd = new Date(base); nd.setMonth(nd.getMonth()+m);
-      if(!confirm("確定幫「"+who+"」續約 "+m+" 個月?\n\n到期日:"+fmtD(r.expires_at)+"  →  "+fmtD(nd.toISOString()))) return;
-      api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
-    } else if(a==="toggle"){
-      var on=!r.active;
-      if(!on && !confirm("停用「"+who+"」?App 下次驗證就進不去。")) return;
-      api("setActive",{key:r.key,active:on}).then(function(res){ if(res.ok){ toast(on?"已啟用":"已停用"); reload(); } });
-    } else if(a==="unbind"){
-      if(!confirm("清除「"+who+"」的手機綁定?他可用同一把金鑰綁新手機。")) return;
-      api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } });
-    } else if(a==="delete"){
-      // 防呆:刪除永久不可復原,且按鈕緊鄰停用/換機,易誤觸 → 改「打字確認」(要輸入司機名稱才刪),擋一鍵誤刪
-      var ans = prompt("⚠️ 永久刪除「"+who+"」,無法復原!\n(建議改用「停用」,保留紀錄與接單數)\n\n若確定要刪除,請輸入司機名稱「"+who+"」:");
-      if(ans===null) return;
-      if(ans.trim() !== who){ toast("名稱不符,已取消刪除"); return; }
-      api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
-    } else if(a==="expiry"){
-      var cur = r.expires_at ? new Date(r.expires_at) : new Date();
-      var curStr = cur.getFullYear()+"-"+p2(cur.getMonth()+1)+"-"+p2(cur.getDate());
-      var inp = prompt("改「"+who+"」的到期日。\n輸入日期 YYYY-MM-DD,或用 +天數 / -天數(例 +30 加30天、-7 減7天):", curStr);
-      if(inp===null) return;
-      inp = inp.trim();
-      var iso;
-      var m = inp.match(/^([+-])(\d{1,4})$/);
-      if(m){
-        var base = new Date(cur); base.setDate(base.getDate() + (m[1]==="-"?-1:1)*parseInt(m[2],10));
-        iso = base.toISOString();
-      } else if(/^\d{4}-\d{1,2}-\d{1,2}$/.test(inp)){
-        var d = new Date(inp+"T23:59:59"); if(isNaN(d)){ toast("日期格式錯"); return; }
-        iso = d.toISOString();
-      } else { toast("格式:YYYY-MM-DD 或 +天數/-天數"); return; }
-      api("setExpiry",{key:r.key, expires_at:iso}).then(function(res){
-        res.ok? (toast("「"+who+"」到期日已改"),reload()) : toast("失敗(伺服器要重部署 admin)");
+  /* ── 高風險用量(異常流量榜,防亂刷) ── */
+  $('abuseRefresh').addEventListener('click', loadAbuse);
+  function loadAbuse(){
+    api("abuseWatch").then(function(res){
+      var tb = $('abuseBody'); tb.innerHTML = "";
+      if(res.error){ $('abuseNote').textContent = "載入失敗:" + res.error; return; }
+      var rows = res.rows || [];
+      var risky = rows.filter(function(r){ return !r.test && r.score > 0; });
+      var st = $('abuseState'); st.classList.remove('hide');
+      if(risky.length){ st.className = "pill bad"; st.textContent = "⚠ " + risky.length + " 位需注意"; }
+      else { st.className = "pill ok"; st.textContent = "正常"; }
+      var show = rows.filter(function(r){ return r.geo > 0 || r.score > 0; }).slice(0, 15);
+      $('abuseEmpty').classList.toggle('hide', show.length > 0);
+      show.forEach(function(r){
+        var pill = r.test ? "<span class='pill off'>測試機</span>"
+                 : r.score >= 50 ? "<span class='pill bad'>高風險 " + r.score + "</span>"
+                 : r.score > 0   ? "<span class='pill warn'>觀察 " + r.score + "</span>"
+                 : "<span class='pill ok'>正常</span>";
+        var tr = document.createElement('tr');
+        tr.innerHTML = "<td><b style='cursor:pointer;'>" + esc(r.name||r.key) + "</b></td>" +
+          "<td>" + pill + "</td>" +
+          "<td>" + Number(r.total||0).toLocaleString() + "</td>" +
+          "<td>" + Number(r.geo||0).toLocaleString() + "</td>" +
+          "<td>" + (r.missRate||0) + "%</td>" +
+          "<td class='hide-m'>" + (r.accepts||0) + " 單</td>";
+        tr.querySelector('b').addEventListener('click', function(){
+          $('q').value = r.key; QUERY = r.key.toLowerCase(); renderList(); goTab('keys');
+        });
+        tb.appendChild(tr);
       });
-    } else if(a==="tier"){
-      var toPro = (r.tier!=="pro");
-      if(!confirm("把「"+who+"」切成 "+(toPro?"⭐進階版(開放高速喊單)":"基本版(關閉高速喊單)")+"?")) return;
-      api("setTier",{key:r.key,tier:(toPro?"pro":"basic")}).then(function(res){
-        res.ok? (toast("「"+who+"」已改為 "+(toPro?"進階版":"基本版")),reload()) : toast("失敗(伺服器要先加 tier 欄位+重部署 admin)");
+      $('abuseNote').textContent = "風險分=近24h geocode 量(對比 3000 次/日封頂)×(50%+50%×查無率),≥500 次才計分;每位司機每日上限 " + Number(res.cap||0).toLocaleString() + " 次。";
+    });
+  }
+
+  /* ── 啟動 ── */
+  if (PW) {
+    api("list").then(function(res){
+      if(res.rows) enter(res.rows, res.role); else { PW=""; sessionStorage.removeItem("tr_pw"); }
+    });
+  }
+
+  /* ── 成長趨勢圖(由授權 created_at/expires_at 推算,無外部庫)── */
+  function planDivG(p){ return p==="季繳"?3:p==="年繳"?12:1; }
+  function computeGrowth(){
+    var rows = ROWS.filter(function(r){ return r.created_at && r.active !== false; });
+    if(rows.length < 2) return null;
+    var times = rows.map(function(r){ return new Date(r.created_at).getTime(); });
+    var minT = Math.min.apply(null, times), now = Date.now(), WK = 604800000;
+    var span = now - minT; if(span < WK) return null;
+    var step = WK, n = Math.ceil(span/step);
+    if(n > 28){ step = Math.ceil(n/28)*WK; }
+    var pts = [];
+    for(var t = minT; ; t += step){
+      var tt = Math.min(t, now), drivers = 0, mrr = 0;
+      rows.forEach(function(r){
+        var c = new Date(r.created_at).getTime();
+        var e = r.expires_at ? new Date(r.expires_at).getTime() : Infinity;
+        if(c <= tt && e > tt){ drivers++; if(r.plan !== "測試") mrr += Math.round((r.price||0)/planDivG(r.plan)); }
       });
-    } else if(a==="plan"){
-      var p = prompt("「"+who+"」的方案(月繳 / 季繳 / 年繳 / 測試):", r.plan || "月繳");
-      if(p===null) return;
-      p = p.trim();
-      if(["月繳","季繳","年繳","測試"].indexOf(p) < 0){ toast("方案只能是:月繳 / 季繳 / 年繳 / 測試"); return; }
-      var price = 0;
-      if(p !== "測試"){
-        var s = prompt("每期收費(NT$):", r.price || localStorage.getItem("tr_price_"+p) || "");
-        if(s===null) return;
-        price = parseInt(s,10)||0;
-        if(price<=0){ toast("價格要大於 0"); return; }
-        localStorage.setItem("tr_price_"+p, String(price));
-      }
-      api("setPlan",{key:r.key,plan:p,price:price}).then(function(res){
-        res.ok? (toast("「"+who+"」改為 "+p+(price>0?" $"+price.toLocaleString():"")),reload()) : toast("失敗");
-      });
+      pts.push({ t:tt, drivers:drivers, mrr:mrr });
+      if(tt >= now) break;
+    }
+    return pts;
+  }
+  function renderGrowth(){
+    var host = $('growthChart'); if(!host) return;
+    var pts = computeGrowth(), isM = GROWTH_METRIC === 'mrr';
+    if(!pts){ host.innerHTML = "<div class='muted' style='padding:26px 0; text-align:center;'>資料還不夠畫趨勢(需跨兩週以上的授權)。</div>"; $('growthNow').textContent = "—"; $('growthDelta').textContent = ""; return; }
+    var vals = pts.map(function(p){ return isM ? p.mrr : p.drivers; });
+    var maxV = Math.max.apply(null, vals) || 1;
+    var W = 700, H = 140, padT = 10, padB = 18, padX = 6, innerW = W - padX*2, innerH = H - padT - padB;
+    function X(i){ return padX + (pts.length<2 ? 0 : innerW*i/(pts.length-1)); }
+    function Y(v){ return padT + innerH*(1 - v/(maxV*1.08)); }
+    var line = "", area = "M" + X(0) + " " + (padT+innerH) + " ";
+    pts.forEach(function(p,i){ var x = X(i), y = Y(vals[i]); line += (i?"L":"M") + x.toFixed(1) + " " + y.toFixed(1) + " "; area += "L" + x.toFixed(1) + " " + y.toFixed(1) + " "; });
+    area += "L" + X(pts.length-1).toFixed(1) + " " + (padT+innerH) + " Z";
+    var g = "";
+    [0,0.5,1].forEach(function(f){ var y = padT + innerH*(1-f); g += "<line class='ch-grid' x1='"+padX+"' y1='"+y.toFixed(1)+"' x2='"+(W-padX)+"' y2='"+y.toFixed(1)+"'/>"; });
+    function mlab(t){ var d = new Date(t); return (d.getMonth()+1) + "月"; }
+    var li = pts.length-1;
+    var xl = "<text class='ch-lab' x='"+X(0)+"' y='"+(H-4)+"' text-anchor='start'>"+mlab(pts[0].t)+"</text><text class='ch-lab' x='"+X(li)+"' y='"+(H-4)+"' text-anchor='end'>"+mlab(pts[li].t)+"</text>";
+    host.innerHTML = "<svg viewBox='0 0 "+W+" "+H+"' role='img' aria-label='成長趨勢'>"+g+"<path class='ch-area' d='"+area+"'/><path class='ch-line' d='"+line+"'/><line class='ch-hair' id='chHair' x1='0' y1='"+padT+"' x2='0' y2='"+(padT+innerH)+"'/><circle class='ch-hdot' id='chHdot' r='4' cx='0' cy='0'/><circle class='ch-dot' r='4' cx='"+X(li).toFixed(1)+"' cy='"+Y(vals[li]).toFixed(1)+"'/>"+xl+"</svg><div class='chart-tip' id='chTip'></div>";
+    var fmt = function(v){ return isM ? ("$"+v.toLocaleString()) : (v+" 位"); };
+    $('growthNow').textContent = fmt(vals[li]);
+    var delta = vals[li] - vals[0];
+    $('growthDelta').textContent = "自 " + mlab(pts[0].t) + " 起 " + (delta>=0?"+":"") + (isM ? ("$"+delta.toLocaleString()) : (delta+" 位"));
+    var svg = host.querySelector('svg'), tip = $('chTip'), hair = $('chHair'), hdot = $('chHdot');
+    svg.addEventListener('mousemove', function(ev){
+      var r = svg.getBoundingClientRect(); if(!r.width) return;
+      var i = Math.round((ev.clientX - r.left)/r.width*(pts.length-1)); i = Math.max(0, Math.min(pts.length-1, i));
+      var x = X(i), y = Y(vals[i]);
+      hair.setAttribute('x1', x); hair.setAttribute('x2', x); hair.style.opacity = 1;
+      hdot.setAttribute('cx', x); hdot.setAttribute('cy', y); hdot.style.opacity = 1;
+      tip.style.left = (x/W*r.width) + 'px'; tip.style.top = (y/H*r.height - 8) + 'px'; tip.style.opacity = 1;
+      var d = new Date(pts[i].t); tip.textContent = (d.getMonth()+1)+"/"+d.getDate()+"　"+fmt(vals[i]);
+    });
+    svg.addEventListener('mouseleave', function(){ tip.style.opacity = 0; hair.style.opacity = 0; hdot.style.opacity = 0; });
+  }
+  var _gseg = $('growthSeg');
+  if(_gseg) _gseg.addEventListener('click', function(ev){
+    var b = ev.target.closest('button'); if(!b) return;
+    GROWTH_METRIC = b.getAttribute('data-m');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    renderGrowth();
+  });
+
+  /* ── 每日用量趨勢(讀 geo_usage_stats 的 days;共用 scoped SVG 繪圖)── */
+  function trendSVG(host, labels, vals, fmt, fixedMax){
+    var top = fixedMax || ((Math.max.apply(null, vals) || 1) * 1.08);
+    var W = 700, H = 140, padT = 10, padB = 18, padX = 6, innerW = W - padX*2, innerH = H - padT - padB;
+    function X(i){ return padX + (vals.length<2 ? 0 : innerW*i/(vals.length-1)); }
+    function Y(v){ return padT + innerH*(1 - v/top); }
+    var line = "", area = "M" + X(0) + " " + (padT+innerH) + " ";
+    vals.forEach(function(v,i){ var x = X(i), y = Y(v); line += (i?"L":"M") + x.toFixed(1) + " " + y.toFixed(1) + " "; area += "L" + x.toFixed(1) + " " + y.toFixed(1) + " "; });
+    area += "L" + X(vals.length-1).toFixed(1) + " " + (padT+innerH) + " Z";
+    var g = ""; [0,0.5,1].forEach(function(f){ var y = padT + innerH*(1-f); g += "<line class='ch-grid' x1='"+padX+"' y1='"+y.toFixed(1)+"' x2='"+(W-padX)+"' y2='"+y.toFixed(1)+"'/>"; });
+    var li = vals.length-1;
+    var xl = "<text class='ch-lab' x='"+X(0)+"' y='"+(H-4)+"' text-anchor='start'>"+labels[0]+"</text><text class='ch-lab' x='"+X(li)+"' y='"+(H-4)+"' text-anchor='end'>"+labels[li]+"</text>";
+    host.innerHTML = "<svg viewBox='0 0 "+W+" "+H+"' role='img'>"+g+"<path class='ch-area' d='"+area+"'/><path class='ch-line' d='"+line+"'/><line class='ch-hair' x1='0' y1='"+padT+"' x2='0' y2='"+(padT+innerH)+"'/><circle class='ch-hdot' r='4' cx='0' cy='0'/><circle class='ch-dot' r='4' cx='"+X(li).toFixed(1)+"' cy='"+Y(vals[li]).toFixed(1)+"'/>"+xl+"</svg><div class='chart-tip'></div>";
+    var svg = host.querySelector('svg'), tip = host.querySelector('.chart-tip'), hair = host.querySelector('.ch-hair'), hdot = host.querySelector('.ch-hdot');
+    svg.addEventListener('mousemove', function(ev){
+      var r = svg.getBoundingClientRect(); if(!r.width) return;
+      var i = Math.round((ev.clientX - r.left)/r.width*(vals.length-1)); i = Math.max(0, Math.min(vals.length-1, i));
+      var x = X(i), y = Y(vals[i]);
+      hair.setAttribute('x1', x); hair.setAttribute('x2', x); hair.style.opacity = 1;
+      hdot.setAttribute('cx', x); hdot.setAttribute('cy', y); hdot.style.opacity = 1;
+      tip.style.left = (x/W*r.width) + 'px'; tip.style.top = (y/H*r.height - 8) + 'px'; tip.style.opacity = 1;
+      tip.textContent = labels[i] + "　" + fmt(vals[i]);
+    });
+    svg.addEventListener('mouseleave', function(){ tip.style.opacity = 0; hair.style.opacity = 0; hdot.style.opacity = 0; });
+  }
+  function computeUsageDaily(){
+    var res = GEO_CACHE_RES;
+    if(!res || !res.stats || !res.stats.days || !res.stats.days.length) return null;
+    var map = {}, order = [];
+    res.stats.days.forEach(function(r){
+      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, cache:0, ai:0 }; order.push(r.day); }
+      var m = map[r.day];
+      if(["geocode","places","distance_google"].indexOf(r.api) >= 0) m.google += r.n;
+      else if(r.api === "cache_hit") m.cache += r.n;
+      else if(r.api === "aiparse") m.ai += r.n;
+    });
+    return order.map(function(d){ var m=map[d]; m.rate = (m.cache+m.google)>0 ? Math.round(m.cache*100/(m.cache+m.google)) : 0; return m; });
+  }
+  function renderUsageTrend(){
+    var host = $('usageChart'); if(!host) return;
+    var rows = computeUsageDaily();
+    if(!rows || rows.length < 2){ host.innerHTML = "<div class='muted' style='padding:22px 0; text-align:center;'>每日資料累積中(需跨兩天以上才畫得出)。</div>"; if($('usageNow')) $('usageNow').textContent = "—"; if($('usageSub')) $('usageSub').textContent = ""; return; }
+    var key = USAGE_METRIC, vals = rows.map(function(r){ return r[key]; }), labels = rows.map(function(r){ return r.day; }), li = vals.length-1;
+    var isRate = key === 'rate';
+    trendSVG(host, labels, vals, isRate ? function(v){ return v + "%"; } : function(v){ return v.toLocaleString() + " 次"; }, isRate ? 100 : 0);
+    if(isRate){
+      var avg = Math.round(vals.reduce(function(a,b){ return a+b; }, 0) / vals.length);
+      if($('usageNow')) $('usageNow').textContent = vals[li] + "%";
+      if($('usageSub')) $('usageSub').textContent = "最新一天 · 近 " + rows.length + " 天平均 " + avg + "%";
+    } else {
+      var total = vals.reduce(function(a,b){ return a+b; }, 0);
+      if($('usageNow')) $('usageNow').textContent = vals[li].toLocaleString() + " 次";
+      if($('usageSub')) $('usageSub').textContent = "最新一天 · 近 " + rows.length + " 天共 " + total.toLocaleString() + " 次";
     }
   }
+  var _useg = $('usageSeg');
+  if(_useg) _useg.addEventListener('click', function(ev){
+    var b = ev.target.closest('button'); if(!b) return;
+    USAGE_METRIC = b.getAttribute('data-u');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    renderUsageTrend();
+  });
+
+  /* ── 明暗模式 ── */
+  function currentTheme(){ var t=document.documentElement.getAttribute('data-theme'); return t || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'); }
+  function updateThemeBtns(){ var lab=currentTheme()==='dark'?'淺色模式':'深色模式'; ['themeBtn','themeBtnLogin'].forEach(function(id){ var b=$(id); if(b) b.textContent=lab; }); }
+  function toggleTheme(){ var n=currentTheme()==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); try{localStorage.setItem('tr_theme',n);}catch(e){} updateThemeBtns(); }
+  ['themeBtn','themeBtnLogin'].forEach(function(id){ var b=$(id); if(b) b.addEventListener('click', toggleTheme); });
+  updateThemeBtns();
 </script>
 </body>
 </html>
