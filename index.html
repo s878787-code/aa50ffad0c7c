@@ -158,6 +158,7 @@
   .act{ display:flex; gap:5px; flex-wrap:wrap; }
   .act button{ font-size:12px; font-weight:550; padding:5px 9px; border:1px solid var(--line-2); background:var(--surface); color:var(--ink); border-radius:var(--r-sm); white-space:nowrap; transition:border-color var(--dur),color var(--dur),background var(--dur); }
   .act button:hover{ border-color:var(--teal-line); color:var(--teal-ink); background:var(--surface-2); }
+  .act button.tierpro{ border-color:var(--teal-line); color:var(--teal-ink); background:var(--teal-soft); font-weight:650; }
   .act .danger:hover{ border-color:var(--red); color:var(--red); }
   .muted{ color:var(--muted); font-size:12.5px; }
   .empty{ text-align:center; color:var(--faint); padding:28px 0 20px; font-size:13.5px; }
@@ -865,6 +866,7 @@
         "<td><div class='act'>"+
           (ROLE === "viewer" ? "<span class='muted' style='font-size:12px;'>唯讀</span>" :
           "<button data-a='rename'>改名</button>"+
+          "<button data-a='tier'"+(r.tier==='pro'?" class='tierpro'":"")+">"+(r.tier==='pro'?"⭐進階":"基本")+"</button>"+
           "<button data-a='renew'>續約</button>"+
           "<button data-a='toggle'>"+(r.active?"停用":"啟用")+"</button>"+
           "<button data-a='unbind'>換機</button>"+
@@ -906,6 +908,12 @@
     } else if(a==="delete"){
       if(!confirm("永久刪除「"+who+"」?建議用停用保留紀錄。")) return;
       api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
+    } else if(a==="tier"){
+      var toPro = (r.tier!=="pro");
+      if(!confirm("把「"+who+"」切成 "+(toPro?"⭐進階版(開放高速喊單)":"基本版(關閉高速喊單)")+"?")) return;
+      api("setTier",{key:r.key,tier:(toPro?"pro":"basic")}).then(function(res){
+        res.ok ? (toast("「"+who+"」已改為 "+(toPro?"進階版":"基本版")), reload()) : toast("失敗(伺服器需有 tier 欄位並重部署 admin)");
+      });
     } else if(a==="plan"){
       openModal("改方案:"+who, [
         {id:"plan", label:"方案", type:"select", options:["月繳","季繳","年繳","測試"], value:r.plan||"月繳"},
