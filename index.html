@@ -374,7 +374,7 @@
 
       <div class="card">
         <div class="toolbar">
-          <div class="search"><input type="text" id="q" placeholder="搜尋司機或金鑰"></div>
+          <div class="search"><input type="text" id="q" placeholder="搜尋司機 / 金鑰 / 手機號"></div>
           <div class="grp"><span>續約月數</span>
             <select id="renewMonths">
               <option value="1">1</option><option value="2">2</option><option value="3">3</option>
@@ -829,7 +829,7 @@
       if(FILTER==="soon" && st.cat!=="soon") return false;
       if(FILTER==="expired" && st.cat!=="expired") return false;
       if(QUERY){
-        var hay = ((r.driver_name||"")+" "+r.key).toLowerCase();
+        var hay = ((r.driver_name||"")+" "+r.key+" "+(r.phone||"")).toLowerCase();
         if(hay.indexOf(QUERY)<0) return false;
       }
       return true;
@@ -854,7 +854,8 @@
       var tr=document.createElement('tr');
       tr.innerHTML =
         "<td><div class='drv'>"+esc(r.driver_name||"—")+
-          (r.device_id? "" : "<small>尚未綁定手機</small>")+(function(){ var n=acceptsToday(r); return n!=null ? "<span class='acc"+(n>0?" hot":"")+"'>今日 "+n+" 單</span>" : ""; })()+"</div></td>"+
+          (r.phone? "<small style='color:var(--muted);'>📱 "+esc(r.phone)+"</small>" : (r.device_id? "" : "<small>尚未綁定手機</small>"))+
+          (function(){ var n=acceptsToday(r); return n!=null ? "<span class='acc"+(n>0?" hot":"")+"'>今日 "+n+" 單</span>" : ""; })()+"</div></td>"+
         "<td><span class='key' title='點一下複製'>"+esc(r.key)+"</span></td>"+
         "<td><span class='pill "+(plan==="測試"?"off":"ok")+"' style='cursor:pointer' title='點一下改方案' data-a='plan'>"+esc(planTxt)+"</span></td>"+
         "<td class='exp'><b>"+fmtD(r.expires_at)+"</b><small>"+(dl>=0? "剩 "+dl+" 天":"過期 "+(-dl)+" 天")+"</small></td>"+
