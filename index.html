@@ -1070,6 +1070,13 @@
     out.sort(function(a,b){ return b.sc - a.sc; });
     return out.slice(0, 3);
   }
+  // 回覆司機的快速範本(點一下填進輸入框,可再改)。司機會在 App「我的回報」看到 + 收到通知。
+  var QUICK_REPLIES = [
+    { label:"要原文/影片", text:"收到你的回報!方便的話,把出問題的那張派單原文整段貼給我(或錄一小段畫面),我比較好抓到問題點,謝謝你 🙏" },
+    { label:"處理中", text:"工程人員已收到問題回報會馬上修,修好第一時間通知你。感謝回報!" },
+    { label:"操作說明", text:"這個其實可以這樣操作:____。你再試一次,還有問題再跟我說!" },
+    { label:"已修復", text:"你回報的問題已經修好了,更新到最新版就正常了,感謝你幫忙抓蟲 🙏" },
+  ];
   function reportCard(r, compact){
     var d = document.createElement('div');
     d.className = "repcard" + (r.resolved ? " resolved" : "");
@@ -1113,7 +1120,19 @@
       (r.parse_snapshot? "<div style='"+lblCss+"'>🔎 App 當下解析</div><pre style='"+preCss+"'>"+esc(r.parse_snapshot)+"</pre>" : "")+
       (r.raw_dispatch? "<div style='"+lblCss+"'>📩 派單原文(最近接單・自動附上)</div><pre style='"+preCss+" max-height:220px;'>"+esc(r.raw_dispatch)+"</pre>" : "")+
       "<div style='"+lblCss+" color:var(--faint);'>🐞 完整偵錯</div>"+
-      "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>";
+      "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>"+
+      // ── 回覆司機(唯讀角色不顯示)──
+      (ROLE === "viewer" ? "" :
+        "<div style='"+lblCss+"'>💬 回覆司機(他會在 App「我的回報」看到 + 收到通知)</div>"+
+        (r.admin_reply ? "<div style='font-size:12px; background:var(--purple-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:0 0 6px;'>目前留言:"+esc(r.admin_reply)+(r.admin_reply_at? " <span style=\"color:var(--faint);\">("+fmtD(r.admin_reply_at)+")</span>":"")+"</div>" : "")+
+        "<div class='qreply' style='display:flex; flex-wrap:wrap; gap:6px; margin:0 0 6px;'>"+
+          QUICK_REPLIES.map(function(q,i){ return "<button type='button' class='qr' data-qr='"+i+"' style='font-size:11.5px; padding:3px 10px; border-radius:16px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer;'>"+esc(q.label)+"</button>"; }).join("")+
+        "</div>"+
+        "<textarea class='replyBox' rows='3' style='width:100%; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:8px; box-sizing:border-box; font-family:inherit; resize:vertical;' placeholder='打字給司機…(可先點上面範本再改)'>"+esc(r.admin_reply||"")+"</textarea>"+
+        "<div style='display:flex; gap:8px; margin:6px 0 0;'>"+
+          "<button type='button' data-a='reply' style='background:var(--purple); color:#fff; border:none; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer;'>送出回覆</button>"+
+          (r.admin_reply ? "<button type='button' data-a='clearreply' style='background:var(--surface); color:var(--muted); border:1px solid var(--line); padding:6px 12px; border-radius:8px; cursor:pointer;'>收回留言</button>" : "")+
+        "</div>");
     var actions = document.createElement('div');
     actions.className = "act";
     actions.innerHTML = (ROLE === "viewer" ? "" :
@@ -1147,6 +1166,30 @@
       api("deleteReport",{id:r.id}).then(function(res){ if(res.ok){ toast("已刪除"); loadReports(); } });
     });
     body.appendChild(actions);
+    // 回覆司機:範本填入 + 送出 + 收回。textarea/按鈕在 body.innerHTML 裡,這裡綁事件。
+    if (ROLE !== "viewer") {
+      var replyBox = body.querySelector(".replyBox");
+      body.querySelectorAll(".qr").forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var q = QUICK_REPLIES[parseInt(btn.getAttribute("data-qr"),10)];
+          if(q && replyBox){ replyBox.value = q.text; replyBox.focus(); }
+        });
+      });
+      var replyBtn = body.querySelector("[data-a='reply']");
+      if(replyBtn) replyBtn.addEventListener('click', function(){
+        var txt = (replyBox && replyBox.value || "").trim();
+        if(!txt){ toast("先打字或點一個範本"); return; }
+        api("replyReport",{id:r.id, reply:txt}).then(function(res){
+          if(res.ok){ toast("已送出,司機下次開 App 會收到通知"); loadReports(); }
+          else toast("失敗:"+(res.error==="need_migration_v7"?"要先跑 v7 SQL(admin_reply 欄位)":(res.error||"?")));
+        });
+      });
+      var clearBtn = body.querySelector("[data-a='clearreply']");
+      if(clearBtn) clearBtn.addEventListener('click', function(){
+        if(!confirm("收回這則留言?司機就看不到了")) return;
+        api("replyReport",{id:r.id, reply:""}).then(function(res){ if(res.ok){ toast("已收回留言"); loadReports(); } });
+      });
+    }
     head.addEventListener('click', function(){ body.style.display = body.style.display==="none" ? "block" : "none"; });
     d.appendChild(head); d.appendChild(body);
     return d;
@@ -1652,5 +1695,3 @@
 </script>
 </body>
 </html>
-
-<!-- rebuild 20260709-151655 -->
