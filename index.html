@@ -302,6 +302,14 @@
       </div>
 
       <div class="card">
+        <div class="rowline"><span class="cardtitle">📢 發全體公告</span>
+          <button class="linkbtn" id="bcastStopBtn" style="margin-left:auto;">停止目前公告</button>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:6px;line-height:1.7;">送給【全體司機】(含過期/封鎖)。一般=司機首頁跳橫幅;緊急=系統通知+彈窗。編輯後再發=全體重新收到。</div>
+        <button class="primary" id="bcastPublishBtn" style="margin-top:12px;">✏️ 發公告</button>
+      </div>
+
+      <div class="card">
         <div class="rowline"><span class="cardtitle">成長趨勢</span>
           <div class="seg" id="growthSeg" style="margin-left:auto;">
             <button data-m="drivers" class="on">在營司機</button>
@@ -1269,6 +1277,29 @@
     api("setAiConfig", { enabled: aiEnabled, cap: cap }).then(function(res){
       if(res.ok){ toast(cap ? "AI 每日上限已設為 " + cap : "AI 已取消上限"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  /* ── 發全體公告(走 verify 心跳送達;一般=橫幅、緊急=通知+彈窗)── */
+  $('bcastPublishBtn').addEventListener('click', function(){
+    openModal("發全體公告", [
+      { id:"title", label:"標題", placeholder:"例:系統維護通知", hint:"最多 60 字" },
+      { id:"body", label:"內文", type:"textarea", placeholder:"打給全體司機看的白話內容(最多 500 字)" },
+      { id:"level", label:"等級", type:"select", options:["一般","緊急"], value:"一般",
+        hint:"一般=只在司機首頁跳橫幅、不吵;緊急=發系統通知+彈窗,重要事項才用" },
+    ], function(v){
+      var title = String(v.title||"").trim(), body = String(v.body||"").trim();
+      if(!title && !body){ toast("標題或內文至少填一個"); return; }
+      var level = v.level === "緊急" ? "urgent" : "normal";
+      api("publishBroadcast", { title:title, body:body, level:level }).then(function(res){
+        if(res.ok){ toast(level==="urgent" ? "🔴 緊急公告已發(全體收系統通知)" : "📢 公告已發(全體首頁橫幅)"); closeModal(); }
+        else toast("失敗:" + (res.error==="need_migration_broadcasts" ? "broadcasts 表還沒建,先跑 v9 SQL" : (res.error||"?")));
+      });
+    }, "發送");
+  });
+  $('bcastStopBtn').addEventListener('click', function(){
+    if(!confirm("停止目前公告?司機不再收到這則(已顯示的橫幅由他自己關掉)。")) return;
+    api("stopBroadcast", {}).then(function(res){
+      toast(res.ok ? "已停止目前公告" : ("失敗:" + (res.error==="need_migration_broadcasts" ? "broadcasts 表還沒建" : (res.error||"?"))));
     });
   });
   function fmtBytes(b){ b=Number(b)||0; if(b<1024)return b+" B"; if(b<1048576)return (b/1024).toFixed(0)+" KB"; if(b<1073741824)return (b/1048576).toFixed(1)+" MB"; return (b/1073741824).toFixed(2)+" GB"; }
