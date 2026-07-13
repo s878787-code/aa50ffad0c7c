@@ -311,7 +311,7 @@
         <div class="kpi warn" data-go="keys" data-f="soon"><div class="n" id="kSoon">0</div><div class="t">7 天內到期</div></div>
         <div class="kpi bad" data-go="reports"><div class="n" id="kOpenRep">0</div><div class="t">未修復回報</div></div>
         <div class="kpi" data-go="usage"><div class="n" id="kGeoToday">—</div><div class="t">今日 Google 呼叫</div></div>
-        <div class="kpi" data-go="usage"><div class="n" id="kHit">—</div><div class="t">快取命中率</div></div>
+        <div class="kpi" data-go="usage"><div class="n" id="kHit">—</div><div class="t">免費命中率</div></div>
         <div class="kpi good" data-go="keys"><div class="n" id="kRev">$0</div><div class="t">預估月營收</div></div>
       </div>
 
@@ -450,7 +450,7 @@
 
       <div class="kpis" style="grid-template-columns:repeat(2,1fr);">
         <div class="kpi" style="cursor:default;"><div class="n" id="geoToday">—</div><div class="t">今日 Google 呼叫</div></div>
-        <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">快取命中率(今日)</div></div>
+        <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 看單救援</div></div>
       </div>
@@ -478,7 +478,7 @@
         </div>
         <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
         <div class="chartbox" id="usageChart"></div>
-        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;命中率=快取命中÷(命中+Google 呼叫),越高越省。</div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
       </div>
 
       <div class="card" id="capCard">
@@ -1348,7 +1348,7 @@
         return;
       }
       var s = res.stats || {}, today = s.today || [], month = s.month || [];
-      var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, ["cache_hit"]);
+      var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, FREE_HITS.concat(["cache_hit_route","cache_hit_road","geocode_nominatim"]));
       $('geoToday').textContent = gToday;
       $('kGeoToday').textContent = gToday;
       var hitTxt = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
@@ -1480,9 +1480,9 @@
     }
     if(hitRate != null){
       if(hitRate < 0.5){
-        tips.push({ s:1, h:"🔵 快取命中率 "+pctf(hitRate)+"%,冷啟動偏低是正常的;地址累積後會自己升到 85–95%,不用管。" });
+        tips.push({ s:1, h:"🔵 免費命中率 "+pctf(hitRate)+"%,冷啟動偏低是正常的;地址累積後會自己升到 85–95%,不用管。" });
       } else if(hitRate >= 0.85){
-        tips.push({ s:0, h:"🟢 快取命中率 "+pctf(hitRate)+"%,很成熟,大量查詢是白撿的。" });
+        tips.push({ s:0, h:"🟢 免費命中率 "+pctf(hitRate)+"%,很成熟,大量查詢是白撿的。" });
       }
     }
     if(!c.cap){
