@@ -1369,8 +1369,10 @@
           var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
           if(missRate > 0.4) warns.push("🟠 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次),定位品質異常 —— 可能自架定位掛了或有人灌假地址");
         }
-        var nomRow = null; today.forEach(function(r){ if(r.api === "geocode_nominatim") nomRow = r; });
-        if(nomRow && nomRow.n >= 50 && (nomRow.ok_n || 0) / nomRow.n < 0.5) warns.push("🔴 自架定位(Nominatim)今日成功率 " + Math.round((nomRow.ok_n||0)*100/nomRow.n) + "%,疑似掛了 —— 現在每筆都在燒 Google 錢");
+        /* 0713 修:掛機訊號=連線逾時(nominatim_timeout),不是成功率 —— 打給它的多是快取沒接住的
+           難題+防毒閘會沒收錯配答案,成功率天生低,拿來當死活訊號會誤報(實測 7% 時活體測試全中)。 */
+        var nomDown = null; today.forEach(function(r){ if(r.api === "nominatim_timeout") nomDown = r; });
+        if(nomDown && nomDown.n >= 30) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似掛了/過載 —— 掛掉期間每筆都在燒 Google 錢");
         var dbBytes = Number(s.db_bytes || 0);
         if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
         var bar = $('healthBar');
