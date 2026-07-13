@@ -1364,10 +1364,13 @@
         if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
         var rawRows = Number(s.raw_rows || 0);
         if(rawRows > 1000000) warns.push("🔴 用量流水帳 " + Math.round(rawRows/10000)/100 + " 百萬列,寫入量異常(正常應 <50 萬)——找工程師看清理排程有沒有掛");
+        /* 0713 調校:全隊查無率誤報 —— 這系統正常就有 50-66% 查無(服務區外/裸店名/舊版盲補城市,
+           都是「正確地判查無」)。真異常改用兩個精準訊號:①Nominatim 逾時(下面)②per-司機 abuse_watch。
+           這裡門檻拉到 85%,只當「所有 provider 一起掛/壞部署」的大盤保底,平常不吵。 */
         var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
-        if(geoRow && geoRow.n >= 200){
+        if(geoRow && geoRow.n >= 300){
           var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
-          if(missRate > 0.4) warns.push("🟠 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次),定位品質異常 —— 可能自架定位掛了或有人灌假地址");
+          if(missRate > 0.85) warns.push("🔴 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次)—— 異常偏高,查是不是所有定位源一起掛了或壞部署(正常上限約 66%)");
         }
         /* 0713 修:掛機訊號=連線逾時(nominatim_timeout),不是成功率 —— 打給它的多是快取沒接住的
            難題+防毒閘會沒收錯配答案,成功率天生低,拿來當死活訊號會誤報(實測 7% 時活體測試全中)。 */
