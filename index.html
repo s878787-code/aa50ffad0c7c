@@ -303,6 +303,8 @@
     <!-- ═══ 總覽 ═══ -->
     <section id="tab-home">
       <div class="pagehead"><h1>總覽</h1><div class="sub" id="homeSub">—</div></div>
+      <!-- ⚠️系統健康預警(0713 B 案):超線才現身;資料全來自計數表/估計值,零掃描 -->
+      <div id="healthBar" class="hide" style="border:1px solid var(--red); background:var(--red-soft); color:var(--red); border-radius:var(--r); padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; line-height:1.7;"></div>
       <div class="kpis">
         <div class="kpi good" data-go="keys"><div class="n" id="kActive">0</div><div class="t">有效司機</div></div>
         <div class="kpi" data-go="keys"><div class="n" id="kAccToday">—</div><div class="t">今日接單(全體)</div></div>
@@ -1355,6 +1357,25 @@
       var cost = 0;
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
       $('geoCost').textContent = "US$" + cost.toFixed(2);
+      /* ⚠️系統健康預警(0713):平常隱形,超線變紅條。門檻可依 Supabase 方案調(現以 Pro 8GB 假設)。 */
+      (function(){
+        var warns = [];
+        var cap = Number(s.cap || 0);
+        if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
+        var rawRows = Number(s.raw_rows || 0);
+        if(rawRows > 1000000) warns.push("🔴 用量流水帳 " + Math.round(rawRows/10000)/100 + " 百萬列,寫入量異常(正常應 <50 萬)——找工程師看清理排程有沒有掛");
+        var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
+        if(geoRow && geoRow.n >= 200){
+          var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
+          if(missRate > 0.4) warns.push("🟠 全隊查無率 " + Math.round(missRate*100) + "%(геocode " + geoRow.n + " 次),定位品質異常 —— 可能自架定位掛了或有人灌假地址");
+        }
+        var nomRow = null; today.forEach(function(r){ if(r.api === "geocode_nominatim") nomRow = r; });
+        if(nomRow && nomRow.n >= 50 && (nomRow.ok_n || 0) / nomRow.n < 0.5) warns.push("🔴 自架定位(Nominatim)今日成功率 " + Math.round((nomRow.ok_n||0)*100/nomRow.n) + "%,疑似掛了 —— 現在每筆都在燒 Google 錢");
+        var dbBytes = Number(s.db_bytes || 0);
+        if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
+        var bar = $('healthBar');
+        if(bar){ if(warns.length){ bar.innerHTML = warns.join("<br>"); bar.classList.remove('hide'); } else bar.classList.add('hide'); }
+      })();
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       aiEnabled = res.ai_enabled !== false;
       $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
