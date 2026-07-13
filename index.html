@@ -888,6 +888,7 @@
           "<button data-a='rename'>改名</button>"+
           "<button data-a='tier'"+(r.tier==='pro'?" class='tierpro'":"")+">"+(r.tier==='pro'?"⭐進階":"基本")+"</button>"+
           "<button data-a='renew'>續約</button>"+
+          "<button data-a='addDays' title='加/扣個別天數(可負數)'>+天</button>"+
           "<button data-a='toggle'>"+(r.active?"停用":"啟用")+"</button>"+
           "<button data-a='unbind'>換機</button>"+
           "<button class='danger' data-a='delete'>刪除</button>")+
@@ -918,6 +919,16 @@
     } else if(a==="renew"){
       var m=$('renewMonths').value;
       api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
+    } else if(a==="addDays"){
+      /* 各別天數(0713):正數=加天、負數=扣回(打錯修正);到期起算,過期的從今天起算 */
+      openModal("加天數:"+who, [{id:"d", label:"加幾天(負數=扣回,±365)", type:"number", placeholder:"例 7 或 -3", value:""}], function(v){
+        var d=parseInt(v.d,10);
+        if(!d){ toast("天數要非 0 的整數"); return; }
+        api("renew",{key:r.key,days:d}).then(function(res){
+          if(res.ok){ closeModal(); toast("「"+who+"」已"+(d>0?"加 "+d:"扣 "+(-d))+" 天"); reload(); }
+          else toast("失敗");
+        });
+      });
     } else if(a==="toggle"){
       var on=!r.active;
       if(!on && !confirm("停用「"+who+"」?App 下次驗證就進不去。")) return;
