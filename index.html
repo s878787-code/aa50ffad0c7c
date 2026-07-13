@@ -1367,7 +1367,7 @@
         var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
         if(geoRow && geoRow.n >= 200){
           var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
-          if(missRate > 0.4) warns.push("🟠 全隊查無率 " + Math.round(missRate*100) + "%(геocode " + geoRow.n + " 次),定位品質異常 —— 可能自架定位掛了或有人灌假地址");
+          if(missRate > 0.4) warns.push("🟠 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次),定位品質異常 —— 可能自架定位掛了或有人灌假地址");
         }
         var nomRow = null; today.forEach(function(r){ if(r.api === "geocode_nominatim") nomRow = r; });
         if(nomRow && nomRow.n >= 50 && (nomRow.ok_n || 0) / nomRow.n < 0.5) warns.push("🔴 自架定位(Nominatim)今日成功率 " + Math.round((nomRow.ok_n||0)*100/nomRow.n) + "%,疑似掛了 —— 現在每筆都在燒 Google 錢");
