@@ -2,10 +2,22 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TripRadar 後台</title>
+<!-- PWA(0713):iPhone Safari「分享 → 加入主畫面」後以獨立 App 模式全螢幕開啟 -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="車趟後台">
+<meta name="theme-color" content="#0E1A16">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <style>
+  /* PWA 獨立模式:內容避開 iPhone 瀏海/Home 條(網頁版不受影響) */
+  @media (display-mode: standalone){
+    body{ padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  }
   :root{
     --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
