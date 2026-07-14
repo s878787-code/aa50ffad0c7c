@@ -1413,6 +1413,23 @@
         if(nomDown && nomDown.n >= 30) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似掛了/過載 —— 掛掉期間每筆都在燒 Google 錢");
         var dbBytes = Number(s.db_bytes || 0);
         if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
+        /* 📉 Places(就近補救,最貴 US$32/千次)7 日趨勢自動觀察(0714):Places 量=查無量的影子。
+           免費額度每月 1 萬次。今日≥600 或 30 日推估超額 → 提醒;連續下降 → 靜默(自己在降,不吵)。 */
+        (function(){
+          var byDay = {};
+          (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
+          var ds = Object.keys(byDay).sort();               // 舊→新
+          var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
+          var pPrev  = ds.length > 1 ? byDay[ds[ds.length-2]] : 0;
+          var monthEst = pToday * 30;
+          if(pToday >= 600){
+            var trend = pPrev ? (pToday <= pPrev ? "↓ 比昨天("+pPrev+")低,正在降" : "↑ 比昨天("+pPrev+")還高") : "";
+            var costEst = Math.max(0, monthEst - 10000) * 0.032 / 1000;
+            warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — 30日推估 " + monthEst.toLocaleString() +
+              " 次(免費額度 1萬),超額約 US$" + costEst.toFixed(0) +
+              "/月。降不下來就叫工程師收緊跨區保底(保險絲已擋單一司機失控)。");
+          }
+        })();
         var bar = $('healthBar');
         if(bar){ if(warns.length){ bar.innerHTML = warns.join("<br>"); bar.classList.remove('hide'); } else bar.classList.add('hide'); }
       })();
