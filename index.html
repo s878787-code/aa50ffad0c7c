@@ -1152,6 +1152,8 @@
       "<span class='repid' title='流水號(點可複製完整 ID,回報給工程師時用這個對單)' style='font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; font-weight:700; color:var(--muted); background:var(--chip); padding:2px 7px; border-radius:6px; cursor:pointer;'>#"+esc(String(r.id||"").slice(0,8))+"</span>"+
       (r.report_type ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:"+ts.bg+"; color:"+ts.fg+";'>"+esc(r.report_type)+"</span>" : "")+
       (sims.length ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:var(--purple-soft); color:var(--purple);'>🔁 相似×"+sims.length+"</span>" : "")+
+      // 雙向對話串:最後一句是司機 → 有新回覆待你看/回(0715 A)
+      ((r.messages && r.messages.length && r.messages[r.messages.length-1].sender==='driver') ? "<span style='font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; background:#FAEEDA; color:#B07B18;'>🔔 司機回覆</span>" : "")+
       "<span class='muted' style='font-size:12px;'>v"+esc(r.app_version||"?")+" ・ "+fmtD(r.created_at)+" "+p2(new Date(r.created_at).getHours())+":"+p2(new Date(r.created_at).getMinutes())+"</span>"+
       (r.device_model? "<span style='font-size:12px; color:var(--muted);'>📱"+esc(r.device_model)+"</span>" : "")+
       (r.image_url? "<span style='font-size:12px;'>🖼️</span>" : "")+
@@ -1199,12 +1201,20 @@
       "<pre style='"+preCss+" max-height:340px;'>"+esc(r.report)+"</pre>"+
       // ── 回覆司機(唯讀角色不顯示)──
       (ROLE === "viewer" ? "" :
-        "<div style='"+lblCss+"'>💬 回覆司機(他會在 App「我的回報」看到 + 收到通知)</div>"+
-        (r.admin_reply ? "<div style='font-size:12px; background:var(--purple-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:0 0 6px;'>目前留言:"+esc(r.admin_reply)+(r.admin_reply_at? " <span style=\"color:var(--faint);\">("+fmtD(r.admin_reply_at)+")</span>":"")+"</div>" : "")+
+        "<div style='"+lblCss+"'>💬 對話(司機在 App「我的回報」看得到、也能回你)</div>"+
+        // 雙向對話串(0715 A):管理者(左紫)/ 司機(右灰)交錯;沒有 messages 時退回顯示舊 admin_reply。
+        ((r.messages && r.messages.length) ?
+          "<div style='display:flex; flex-direction:column; gap:5px; margin:0 0 8px;'>"+
+          r.messages.map(function(m){ var mine = m.sender==='admin';
+            return "<div style='align-self:"+(mine?'flex-start':'flex-end')+"; max-width:82%; background:"+(mine?'var(--purple-soft)':'var(--surface)')+"; border:1px solid var(--line); border-radius:10px; padding:6px 10px;'>"+
+              "<div style='font-size:10px; font-weight:700; color:"+(mine?'var(--purple)':'var(--faint)')+";'>"+(mine?'管理者':'司機')+"</div>"+
+              "<div style='font-size:12.5px; color:var(--ink); line-height:1.5;'>"+esc(m.body)+"</div></div>"; }).join("")+
+          "</div>"
+        : (r.admin_reply ? "<div style='font-size:12px; background:var(--purple-soft); color:var(--ink); border-radius:8px; padding:8px 10px; margin:0 0 6px;'>目前留言:"+esc(r.admin_reply)+"</div>" : ""))+
         "<div class='qreply' style='display:flex; flex-wrap:wrap; gap:6px; margin:0 0 6px;'>"+
           QUICK_REPLIES.map(function(q,i){ return "<button type='button' class='qr' data-qr='"+i+"' style='font-size:11.5px; padding:3px 10px; border-radius:16px; border:1px solid var(--line); background:var(--surface); color:var(--ink); cursor:pointer;'>"+esc(q.label)+"</button>"; }).join("")+
         "</div>"+
-        "<textarea class='replyBox' rows='3' style='width:100%; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:8px; box-sizing:border-box; font-family:inherit; resize:vertical;' placeholder='打字給司機…(可先點上面範本再改)'>"+esc(r.admin_reply||"")+"</textarea>"+
+        "<textarea class='replyBox' rows='3' style='width:100%; font-size:13px; border:1px solid var(--line); border-radius:8px; padding:8px; box-sizing:border-box; font-family:inherit; resize:vertical;' placeholder='打字回覆司機…(送出後接進對話串)'></textarea>"+
         "<div style='display:flex; gap:8px; margin:6px 0 0;'>"+
           "<button type='button' data-a='reply' style='background:var(--purple); color:#fff; border:none; padding:6px 14px; border-radius:8px; font-weight:700; cursor:pointer;'>送出回覆</button>"+
           (r.admin_reply ? "<button type='button' data-a='clearreply' style='background:var(--surface); color:var(--muted); border:1px solid var(--line); padding:6px 12px; border-radius:8px; cursor:pointer;'>收回留言</button>" : "")+
