@@ -1296,6 +1296,10 @@
     distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "Geoapify 距離(免費3000/日)" },
     distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "自架 OSRM 距離(免費)" },
     cache_hit:          { free: 0,     per1000: 0,  paid:false, label: "快取命中(不花錢)" },
+    // 0717:門牌庫命中原本【漏在這張表外】→ 明細/長條圖都看不到它,但它其實是全系統最大免費來源
+    //(本月 46.9 萬次;沒有它這些全要打 Google $5/千 ≈ 多花 NT$7 萬/月)。per1000:0 → 不進成本計算;
+    // 命中率公式走 FREE_HITS 另一條路,不受此列影響(0713 拍板的分子定義維持原樣)。
+    door_hit:           { free: 0,     per1000: 0,  paid:false, label: "🏠 門牌庫命中(政府開放門牌 298 萬筆,免費)" },
     community_hit:      { free: 0,     per1000: 0,  paid:false, label: "🏢 社區位置庫命中(免費)" },
     budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "超每日上限被擋" },
     aiparse:            { free: 0,     per1000: 1.5, paid:true, label: "🤖 AI 看單(Haiku)" },
