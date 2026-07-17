@@ -1303,7 +1303,11 @@
     community_hit:      { free: 0,     per1000: 0,  paid:false, label: "🏢 社區位置庫命中(免費)" },
     budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "超每日上限被擋" },
     aiparse:            { free: 0,     per1000: 1.5, paid:true, label: "🤖 AI 看單(Haiku)" },
-    aiparse_blocked:    { free: 0,     per1000: 0,  paid:false, label: "🤖 AI 超每日上限被擋" }
+    aiparse_blocked:    { free: 0,     per1000: 0,  paid:false, label: "🤖 AI 超每日上限被擋" },
+    // 0717 量測(不計成本,純診斷):App「補了城市卻查無」的量,判斷「無證據就別補主場城市」該不該做。
+    //   scoped_zero=上界(補了城市查無,含門牌打錯);city_wrong=下界(剝掉城市就查到=確定補錯城市)。
+    scoped_zero:        { free: 0,     per1000: 0,  paid:false, label: "📊 補城市卻查無(量測·上界)" },
+    city_wrong:         { free: 0,     per1000: 0,  paid:false, label: "📊 確定補錯城市(量測·下界)" }
   };
   var GOOGLE_APIS = ["geocode", "places", "distance_google"];
   // 命中率公式(0713 使用者拍板修回上一版):只算 cache_hit ÷ (cache_hit + Google 呼叫)。
