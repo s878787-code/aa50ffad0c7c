@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>車趟雷達 · 業務/佣金管理</title>
+<style>
+  :root{ --bg:#0d1117; --card:#161b22; --line:#232b36; --ink:#e6edf3; --muted:#8b98a6;
+    --brand:#39d353; --brand2:#2ea043; --warn:#f0a020; --danger:#f85149; --accent:#58a6ff; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"PingFang TC","Noto Sans TC",system-ui,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:18px 16px 60px}
+  h1{font-size:20px;margin:0 0 2px;font-weight:800}
+  h2{font-size:14px;color:var(--muted);margin:24px 4px 10px;font-weight:700}
+  .muted{color:var(--muted)} .sub{color:var(--muted);font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+  input,select{background:#0b0f14;border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:10px 11px;font-size:15px}
+  input{width:100%}
+  button{background:var(--brand2);color:#fff;border:0;border-radius:9px;padding:10px 15px;font-size:14px;font-weight:700;cursor:pointer}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  button.warn{background:#b8860b}
+  .err{color:var(--danger);font-size:14px;margin-top:8px;min-height:18px}
+  .ok{color:var(--brand)}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .agent{border:1px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .agent .hd{display:flex;align-items:center;gap:12px;padding:14px;background:var(--card);cursor:pointer}
+  .agent .hd .nm{font-weight:700;font-size:16px}
+  .agent .hd .st{font-size:13px;color:var(--muted)}
+  .chip{font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .c-pend{background:#3a2a08;color:var(--warn)} .c-paid{background:#0b2a16;color:var(--brand)}
+  .body{padding:0 14px 12px;display:none}
+  .body.open{display:block}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px}
+  .p-ok{background:#0b2a16;color:var(--brand)} .p-soon{background:#3a2a08;color:var(--warn)}
+  .p-exp{background:#3a1113;color:var(--danger)} .p-off{background:#20262e;color:var(--muted)}
+  .mini{padding:6px 10px;font-size:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .lbl{font-size:12px;color:var(--muted);margin:0 0 4px 2px}
+  .hide{display:none}
+  dialog{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:360px;width:92%}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f6f36;color:#fff;
+    padding:11px 18px;border-radius:10px;font-size:14px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 登入 -->
+  <div id="login">
+    <div style="text-align:center;margin:40px 0 20px"><div style="font-size:30px">🛰️</div>
+      <h1>業務 / 佣金管理</h1><div class="sub">管理員登入</div></div>
+    <div class="card" style="max-width:360px;margin:0 auto">
+      <input id="pw" type="password" placeholder="管理密碼" onkeydown="if(event.key==='Enter')login()">
+      <button style="width:100%;margin-top:10px" onclick="login()">登入</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+  </div>
+
+  <!-- 主畫面 -->
+  <div id="main" class="hide">
+    <div class="row" style="justify-content:space-between">
+      <div><h1>業務 / 佣金管理</h1><div class="sub">設業務、綁客戶、續約記佣金、月結撥款</div></div>
+      <button class="ghost" onclick="logout()">登出</button>
+    </div>
+
+    <h2>業務(點開看客戶)</h2>
+    <div id="agentList"></div>
+
+    <h2>設定</h2>
+    <div class="card">
+      <div class="lbl">① 把某司機設為業務(產生業務網站登入帳密)</div>
+      <div class="grid2">
+        <div><div class="lbl">選司機</div><input list="drivers" id="agDriver" placeholder="打名字或金鑰"></div>
+        <div><div class="lbl">業務網站帳號</div><input id="agUser" placeholder="例:ming"></div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div><div class="lbl">業務網站密碼</div><input id="agPass" placeholder="給業務登入用"></div>
+        <div style="display:flex;align-items:flex-end"><button onclick="setAgent()" style="width:100%">設為業務</button></div>
+      </div>
+      <div class="err" id="agErr"></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">② 把某客戶綁給業務(客戶端完全無感)</div>
+      <div class="grid2">
+        <div><div class="lbl">選客戶</div><input list="drivers" id="cbDriver" placeholder="打名字或金鑰"></div>
+        <div><div class="lbl">綁給哪個業務</div><select id="cbAgent"></select></div>
+      </div>
+      <button style="margin-top:8px" onclick="bindCust()">綁定</button>
+      <div class="err" id="cbErr"></div>
+    </div>
+    <datalist id="drivers"></datalist>
+  </div>
+</div>
+
+<!-- 續約記佣金 dialog -->
+<dialog id="renewDlg">
+  <h1 style="font-size:17px;margin:0 0 4px">續約 + 記佣金</h1>
+  <div class="sub" id="renewWho" style="margin-bottom:12px"></div>
+  <div class="lbl">實收金額(NT$)</div><input id="renewAmt" type="number" placeholder="這次跟客戶收多少">
+  <div class="lbl" style="margin-top:8px">續幾個月</div><input id="renewMonths" type="number" value="1">
+  <div class="row" style="margin-top:14px;justify-content:flex-end">
+    <button class="ghost" onclick="renewDlg.close()">取消</button>
+    <button onclick="doRenew()">確認續約</button>
+  </div>
+  <div class="err" id="renewErr"></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  var API = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
+  var PW = "", LICENSES = [], AGENTS = [], renewTarget = null;
+
+  function $(id){ return document.getElementById(id); }
+  function money(n){ return "$" + (n||0).toLocaleString(); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+  function toast(m){ var t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(function(){t.classList.remove("show")},1800); }
+
+  async function api(action, extra){
+    var r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(Object.assign({ password:PW, action:action }, extra||{})) });
+    return r.json();
+  }
+
+  async function login(){
+    PW = $("pw").value; $("loginErr").textContent="";
+    var d = await api("agents");
+    if(!d.ok){ $("loginErr").textContent = d.error==="unauthorized" ? "密碼錯誤" : ("失敗:"+(d.error||"")); PW=""; return; }
+    try{ sessionStorage.setItem("agpw", PW); }catch(e){}
+    $("login").classList.add("hide"); $("main").classList.remove("hide");
+    await loadAll();
+  }
+  function logout(){ PW=""; try{ sessionStorage.removeItem("agpw"); }catch(e){} $("main").classList.add("hide"); $("login").classList.remove("hide"); $("pw").value=""; }
+
+  async function loadAll(){
+    var a = await api("agents"); AGENTS = a.agents||[];
+    var l = await api("list"); LICENSES = l || [];   // list 回陣列
+    if(Array.isArray(l.rows)) LICENSES = l.rows; else if(Array.isArray(l)) LICENSES = l;
+    renderDrivers(); renderAgentSelect(); renderAgents();
+  }
+  function renderDrivers(){
+    $("drivers").innerHTML = LICENSES.map(function(r){
+      return '<option value="'+esc(r.key)+'">'+esc((r.driver_name||"(未命名)")+" · "+r.key)+'</option>';
+    }).join("");
+  }
+  function renderAgentSelect(){
+    $("cbAgent").innerHTML = AGENTS.map(function(a){
+      return '<option value="'+esc(a.key)+'">'+esc((a.driver_name||"(未命名)")+" · "+a.key)+'</option>';
+    }).join("") || '<option value="">(還沒有業務)</option>';
+  }
+  function pickKey(v){ return String(v||"").trim().split(" · ").pop().trim() || String(v||"").trim(); }
+
+  async function renderAgents(){
+    var host = $("agentList");
+    if(!AGENTS.length){ host.innerHTML = '<div class="card muted">還沒有業務。到下面「設定」把某司機設為業務。</div>'; return; }
+    host.innerHTML = AGENTS.map(function(a,i){
+      return '<div class="agent"><div class="hd" onclick="toggle('+i+')">'+
+        '<div style="flex:1"><div class="nm">'+esc(a.driver_name||"(未命名)")+'</div>'+
+        '<div class="st">'+a.customers+' 位客戶 · '+esc(a.key)+'</div></div>'+
+        '<span class="chip c-pend">待撥 '+money(a.pending)+'</span>'+
+        '<span class="chip c-paid">已撥 '+money(a.paid)+'</span>'+
+        (a.pending>0?'<button class="mini warn" onclick="event.stopPropagation();payout(\''+a.key+'\','+a.pending+')">撥款</button>':'')+
+        '</div><div class="body" id="body'+i+'"><div class="sub">載入中…</div></div></div>';
+    }).join("");
+  }
+  async function toggle(i){
+    var b = $("body"+i); var a = AGENTS[i];
+    if(b.classList.contains("open")){ b.classList.remove("open"); return; }
+    b.classList.add("open");
+    var d = await api("agentCustomers",{ agent_key:a.key });
+    var cs = (d.customers||[]);
+    b.innerHTML = cs.length ? '<table><tr><th>客戶</th><th>方案</th><th>到期</th><th>狀態</th><th>累計佣金</th><th></th></tr>'+
+      cs.map(function(c){
+        var st = !c.active?"停用":c.days_left<0?"已過期":c.days_left<=7?"即將到期":"使用中";
+        var cls = {"使用中":"p-ok","即將到期":"p-soon","已過期":"p-exp","停用":"p-off"}[st];
+        return '<tr><td>'+esc(c.driver_name||"(未命名)")+'</td><td>'+esc(c.plan||"")+'</td>'+
+          '<td>'+(c.days_left<0?("過期"+(-c.days_left)+"天"):("剩"+c.days_left+"天"))+'</td>'+
+          '<td><span class="pill '+cls+'">'+st+'</span></td>'+
+          '<td class="ok">'+money(c.commission_total)+'</td>'+
+          '<td><button class="mini" onclick="openRenew(\''+c.key+'\',\''+esc(c.driver_name||"")+'\','+(c.price||0)+')">續約</button></td></tr>';
+      }).join("")+'</table>' : '<div class="sub" style="padding:8px 0">還沒有客戶。到「設定②」把客戶綁給這個業務。</div>';
+  }
+
+  function openRenew(key,name,price){ renewTarget=key; $("renewWho").textContent=name+" · "+key; $("renewAmt").value=price||""; $("renewMonths").value=1; $("renewErr").textContent=""; $("renewDlg").showModal(); }
+  async function doRenew(){
+    var amt = parseInt($("renewAmt").value,10), m = parseInt($("renewMonths").value,10)||1;
+    if(!(amt>0)){ $("renewErr").textContent="請填實收金額(要生佣金)"; return; }
+    var d = await api("renew",{ key:renewTarget, months:m, amount:amt, method:"manual" });
+    if(!d.ok){ $("renewErr").textContent="失敗:"+(d.error||""); return; }
+    $("renewDlg").close(); toast("已續約 + 記佣金"); loadAll();
+  }
+
+  async function setAgent(){
+    var key = pickKey($("agDriver").value), u=$("agUser").value.trim(), p=$("agPass").value;
+    $("agErr").textContent="";
+    if(!key){ $("agErr").textContent="請選司機"; return; }
+    if(!u||!p){ $("agErr").textContent="請填業務網站帳號密碼"; return; }
+    var d = await api("setAgent",{ key:key, username:u, password:p });
+    if(!d.ok){ $("agErr").textContent="失敗:"+(d.error||""); return; }
+    $("agDriver").value=""; $("agUser").value=""; $("agPass").value=""; toast("已設為業務"); loadAll();
+  }
+  async function bindCust(){
+    var key = pickKey($("cbDriver").value), ag=$("cbAgent").value;
+    $("cbErr").textContent="";
+    if(!key||!ag){ $("cbErr").textContent="請選客戶與業務"; return; }
+    var d = await api("setReferrer",{ key:key, referred_by:ag });
+    if(!d.ok){ $("cbErr").textContent = d.error==="self_referral"?"不能把業務綁給自己":d.error==="bad_referrer"?"對象不是業務":("失敗:"+(d.error||"")); return; }
+    $("cbDriver").value=""; toast("已綁定"); loadAll();
+  }
+  async function payout(ak, amt){
+    if(!confirm("確認已轉帳 "+money(amt)+" 給這個業務?按確認會把待撥佣金標為已付。")) return;
+    var d = await api("payout",{ agent_key:ak, period:new Date().toISOString().slice(0,7) });
+    if(!d.ok){ toast("失敗:"+(d.error||"")); return; }
+    toast("已撥款 "+money(d.amount)+"("+d.paid_count+"筆)"); loadAll();
+  }
+
+  (function(){ try{ var s=sessionStorage.getItem("agpw"); if(s){ $("pw").value=s; login(); } }catch(e){} })();
+</script>
+</body>
+</html>

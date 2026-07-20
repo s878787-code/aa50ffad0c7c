@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>車趟雷達 · 業務中心</title>
+<style>
+  :root{
+    --bg:#0d1117; --card:#161b22; --line:#232b36; --ink:#e6edf3; --muted:#8b98a6;
+    --brand:#39d353; --brand2:#2ea043; --warn:#f0a020; --danger:#f85149; --accent:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"PingFang TC","Noto Sans TC",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+  .wrap{max-width:560px;margin:0 auto;padding:16px 14px 48px}
+  h1{font-size:19px;margin:0;font-weight:800;letter-spacing:.3px}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  input{width:100%;background:#0b0f14;border:1px solid var(--line);border-radius:10px;color:var(--ink);
+    padding:13px 12px;font-size:16px;margin-top:8px}
+  button{width:100%;background:var(--brand2);color:#fff;border:0;border-radius:10px;padding:14px;
+    font-size:16px;font-weight:700;margin-top:14px;cursor:pointer}
+  button:active{transform:translateY(1px)}
+  .err{color:var(--danger);font-size:14px;margin-top:10px;min-height:18px}
+
+  /* 頂欄 */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .logout{width:auto;background:transparent;border:1px solid var(--line);color:var(--muted);
+    padding:7px 12px;font-size:13px;margin:0;border-radius:8px}
+  .code{display:flex;align-items:center;gap:8px;background:#0b1f12;border:1px solid #1f6f36;
+    border-radius:10px;padding:10px 12px;margin-bottom:14px}
+  .code b{color:var(--brand);font-size:20px;letter-spacing:2px;font-family:ui-monospace,monospace}
+  .copy{width:auto;margin:0;padding:6px 12px;font-size:13px;background:#1f6f36}
+
+  /* 摘要卡 */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px}
+  .stat .n{font-size:24px;font-weight:800;line-height:1.1}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:3px}
+  .stat.money .n{color:var(--brand)}
+  .stat.warn .n{color:var(--warn)}
+
+  .sec{font-size:13px;color:var(--muted);font-weight:700;margin:18px 4px 8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:8px}
+  .row .nm{font-weight:600}
+  .row .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .pill{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;white-space:nowrap}
+  .p-ok{background:#0b2a16;color:var(--brand)}
+  .p-soon{background:#3a2a08;color:var(--warn)}
+  .p-exp{background:#3a1113;color:var(--danger)}
+  .p-off{background:#20262e;color:var(--muted)}
+  .empty{color:var(--muted);text-align:center;padding:24px;font-size:14px}
+  .chist{display:flex;justify-content:space-between;font-size:14px;padding:9px 4px;border-bottom:1px solid var(--line)}
+  .chist .amt{font-weight:700;color:var(--brand)}
+  .hide{display:none}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 登入 -->
+  <div id="login">
+    <div style="text-align:center;margin:34px 0 22px">
+      <div style="font-size:34px">🛰️</div>
+      <h1>車趟雷達 · 業務中心</h1>
+      <div class="muted" style="font-size:13px;margin-top:6px">用你的業務帳號登入,查看你的客戶與佣金</div>
+    </div>
+    <div class="card">
+      <input id="u" placeholder="帳號" autocomplete="username">
+      <input id="p" type="password" placeholder="密碼" autocomplete="current-password">
+      <button onclick="doLogin()">登入</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+    <div class="foot">帳號密碼由管理員提供。此帳號與 App 授權碼不同。</div>
+  </div>
+
+  <!-- 儀表板 -->
+  <div id="dash" class="hide">
+    <div class="top">
+      <h1>嗨,<span id="agName"></span></h1>
+      <button class="logout" onclick="logout()">登出</button>
+    </div>
+
+    <div class="grid">
+      <div class="stat"><div class="n" id="sCust">0</div><div class="l">我的客戶</div></div>
+      <div class="stat warn"><div class="n" id="sSoon">0</div><div class="l">即將到期(7天內)</div></div>
+      <div class="stat money"><div class="n" id="sMonth">$0</div><div class="l">本月佣金</div></div>
+      <div class="stat money"><div class="n" id="sPend">$0</div><div class="l">待撥佣金</div></div>
+    </div>
+    <div class="muted" style="font-size:12px;text-align:center;margin:-4px 0 6px">累計已撥:<span id="sPaid">$0</span></div>
+
+    <div class="sec">我的客戶(即將到期的排前面,快去提醒續費)</div>
+    <div id="custList"></div>
+
+    <div class="sec">佣金明細</div>
+    <div id="commList"></div>
+
+    <div class="foot">佣金為客戶每次續費的 20%。撥款由管理員每月結算轉帳。<br>資料有問題請找管理員。</div>
+  </div>
+
+</div>
+
+<script>
+  var API = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/agent";
+  var ANON = "sb_publishable_0Yxs7ZepxAFrdZMAGQQDIg_M7YVfBFq";  // 公開金鑰(呼叫函式用),非敏感
+  var creds = null;
+
+  function $(id){ return document.getElementById(id); }
+  function money(n){ return "$" + (n||0).toLocaleString(); }
+
+  async function call(u, p){
+    var r = await fetch(API, { method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+ANON },
+      body: JSON.stringify({ username:u, password:p }) });
+    return r.json();
+  }
+
+  async function doLogin(){
+    var u = $("u").value.trim(), p = $("p").value;
+    $("loginErr").textContent = "";
+    if(!u || !p){ $("loginErr").textContent = "請輸入帳號密碼"; return; }
+    var d = await call(u, p);
+    if(!d.ok){ $("loginErr").textContent = d.error === "unauthorized" ? "帳號或密碼錯誤" : ("登入失敗:" + (d.error||"")); return; }
+    creds = { u:u, p:p };
+    try{ sessionStorage.setItem("ag", JSON.stringify(creds)); }catch(e){}
+    render(d);
+  }
+
+  function logout(){ creds=null; try{ sessionStorage.removeItem("ag"); }catch(e){} $("dash").classList.add("hide"); $("login").classList.remove("hide"); $("p").value=""; }
+
+  function pill(status){
+    var m = { "使用中":"p-ok", "即將到期":"p-soon", "已過期":"p-exp", "停用":"p-off" };
+    return '<span class="pill '+(m[status]||"p-off")+'">'+status+'</span>';
+  }
+  function daysText(d){ return d < 0 ? ("已過期 "+(-d)+" 天") : ("剩 "+d+" 天"); }
+
+  function render(d){
+    $("login").classList.add("hide"); $("dash").classList.remove("hide");
+    $("agName").textContent = d.agent.name;
+    var s = d.summary;
+    $("sCust").textContent = s.customers;
+    $("sSoon").textContent = s.expiring_soon;
+    $("sMonth").textContent = money(s.commission_month);
+    $("sPend").textContent = money(s.commission_pending);
+    $("sPaid").textContent = money(s.commission_paid);
+
+    // 客戶:即將到期/已過期排前面
+    var cs = d.customers.slice().sort(function(a,b){ return a.days_left - b.days_left; });
+    $("custList").innerHTML = cs.length ? cs.map(function(c){
+      return '<div class="row"><div><div class="nm">'+esc(c.name)+'</div>'+
+        '<div class="sub">'+esc(c.plan||"")+' · '+(c.phone?esc(c.phone):"")+' · '+daysText(c.days_left)+'</div></div>'+
+        pill(c.status)+'</div>';
+    }).join("") : '<div class="empty">還沒有客戶。把你的推薦碼給新司機,他報碼加入就會出現在這裡。</div>';
+
+    $("commList").innerHTML = d.commissions.length ? d.commissions.map(function(c){
+      return '<div class="chist"><span>'+c.date+' · '+esc(c.customer)+'</span>'+
+        '<span><span class="amt">'+money(c.amount)+'</span> <span class="muted">'+c.status+'</span></span></div>';
+    }).join("") : '<div class="empty">還沒有佣金紀錄。客戶續費後這裡會出現。</div>';
+  }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  // 自動登入(sessionStorage)
+  (async function(){
+    try{
+      var saved = sessionStorage.getItem("ag");
+      if(saved){ var c = JSON.parse(saved); var d = await call(c.u, c.p); if(d.ok){ creds=c; render(d); } }
+    }catch(e){}
+  })();
+  $("p").addEventListener("keydown", function(e){ if(e.key==="Enter") doLogin(); });
+</script>
+</body>
+</html>
