@@ -555,6 +555,20 @@
         </div>
         <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
       </div>
+
+      <!-- 🌐 官網流量(site_views 表;官網 sendBeacon → sitehit 函式計數,零個資) -->
+      <div class="card" id="siteViewCard">
+        <div class="rowline"><span class="cardtitle">🌐 官網流量</span>
+          <button class="linkbtn" id="siteViewRefresh" style="margin-left:auto;">↻ 重新整理</button></div>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>官網</th><th>今日</th><th>近 7 日</th><th>近 30 日</th><th>累積</th></tr></thead>
+            <tbody id="siteViewBody"></tbody>
+          </table>
+        </div>
+        <div class="chartbox" id="siteViewChart" style="margin-top:8px;"></div>
+        <div class="muted" style="font-size:11.5px; margin-top:6px;">人次=同一瀏覽器分頁工作階段算一次(重新整理/站內換頁不重複計);不跑 JS 的爬蟲、封鎖儲存空間的瀏覽器不計(略為低估)。趨勢圖=兩站合計,每點一天。</div>
+      </div>
     </section>
 
     <!-- ═══ 位置庫 ═══ -->
@@ -733,7 +747,7 @@
   function lazyLoadTab(t){
     if(TAB_LOADED[t]) return;
     TAB_LOADED[t] = true;
-    if(t==="usage"){ loadGeoUsage(); loadAbuse(); }
+    if(t==="usage"){ loadGeoUsage(); loadAbuse(); loadSiteViews(); }
     else if(t==="places"){ loadPlaces(); loadMiss(); }
   }
   $('logoutBtn').addEventListener('click', function(){
@@ -1392,6 +1406,76 @@
       else toast("失敗:"+(res.error||"?"));
     });
   });
+  /* ── 🌐 官網流量(admin action: siteViews;資料鏈 官網 sendBeacon → sitehit 函式 → site_views 表)── */
+  var SITE_NAMES = { main: "琥珀主站", bu: "雷達青站" };
+  function tpDay(off){ return new Date(Date.now() + 8*3600000 - (off||0)*86400000).toISOString().slice(0,10); }  /* 台北日期(UTC+8 無日光節約) */
+  function loadSiteViews(){
+    var tb = $('siteViewBody'); if(!tb) return;
+    api("siteViews").then(function(res){
+      var host = $('siteViewChart');
+      if(!res || !res.ok){
+        var err = res && res.error;
+        var msg = (err === "unknown_action" || err === "no_key" || err === "forbidden_viewer") ? "admin 函式還沒更新(重新部署 admin 後這裡就會顯示)"   /* 舊版 admin 沒有 siteViews:管理密碼掉進尾段回 no_key、監控密碼被舊白名單擋回 forbidden_viewer */
+                : err === "need_migration_site_views" ? "site_views 表還沒建(先跑 migrations_site_views.sql)"
+                : "讀取失敗:" + (err || "?");
+        tb.innerHTML = "<tr><td colspan='5' class='muted'>" + esc(msg) + "</td></tr>";
+        if(host) host.innerHTML = "";
+        return;
+      }
+      var rows = res.rows || [], totals = res.totals || [];
+      var today = tpDay(0), d7 = tpDay(6), d30 = tpDay(29);
+      var stat = {};   /* site → {t:今日, w:近7日, m:近30日} */
+      rows.forEach(function(r){
+        var s = stat[r.site] || (stat[r.site] = { t:0, w:0, m:0 });
+        var n = Number(r.views) || 0;
+        if(r.day === today) s.t += n;
+        if(r.day >= d7)  s.w += n;
+        if(r.day >= d30) s.m += n;
+      });
+      var totalOf = {};
+      totals.forEach(function(x){ totalOf[x.site] = Number(x.total) || 0; });
+      var order = ["main", "bu"];   /* 固定兩站順序;萬一出現其他代號也照顯示不吞 */
+      Object.keys(stat).forEach(function(k){ if(order.indexOf(k) < 0) order.push(k); });
+      tb.innerHTML = "";
+      var any = false;
+      order.forEach(function(k){
+        if(!(k in stat) && !(k in totalOf)) return;
+        any = true;
+        var s = stat[k] || { t:0, w:0, m:0 };
+        var tr = document.createElement('tr');
+        tr.innerHTML = "<td>" + esc(SITE_NAMES[k] || k) + "</td><td>" + s.t.toLocaleString() + "</td><td>" +
+          s.w.toLocaleString() + "</td><td>" + s.m.toLocaleString() + "</td><td><b>" +
+          (totalOf[k] != null ? totalOf[k] : s.m).toLocaleString() + "</b></td>";
+        tb.appendChild(tr);
+      });
+      if(!any) tb.innerHTML = "<tr><td colspan='5' class='muted'>還沒有資料 —— 官網掛上計數後,有訪客就會開始累積。</td></tr>";
+      /* 近 30 天合計趨勢(兩站加總,一天一點)。零訪客的日子 DB 沒有列 —— 要自己補 0,
+         不然 5 個零星有客日會被畫成連續 5 點,把稀疏流量看成穩定流量。從窗內第一個有資料日
+         起連續補到今天;不足兩天畫不出就顯示提示。 */
+      if(host){
+        var byDay = {};
+        var first = null;
+        rows.forEach(function(r){
+          if(r.day >= d30){
+            byDay[r.day] = (byDay[r.day]||0) + (Number(r.views)||0);
+            if(!first || r.day < first) first = r.day;
+          }
+        });
+        if(!first){ host.innerHTML = "<div class='muted' style='padding:18px 0; text-align:center;'>每日資料累積中(跨兩天以上才畫趨勢)。</div>"; }
+        else {
+          var ds = [], vals = [];
+          for(var off = 29; off >= 0; off--){
+            var d = tpDay(off);
+            if(d < first) continue;
+            ds.push(d); vals.push(byDay[d] || 0);
+          }
+          if(ds.length < 2){ host.innerHTML = "<div class='muted' style='padding:18px 0; text-align:center;'>每日資料累積中(跨兩天以上才畫趨勢)。</div>"; }
+          else trendSVG(host, ds, vals, function(v){ return v.toLocaleString() + " 人次"; }, 0);
+        }
+      }
+    });
+  }
+  var _svr = $('siteViewRefresh'); if(_svr) _svr.addEventListener('click', loadSiteViews);
   function loadGeoUsage(){
     if(typeof loadStorage==='function') loadStorage();
     api("geoUsage").then(function(res){
