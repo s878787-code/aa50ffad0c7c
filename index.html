@@ -304,10 +304,19 @@
 
   <main>
 
+    <!-- 系統健康預警(置頂,0727):放在 <main> 內、所有 <section> 【外面】 —— 分頁切換只隱藏 section,
+         所以這一條在每個分頁都看得見。內容由 loadHealth() 每 60 秒更新,平常隱形、超線才現身。
+         (原本只有總覽分頁內那一條,而且計算掛在「用量成本」分頁上,兩個條件永遠不會同時成立。) -->
+    <div id="healthTop" class="hide" style="border:1px solid var(--red); background:var(--red-soft); color:var(--red); border-radius:var(--r); padding:10px 14px; margin-bottom:14px; font-size:13.5px; font-weight:600; line-height:1.7;"></div>
+
     <!-- ═══ 總覽 ═══ -->
     <section id="tab-home">
       <div class="pagehead"><h1>總覽</h1><div class="sub" id="homeSub">—</div></div>
-      <!-- ⚠️系統健康預警(0713 B 案):超線才現身;資料全來自計數表/估計值,零掃描 -->
+      <!-- ⚠️系統健康預警(0713 B 案):超線才現身;資料全來自計數表/估計值,零掃描。
+           0727 修:這個元素原本【只在總覽分頁看得見】,但它的計算在 loadGeoUsage() 裡、
+           【只有切到「用量成本」分頁才會跑】—— 兩個條件永遠不會同時成立,所以它從來沒亮過。
+           已改成:計算抽成 loadHealth() 獨立跑(登入即跑 + 20 秒輪詢),並另外顯示在下面那條
+           固定置頂橫幅 #healthTop(每個分頁都看得見)。這一條保留當總覽內的詳細版。 -->
       <div id="healthBar" class="hide" style="border:1px solid var(--red); background:var(--red-soft); color:var(--red); border-radius:var(--r); padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; line-height:1.7;"></div>
       <div class="kpis">
         <div class="kpi good" data-go="keys"><div class="n" id="kActive">0</div><div class="t">有效司機</div></div>
@@ -741,6 +750,9 @@
     render();
     loadReports();
     // 用量/位置庫是掃 geo_usage 大表的重查詢 → 改成切到該分頁才載入(登入時 5 個一起打會冷啟逾時、板面全空)。
+    // 但【健康預警是例外】(0727):它必須在登入當下就跑,而且不管你停在哪個分頁都要持續更新 ——
+    //   否則就會重演 0724:整隊停擺一小時,後台一片正常。
+    loadHealth();
   }
   // 每個分頁的重查詢只在「第一次切進去」時載入一次(之後靠各卡片的「重新整理」鈕手動刷新)。
   var TAB_LOADED = {};
@@ -878,6 +890,12 @@
   setInterval(function(){
     if(!$('app').classList.contains('hide') && !document.hidden){ reload(); }
   }, 20000);
+  // 健康預警獨立輪詢(0727):60 秒一次。不跟上面的 20 秒共用 —— geoUsage 走 geo_usage_stats RPC 比較重,
+  //   20 秒一次會給資料庫不必要的壓力;而健康訊號 60 秒的解析度已足夠(真正要即時的是故障域外的探針)。
+  //   順帶把回報也拉進輪詢:新回報現在會自動出現,不用手動重新整理。
+  setInterval(function(){
+    if(!$('app').classList.contains('hide') && !document.hidden){ loadHealth(); loadReports(); }
+  }, 60000);
   document.addEventListener('visibilitychange', function(){
     if(!document.hidden && !$('app').classList.contains('hide')){ reload(); }
   });
@@ -1476,6 +1494,111 @@
     });
   }
   var _svr = $('siteViewRefresh'); if(_svr) _svr.addEventListener('click', loadSiteViews);
+  /* ══ 系統健康預警(0727 抽出成獨立函式)══
+     為什麼要抽:原本這段埋在 loadGeoUsage() 裡面,只有【切到「用量成本」分頁】才會算;
+     而顯示的元素 #healthBar 在【總覽分頁】裡面 —— 兩個條件永遠不會同時成立,所以它從來沒亮過。
+     0724 那場一小時的全隊停擺,後台完全沒有任何紅字。
+     現在:登入即算、每 60 秒重算,並同時寫進固定置頂橫幅 #healthTop(每個分頁都看得見)。
+     間隔用 60 秒不是 20 秒:geoUsage 走 geo_usage_stats RPC 比較重,20 秒會給資料庫不必要的壓力。 */
+  function computeHealthWarns(res){
+    var warns = [];
+    if(!res || !res.ok) return warns;
+    var s = res.stats || {}, today = s.today || [];
+    var gToday = geoSum(today, GOOGLE_APIS);
+    var cap = Number(s.cap || 0);
+    if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
+    var rawRows = Number(s.raw_rows || 0);
+    if(rawRows > 1000000) warns.push("🔴 用量流水帳 " + Math.round(rawRows/10000)/100 + " 百萬列,寫入量異常(正常應 <50 萬)——找工程師看清理排程有沒有掛");
+
+    /* ① 司機【看得到的失敗率】(0727 新增,取代只看 geocode 查無率的舊指標)。
+       舊指標的致命缺陷:毒快取擴散時 MISS_CACHED 直接回、根本不打 Google → geocode 次數反而下降、
+       查無率還會【變好看】—— 是一個會在惡化時往好方向跑的反向指標。
+       新分母 = 所有「App 端會顯示失敗」的原因加總 ÷ 當日全部定位請求。25% 黃、40% 紅。 */
+    var FAIL_APIS = ["miss","cache_hit_miss","budget_blocked","driver_cap_blocked","miss_throttled",
+                     "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded"];
+    var failN = 0, allN = 0;
+    today.forEach(function(r){
+      allN += Number(r.n || 0);
+      if(FAIL_APIS.indexOf(r.api) >= 0) failN += Number(r.n || 0);
+    });
+    if(allN >= 200){
+      var fr = failN / allN;
+      if(fr >= 0.40) warns.push("🔴 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")—— 這是司機實際體感,新客戶會直接退訂,立刻查原因分佈");
+      else if(fr >= 0.25) warns.push("🟠 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")—— 已偏高,建議查是哪一類在漲");
+    }
+
+    /* ② 反向門檻(0727 新增):現有門檻【全部只抓「太高」,沒有一條抓得到「歸零」】——
+       0724 那場整隊停擺,後台事後看起來只是「今天量比較少」。
+       限制要誠實:計數表是【每日】粒度,今天的量天生是部分的,所以只在台北時間 20:00 之後才判,
+       避免每天早上都誤報。真正能即時抓到停擺的是【故障域外的外部探針】,這條只是粗略保底。 */
+    (function(){
+      var tpHour = new Date(Date.now() + 8*3600000).getUTCHours();
+      if(tpHour < 20) return;
+      var byDay = {};
+      (s.days || []).forEach(function(r){ if(r.api === "geocode"){ byDay[r.day] = (byDay[r.day]||0) + Number(r.n||0); } });
+      var ds = Object.keys(byDay).sort();
+      if(ds.length < 4) return;
+      var todayKey = ds[ds.length-1];
+      var prev = ds.slice(0, -1).slice(-7).map(function(d){ return byDay[d]; }).sort(function(a,b){ return a-b; });
+      if(!prev.length) return;
+      var med = prev[Math.floor(prev.length/2)];
+      var cur = byDay[todayKey] || 0;
+      if(med >= 100 && cur < med * 0.4){
+        warns.push("🔴 今日定位量 " + cur.toLocaleString() + " 次,只有近 7 日中位數(" + med.toLocaleString() + ")的 " +
+          Math.round(cur*100/med) + "% —— 量異常下降,疑似服務中斷或司機全都收不到單");
+      }
+    })();
+
+    /* 0713 調校:全隊查無率誤報 —— 這系統正常就有 50-66% 查無。門檻 85% 只當「所有 provider 一起掛/壞部署」的大盤保底。 */
+    var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
+    if(geoRow && geoRow.n >= 300){
+      var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
+      if(missRate > 0.85) warns.push("🔴 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次)—— 異常偏高,查是不是所有定位源一起掛了或壞部署(正常上限約 66%)");
+    }
+    /* 0713 修:掛機訊號=連線逾時(nominatim_timeout),不是成功率。 */
+    var nomDown = null; today.forEach(function(r){ if(r.api === "nominatim_timeout") nomDown = r; });
+    if(nomDown && nomDown.n >= 30) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似掛了/過載 —— 掛掉期間每筆都在燒 Google 錢");
+    var dbBytes = Number(s.db_bytes || 0);
+    if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
+
+    /* 📉 Places 保險絲(0727 門檻由 600 降到 150):Google 後台物理鎖是 300/日,App 端 cap 已降到 250。
+       門檻設在物理鎖的一半,才來得及在「開始查無」之前示警。 */
+    (function(){
+      var byDay = {};
+      (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
+      var ds = Object.keys(byDay).sort();
+      var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
+      var pPrev  = ds.length > 1 ? byDay[ds[ds.length-2]] : 0;
+      if(pToday >= 150){
+        var trend = pPrev ? (pToday <= pPrev ? "↓ 比昨天("+pPrev+")低" : "↑ 比昨天("+pPrev+")還高") : "";
+        warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — App 端上限 250、Google 後台物理鎖 300。" +
+          "打到上限後「補錯城市/裸路名」會失去唯一救援層,司機開始整片查無。");
+      }
+    })();
+    /* Places cap 已經打到 → 這是「現在就在壞」,不是預警 */
+    var capHit = null; today.forEach(function(r){ if(r.api === "places_cap_hit") capHit = r; });
+    if(capHit && capHit.n > 0) warns.push("🔴 Places 每日上限已觸發 " + capHit.n + " 次 —— 從觸發那一刻起,補錯城市/裸路名的單全部失去救援層");
+    return warns;
+  }
+
+  /** 同時寫進總覽內的詳細條與固定置頂橫幅;兩個都沒警示就一起隱藏。 */
+  function renderHealth(warns){
+    var html = warns.join("<br>");
+    ["healthBar", "healthTop"].forEach(function(id){
+      var el = $(id); if(!el) return;
+      if(warns.length){ el.innerHTML = html; el.classList.remove("hide"); }
+      else el.classList.add("hide");
+    });
+  }
+
+  /** 獨立載入(登入即跑 + 60 秒輪詢),不依賴使用者切到哪個分頁。 */
+  function loadHealth(){
+    api("geoUsage").then(function(res){
+      GEO_CACHE_RES = res;
+      renderHealth(computeHealthWarns(res));
+    }).catch(function(){ /* 健康條抓不到不影響其他功能 */ });
+  }
+
   function loadGeoUsage(){
     if(typeof loadStorage==='function') loadStorage();
     api("geoUsage").then(function(res){
@@ -1494,47 +1617,9 @@
       var cost = 0;
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
       $('geoCost').textContent = "US$" + cost.toFixed(2);
-      /* ⚠️系統健康預警(0713):平常隱形,超線變紅條。門檻可依 Supabase 方案調(現以 Pro 8GB 假設)。 */
-      (function(){
-        var warns = [];
-        var cap = Number(s.cap || 0);
-        if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
-        var rawRows = Number(s.raw_rows || 0);
-        if(rawRows > 1000000) warns.push("🔴 用量流水帳 " + Math.round(rawRows/10000)/100 + " 百萬列,寫入量異常(正常應 <50 萬)——找工程師看清理排程有沒有掛");
-        /* 0713 調校:全隊查無率誤報 —— 這系統正常就有 50-66% 查無(服務區外/裸店名/舊版盲補城市,
-           都是「正確地判查無」)。真異常改用兩個精準訊號:①Nominatim 逾時(下面)②per-司機 abuse_watch。
-           這裡門檻拉到 85%,只當「所有 provider 一起掛/壞部署」的大盤保底,平常不吵。 */
-        var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
-        if(geoRow && geoRow.n >= 300){
-          var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
-          if(missRate > 0.85) warns.push("🔴 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次)—— 異常偏高,查是不是所有定位源一起掛了或壞部署(正常上限約 66%)");
-        }
-        /* 0713 修:掛機訊號=連線逾時(nominatim_timeout),不是成功率 —— 打給它的多是快取沒接住的
-           難題+防毒閘會沒收錯配答案,成功率天生低,拿來當死活訊號會誤報(實測 7% 時活體測試全中)。 */
-        var nomDown = null; today.forEach(function(r){ if(r.api === "nominatim_timeout") nomDown = r; });
-        if(nomDown && nomDown.n >= 30) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似掛了/過載 —— 掛掉期間每筆都在燒 Google 錢");
-        var dbBytes = Number(s.db_bytes || 0);
-        if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
-        /* 📉 Places(就近補救,最貴 US$32/千次)7 日趨勢自動觀察(0714):Places 量=查無量的影子。
-           免費額度每月 1 萬次。今日≥600 或 30 日推估超額 → 提醒;連續下降 → 靜默(自己在降,不吵)。 */
-        (function(){
-          var byDay = {};
-          (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
-          var ds = Object.keys(byDay).sort();               // 舊→新
-          var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
-          var pPrev  = ds.length > 1 ? byDay[ds[ds.length-2]] : 0;
-          var monthEst = pToday * 30;
-          if(pToday >= 600){
-            var trend = pPrev ? (pToday <= pPrev ? "↓ 比昨天("+pPrev+")低,正在降" : "↑ 比昨天("+pPrev+")還高") : "";
-            var costEst = Math.max(0, monthEst - 10000) * 0.032 / 1000;
-            warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — 30日推估 " + monthEst.toLocaleString() +
-              " 次(免費額度 1萬),超額約 US$" + costEst.toFixed(0) +
-              "/月。降不下來就叫工程師收緊跨區保底(保險絲已擋單一司機失控)。");
-          }
-        })();
-        var bar = $('healthBar');
-        if(bar){ if(warns.length){ bar.innerHTML = warns.join("<br>"); bar.classList.remove('hide'); } else bar.classList.add('hide'); }
-      })();
+      /* 健康預警:計算已抽成 computeHealthWarns()(0727),這裡只負責重繪。
+         抽出的原因見 #healthBar 註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
+      renderHealth(computeHealthWarns(res));
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       aiEnabled = res.ai_enabled !== false;
       $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
