@@ -583,6 +583,20 @@
     <!-- ═══ 位置庫 ═══ -->
     <section id="tab-places" class="hide">
       <div class="pagehead"><h1>社區/大樓 位置庫</h1><div class="sub">派單只寫「XX社區/大樓/店名」Google 定不到 → 補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 → 點座標複製「25.033, 121.565」貼進來。<b>驗證打勾才會被 App 採用。</b></div></div>
+      <div class="card" id="candCard">
+        <div class="rowline">
+          <span class="cardtitle">🤖 自動回填候選 <span id="candN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
+          <button class="linkbtn" id="candRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;">
+          <b>這是什麼</b> · App 定位時,如果一個地名連免費的門牌庫、自架圖資、Google Geocoding 都查不到,最後會用 <b>Google Places 就近搜尋</b>把它救回來。那是整條定位鏈<b>最貴的一層</b>(約 US$32 / 千次),而且它的快取是<b>綁司機當下所在街區</b>的 —— 同一個「XX社區」換個司機、換條街就要<b>重新付一次錢</b>,快取到期後又得再付。<br>
+          <b>怎麼運作</b> · 每當 Places 成功查到一個<b>地標名</b>(帶門牌號的地址不算,那是地址不是名字),系統就把「名字 + 查到的座標」記到這張候選清單,並累加次數與貢獻司機。你按〔採用〕把它收進下面的位置庫之後,這個名字就升級成<b>第 0 層</b>:用名字直接比對、不分街區、永不過期、<b>完全免費</b>。等於一個地點只花一次錢就買斷。<br>
+          <b>為什麼不自動收進位置庫</b> · 位置庫的優先權<b>高過 Google</b>,寫錯一筆等於全隊永久定位到錯的地方;而 Places 就近搜尋本來就可能配到司機旁邊的同名店家。所以機器只負責<b>收集證據</b>,採不採用<b>一律由人決定</b>。這張清單<b>完全不參與定位</b>,在你按下採用之前對 App 沒有任何影響。<br>
+          <b>三個欄位怎麼讀</b> · <b>次數</b>=這個地點總共讓我們付了幾次錢(越高越值得補)。<b>司機</b>=幾位不同司機都查到它(越多越可能是真的常用地點,而不是某人打錯字)。<b>離散</b>=歷次查到的座標最遠差多少公尺 —— <b style="color:#2e9e6b">小=每次都指同一個點,可信</b>;<b style="color:#c94a3a">大(幾百公尺以上)=Places 每次配到不同地方,先自己查證再填</b>。
+        </div>
+        <div id="candList" style="margin-top:6px;"></div>
+        <div class="empty hide" id="candEmpty">目前沒有候選。(若一直是空的:需先在 Supabase SQL Editor 跑 migrations_place_candidates.sql,並重新部署 geocode 函式)</div>
+      </div>
       <div class="card" id="missCard">
         <div class="rowline">
           <span class="cardtitle">待補地標 <span id="missN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
@@ -760,7 +774,7 @@
     if(TAB_LOADED[t]) return;
     TAB_LOADED[t] = true;
     if(t==="usage"){ loadGeoUsage(); loadAbuse(); loadSiteViews(); }
-    else if(t==="places"){ loadPlaces(); loadMiss(); }
+    else if(t==="places"){ loadPlaces(); loadMiss(); loadCands(); }
   }
   $('logoutBtn').addEventListener('click', function(){
     sessionStorage.removeItem("tr_pw"); location.hash=""; location.reload();
@@ -1763,8 +1777,8 @@
     openModal(p ? "編輯地點:"+(p.name||"") : "新增地點", [
       {id:"name", label:"名稱", value:p?p.name:(pre&&pre.name||""), placeholder:"例:吉祥大樓"},
       {id:"alias", label:"別名(逗號分隔,可空)", value:p?(p.aliases||[]).join(", "):(pre&&pre.alias||""), placeholder:"例:吉祥社區, 吉祥"},
-      {id:"city", label:"縣市", value:p?(p.city||""):"", placeholder:"例:基隆市"},
-      {id:"coord", label:"座標(Google 地圖右鍵複製貼上)", value:p?(p.lat+", "+p.lng):"", placeholder:"25.033, 121.565"},
+      {id:"city", label:"縣市", value:p?(p.city||""):(pre&&pre.city||""), placeholder:"例:基隆市"},
+      {id:"coord", label:"座標(Google 地圖右鍵複製貼上)", value:p?(p.lat+", "+p.lng):(pre&&pre.coord||""), placeholder:"25.033, 121.565"},
       {id:"addr", label:"完整地址(可空,人看的)", value:p?(p.address||""):""},
       {id:"verified", label:"驗證", type:"checkbox", value:p?!!p.verified:false, placeholder:"已驗證(打勾才給 App 用)"}
     ], function(v){
@@ -1829,6 +1843,65 @@
       }
       tb.appendChild(tr);
     });
+  }
+
+  /* ── 自動回填候選(Places 花錢換到的地名 → 一鍵收進位置庫) ──
+     這張清單只是收集箱,完全不參與定位;按下「採用」才會走既有的「新增地點」流程(含重複別名檢查)。 */
+  var CANDS = [];
+  $('candRefresh').addEventListener('click', loadCands);
+  function loadCands(){
+    $('candList').innerHTML = "<div class='muted' style='padding:10px 0; font-size:12.5px;'>載入中…</div>";
+    $('candEmpty').classList.add('hide');
+    api("placeCandidates").then(function(res){
+      if(res.error){
+        $('candList').innerHTML = "<div class='muted' style='padding:10px 0; font-size:12.5px;'>載入失敗:" + esc(res.error) + "</div>";
+        return;
+      }
+      CANDS = res.rows || [];
+      renderCands();
+    });
+  }
+  function renderCands(){
+    $('candN').textContent = CANDS.length ? "・"+CANDS.length+" 筆待處理" : "";
+    $('candEmpty').classList.toggle('hide', CANDS.length>0);
+    if(!CANDS.length){ $('candList').innerHTML = ""; return; }
+    var wrap = document.createElement('div');
+    wrap.className = "tablewrap";
+    wrap.innerHTML = "<table><thead><tr><th>名稱</th><th>次數</th><th>司機</th><th>離散</th><th class='hide-m'>座標</th><th>動作</th></tr></thead><tbody></tbody></table>";
+    var tb = wrap.querySelector('tbody');
+    CANDS.forEach(function(c){
+      var sp = c.spread_m|0, spTxt;
+      if(c.n<=1) spTxt = "<span class='muted'>只查過 1 次</span>";
+      else if(sp<=80)  spTxt = "<span style='color:#2e9e6b;font-weight:600;'>"+sp+"m</span>";
+      else if(sp<=300) spTxt = "<span style='color:#c98a1a;font-weight:600;'>"+sp+"m</span>";
+      else             spTxt = "<span style='color:#c94a3a;font-weight:600;'>"+sp+"m ⚠</span>";
+      var who = (c.drivers||[]).slice(0,3).join("、") + ((c.drivers||[]).length>3 ? "…" : "");
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        "<td><b>"+esc(c.name||"?")+"</b></td>"+
+        "<td>"+(c.n||0)+"</td>"+
+        "<td>"+(c.drivers_n||0)+(who? "<br><small class='muted'>"+esc(who)+"</small>":"")+"</td>"+
+        "<td>"+spTxt+"</td>"+
+        "<td class='hide-m'><a href='https://www.google.com/maps?q="+Number(c.lat)+","+Number(c.lng)+"' target='_blank' rel='noopener' style='font-size:12px;'>"+Number(c.lat).toFixed(4)+","+Number(c.lng).toFixed(4)+"</a></td>"+
+        "<td><div class='act'>"+(ROLE==="viewer"?"<span class='muted' style='font-size:12px;'>唯讀</span>":
+          "<button data-a='ad'>採用</button><button data-a='sk'>忽略</button>")+"</div></td>";
+      if(ROLE!=="viewer"){
+        // 採用 = 開既有的「新增地點」視窗並預填名稱與座標(不直接寫庫)——
+        // 走同一條路才會經過重複別名檢查、台灣界檢查,而且「驗證」要你自己打勾。
+        tr.querySelector("[data-a='ad']").addEventListener('click', function(){
+          openPlaceForm(null, { name: c.name, coord: Number(c.lat)+", "+Number(c.lng) });
+        });
+        tr.querySelector("[data-a='sk']").addEventListener('click', function(){
+          if(!confirm("忽略「"+(c.name||"")+"」?\n\n它不會再出現在這張清單。次數仍會繼續累加,日後想反悔可以在資料庫把 dismissed 改回 false。")) return;
+          api("dismissCandidate", { norm_key: c.norm_key }).then(function(r){
+            if(r && r.ok){ toast("已忽略"); loadCands(); } else { toast("失敗:"+((r&&r.error)||"?")); }
+          });
+        });
+      }
+      tb.appendChild(tr);
+    });
+    $('candList').innerHTML = "";
+    $('candList').appendChild(wrap);
   }
 
   /* ── 待補地標(全隊查無座標的熱門地址) ── */
