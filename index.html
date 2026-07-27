@@ -608,6 +608,27 @@
         <div id="missList" style="margin-top:4px;"></div>
         <div class="empty hide" id="missEmpty">目前沒有待補的地標。</div>
       </div>
+      <div class="card" id="batchCard">
+        <div class="rowline">
+          <span class="cardtitle">📥 批量匯入(貼清單 → 自動查座標 → 勾選寫入)</span>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
+          一行一筆,兩種格式:<b>只有名稱</b>(例:<code>三峽區鴛鴦谷烤肉區</code>)→ 用名稱搜尋;<b>名稱 | 地址</b>(例:<code>青城桔市社區 | 土城區中央路三段239巷</code>)→ 用地址查座標、以名稱存檔(Tab 分隔也可以)。<br>
+          查詢先走<b>免費 OSM</b>,查不到才退 Google(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
+        </div>
+        <textarea id="batchInput" rows="7" style="width:100%; margin-top:8px; font-size:13px; font-family:inherit;" placeholder="三峽區鴛鴦谷烤肉區&#10;龜山嶺頂門市&#10;青城桔市社區 | 土城區中央路三段239巷"></textarea>
+        <div class="toolbar" style="margin-top:8px;">
+          <button class="primary" id="batchLookup">🔍 開始查座標</button>
+          <span class="muted" id="batchProg" style="font-size:12px;"></span>
+          <button class="primary hide" id="batchWrite" style="margin-left:auto;">✍️ 寫入勾選的到位置庫</button>
+        </div>
+        <div class="tablewrap hide" id="batchWrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th style="width:34px;"><input type="checkbox" id="batchAll" style="width:auto;" checked></th><th>名稱</th><th>查到的地方</th><th>座標(點開核對)</th><th>狀態</th></tr></thead>
+            <tbody id="batchBody"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card">
         <div class="toolbar">
           <div class="search" style="flex:1; min-width:160px;"><input type="text" id="placeQ" placeholder="搜尋社區/大樓/別名"></div>
@@ -1844,6 +1865,98 @@
       tb.appendChild(tr);
     });
   }
+
+  /* ── 批量匯入(0728):貼清單 → 逐筆查座標 → 人工勾選 → 寫入位置庫 ──
+     零新後端:查詢用既有 suggestCoords(OSM 免費 → Google Places/geocode 退路)、寫入用既有
+     addPlace(含重複別名檢查)。OSM 禮貌上限 1 req/s → 每筆間隔 1.1 秒,127 筆約 2.5 分鐘。
+     一行一筆:「名稱」或「名稱 | 地址」(Tab 也可)。有地址就用地址查(門牌準),以名稱存檔。 */
+  var BATCH = [];
+  function batchRender(){
+    var tb = $('batchBody'); tb.innerHTML = "";
+    BATCH.forEach(function(r, i){
+      var tr = document.createElement('tr');
+      var st = r.state==="pending" ? "<span class='muted'>待查</span>"
+             : r.state==="looking" ? "查詢中…"
+             : r.state==="written" ? "<span class='pill ok'>已寫入</span>"
+             : r.state==="dup"     ? "<span class='pill off'>已有同名/別名</span>"
+             : r.state==="failed"  ? "<span class='pill off'>寫入失敗</span>"
+             : r.ok ? (r.source==="osm" ? "OSM(免費)" : "Google") : "<span class='pill off'>查無</span>";
+      tr.innerHTML =
+        "<td>"+(r.ok && r.state!=="written" ? "<input type='checkbox' data-bi='"+i+"' style='width:auto;'"+(r.checked?" checked":"")+">" : "")+"</td>"+
+        "<td><b>"+esc(r.name)+"</b>"+(r.addr?"<br><small class='muted'>"+esc(r.addr)+"</small>":"")+"</td>"+
+        "<td class='muted' style='font-size:12px;'>"+esc(String(r.display||"—").slice(0,48))+"</td>"+
+        "<td>"+(r.ok ? "<a href='https://www.google.com/maps?q="+r.lat+","+r.lng+"' target='_blank' rel='noopener' style='font-size:12px;'>"+r.lat.toFixed(4)+","+r.lng.toFixed(4)+"</a>" : "—")+"</td>"+
+        "<td>"+st+"</td>";
+      var cb = tr.querySelector("input[data-bi]");
+      if(cb) cb.addEventListener('change', function(){ BATCH[i].checked = cb.checked; });
+      tb.appendChild(tr);
+    });
+    var n = BATCH.filter(function(r){ return r.ok && r.checked && r.state!=="written"; }).length;
+    $('batchWrite').textContent = "✍️ 寫入勾選的 "+n+" 筆到位置庫";
+    $('batchWrite').classList.toggle('hide', n===0);
+  }
+  $('batchAll').addEventListener('change', function(){
+    var on = $('batchAll').checked;
+    BATCH.forEach(function(r){ if(r.ok && r.state!=="written") r.checked = on; });
+    batchRender();
+  });
+  $('batchLookup').addEventListener('click', function(){
+    if(ROLE==="viewer"){ toast("唯讀帳號不能匯入"); return; }
+    // 容忍整份匯入清單直接貼:剝掉「← N 次」註記、跳過分隔線與說明行
+    var lines = String($('batchInput').value||"").split("\n")
+      .map(function(s){ return s.replace(/\s*←.*$/, "").trim(); })
+      .filter(function(s){ return s && !/[═─]|^──|^⚠|^用法|^格式/.test(s); });
+    if(!lines.length){ toast("先貼清單(一行一筆)"); return; }
+    if(lines.length > 200){ toast("一次最多 200 筆,分批貼"); return; }
+    BATCH = lines.map(function(l){
+      var p = l.split(/[|\t]/).map(function(s){ return s.trim(); });
+      return { name:p[0], addr:(p[1]||""), ok:false, checked:false, state:"pending", lat:0, lng:0, display:"", source:"" };
+    });
+    $('batchWrap').classList.remove('hide');
+    $('batchLookup').disabled = true;
+    var i = 0;
+    function step(){
+      if(i >= BATCH.length){
+        $('batchLookup').disabled = false;
+        var okN = BATCH.filter(function(r){ return r.ok; }).length;
+        $('batchProg').textContent = "查完:"+okN+" / "+BATCH.length+" 筆有座標。逐筆核對後按寫入。";
+        batchRender(); return;
+      }
+      var r = BATCH[i]; r.state = "looking";
+      $('batchProg').textContent = "查詢中 "+(i+1)+" / "+BATCH.length+":"+r.name;
+      batchRender();
+      api("suggestCoords", { q:(r.addr || r.name) }).then(function(res){
+        if(res && res.ok){ r.ok = true; r.checked = true; r.lat = res.lat; r.lng = res.lng; r.display = res.display||""; r.source = res.source||""; }
+        r.state = "done"; i++;
+        setTimeout(step, 1100);   // OSM 禮貌間隔
+      }).catch(function(){ r.state = "done"; i++; setTimeout(step, 1100); });
+    }
+    step();
+  });
+  $('batchWrite').addEventListener('click', function(){
+    if(ROLE==="viewer"){ toast("唯讀帳號不能匯入"); return; }
+    var todo = BATCH.filter(function(r){ return r.ok && r.checked && r.state!=="written"; });
+    if(!todo.length){ toast("沒有勾選任何一筆"); return; }
+    if(!confirm("確定把 "+todo.length+" 筆寫進位置庫?寫入即標為已驗證、App 立刻採用。")) return;
+    $('batchWrite').disabled = true;
+    var i = 0, okN = 0, dupN = 0, failN = 0;
+    function step(){
+      if(i >= todo.length){
+        $('batchWrite').disabled = false;
+        $('batchProg').textContent = "寫入完成:"+okN+" 成功、"+dupN+" 筆已有同名(跳過)、"+failN+" 失敗。";
+        batchRender(); loadPlaces(); return;
+      }
+      var r = todo[i];
+      api("addPlace", { name:r.name, aliases:"", lat:r.lat, lng:r.lng,
+        address:(r.addr || r.display), verified:true, source:"批量匯入" }).then(function(res){
+        if(res && res.ok){ r.state = "written"; okN++; }
+        else if(res && res.error === "dup_alias"){ r.state = "dup"; dupN++; }
+        else { r.state = "failed"; failN++; }
+        i++; step();
+      }).catch(function(){ r.state = "failed"; failN++; i++; step(); });
+    }
+    step();
+  });
 
   /* ── 自動回填候選(Places 花錢換到的地名 → 一鍵收進位置庫) ──
      這張清單只是收集箱,完全不參與定位;按下「採用」才會走既有的「新增地點」流程(含重複別名檢查)。 */
