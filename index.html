@@ -589,7 +589,7 @@
           <button class="linkbtn" id="candRefresh" style="margin-left:auto;">↻ 重新整理</button>
         </div>
         <div class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;">
-          <b>這是什麼</b> · App 定位時,如果一個地名連免費的門牌庫、自架圖資、Google Geocoding 都查不到,最後會用 <b>Google Places 就近搜尋</b>把它救回來。那是整條定位鏈<b>最貴的一層</b>(約 US$32 / 千次),而且它的快取是<b>綁司機當下所在街區</b>的 —— 同一個「XX社區」換個司機、換條街就要<b>重新付一次錢</b>,快取到期後又得再付。<br>
+          <b>這是什麼</b> · App 定位時,如果一個地名連免費的門牌庫、自架圖資、Google Geocoding 都查不到,最後會用 <b>Google Places 就近搜尋</b>把它救回來。那<b>曾是</b>整條定位鏈最貴的一層(舊版約 US$32/千次;<b>v29.0 起改新版兩段式,約 US$5/千次、每月前 1 萬次免費</b>),但它的快取仍是<b>綁司機當下所在街區</b>的 —— 同一個「XX社區」換個司機、換條街就要<b>重新查一次</b>,快取到期後又得再查。<br>
           <b>怎麼運作</b> · 每當 Places 成功查到一個<b>地標名</b>(帶門牌號的地址不算,那是地址不是名字),系統就把「名字 + 查到的座標」記到這張候選清單,並累加次數與貢獻司機。你按〔採用〕把它收進下面的位置庫之後,這個名字就升級成<b>第 0 層</b>:用名字直接比對、不分街區、永不過期、<b>完全免費</b>。等於一個地點只花一次錢就買斷。<br>
           <b>為什麼不自動收進位置庫</b> · 位置庫的優先權<b>高過 Google</b>,寫錯一筆等於全隊永久定位到錯的地方;而 Places 就近搜尋本來就可能配到司機旁邊的同名店家。所以機器只負責<b>收集證據</b>,採不採用<b>一律由人決定</b>。這張清單<b>完全不參與定位</b>,在你按下採用之前對 App 沒有任何影響。<br>
           <b>三個欄位怎麼讀</b> · <b>次數</b>=這個地點總共讓我們付了幾次錢(越高越值得補)。<b>司機</b>=幾位不同司機都查到它(越多越可能是真的常用地點,而不是某人打錯字)。<b>離散</b>=歷次查到的座標最遠差多少公尺 —— <b style="color:#2e9e6b">小=每次都指同一個點,可信</b>;<b style="color:#c94a3a">大(幾百公尺以上)=Places 每次配到不同地方,先自己查證再填</b>。
@@ -1358,7 +1358,7 @@
     geocode:            { free: 10000, per1000: 5,  paid:true,  label: "Google Geocoding(長尾退路)" },
     geocode_nominatim:  { free: 0,     per1000: 0,  paid:false, label: "自架 Nominatim 路名/地標(免費)" },
     geocode_tgos:       { free: 0,     per1000: 0,  paid:false, label: "TGOS 門牌定位(內政部官方,免費)" },
-    places:             { free: 5000,  per1000: 32, paid:true,  label: "Places 就近補救(⚠️最貴)" },
+    places:             { free: 10000, per1000: 5,  paid:true,  label: "Places 就近補救(v29.0 新版兩段式)" },
     distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "Google 距離(退路)" },
     distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "Geoapify 距離(免費3000/日)" },
     distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "自架 OSRM 距離(免費)" },
@@ -1750,10 +1750,10 @@
     } else if(osrmT > 0 && geoapifyT < 200){
       tips.push({ s:0, h:"🟢 距離已走自架 OSRM(免費無限),Geoapify 幾乎歸零。" });
     }
-    if(placesM > 5000){
-      tips.push({ s:3, h:"🔴 Places 本月 "+placesM+" 次已破免費 5,000($32/千,全表最貴)。把常漏查的裸路名補進地標庫最有效。" });
+    if(placesM > 10000){
+      tips.push({ s:3, h:"🔴 Places 本月 "+placesM+" 次已破免費 10,000(v29.0 兩段式 $5/千)。把常漏查的裸路名補進地標庫最有效 —— 進位置庫就永久免費。" });
     } else if(placesT > 0){
-      tips.push({ s:2, h:"🟡 Places(最貴 $32/千)今日 "+placesT+" 次，通常是裸路名查不到才退它。量若持續,值得補地標庫。" });
+      tips.push({ s:2, h:"🟡 Places(v29.0 兩段式 $5/千、月免 1 萬)今日 "+placesT+" 次，通常是裸路名查不到才退它。量若持續,值得補地標庫。" });
     }
     if(hitRate != null){
       if(hitRate < 0.5){
