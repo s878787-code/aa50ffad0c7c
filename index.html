@@ -1560,13 +1560,16 @@
        查無率還會【變好看】—— 是一個會在惡化時往好方向跑的反向指標。
        新分母 = 所有「App 端會顯示失敗」的原因加總 ÷ 當日全部定位請求。25% 黃、40% 紅。 */
     var FAIL_APIS = ["miss","cache_hit_miss","budget_blocked","driver_cap_blocked","miss_throttled",
-                     "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded"];
+                     "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded",
+                     "db_unavailable"]; /* 0728:授權層讀不到 DB=司機看到「稍後自動重試」,是可見失敗(這條路以前完全沒記帳,風暴時失敗率反而變好看) */
     // 0728 指標重製:失敗率改用 today_clean(排除測試機)—— 測試機一台佔全隊流量八成,會把真司機體感淹掉。
     // 未跑 v13 SQL 時 today_clean 不存在 → 退回全量(相容舊 RPC)。
     var frRows = s.today_clean || today;
     var frTag = s.today_clean ? "(排除測試機)" : "";
     var failN = 0, allN = 0;
     frRows.forEach(function(r){
+      /* db_layer_error 是「同一請求」的附加標記列(該請求的成敗已由其他列計入)—— 進分母會稀釋失敗率 */
+      if(r.api === "db_layer_error") return;
       allN += Number(r.n || 0);
       if(FAIL_APIS.indexOf(r.api) >= 0) failN += Number(r.n || 0);
     });
@@ -1794,10 +1797,11 @@
        cmp_before=基線前 7 天、cmp_after=基線起至今 —— 舊資料就是對照組,所以什麼都不刪。 */
     if(c.baseline && (c.cmpB || []).length && (c.cmpA || []).length){
       var CMP_FAILS = ["miss","cache_hit_miss","budget_blocked","driver_cap_blocked","miss_throttled",
-                       "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded"];
+                       "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded",
+                       "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
