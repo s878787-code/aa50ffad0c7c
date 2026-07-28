@@ -587,7 +587,9 @@
         <div class="rowline">
           <span class="cardtitle">🤖 自動回填候選 <span id="candN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
           <button class="linkbtn" id="candRefresh" style="margin-left:auto;">↻ 重新整理</button>
+          <button class="linkbtn" id="candTgl">收合 ▴</button>
         </div>
+        <div id="candBody">
         <div class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;">
           <b>這是什麼</b> · App 定位時,如果一個地名連免費的門牌庫、自架圖資、Google Geocoding 都查不到,最後會用 <b>Google Places 就近搜尋</b>把它救回來。那<b>曾是</b>整條定位鏈最貴的一層(舊版約 US$32/千次;<b>v29.0 起改新版兩段式,約 US$5/千次、每月前 1 萬次免費</b>),但它的快取仍是<b>綁司機當下所在街區</b>的 —— 同一個「XX社區」換個司機、換條街就要<b>重新查一次</b>,快取到期後又得再查。<br>
           <b>怎麼運作</b> · 每當 Places 成功查到一個<b>地標名</b>(帶門牌號的地址不算,那是地址不是名字),系統就把「名字 + 查到的座標」記到這張候選清單,並累加次數與貢獻司機。你按〔採用〕把它收進下面的位置庫之後,這個名字就升級成<b>第 0 層</b>:用名字直接比對、不分街區、永不過期、<b>完全免費</b>。等於一個地點只花一次錢就買斷。<br>
@@ -596,22 +598,28 @@
         </div>
         <div id="candList" style="margin-top:6px;"></div>
         <div class="empty hide" id="candEmpty">目前沒有候選。(若一直是空的:需先在 Supabase SQL Editor 跑 migrations_place_candidates.sql,並重新部署 geocode 函式)</div>
+        </div>
       </div>
       <div class="card" id="missCard">
         <div class="rowline">
           <span class="cardtitle">待補地標 <span id="missN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
           <label class="muted" style="margin-left:auto; display:flex; align-items:center; gap:6px; font-size:12px; cursor:pointer;"><input type="checkbox" id="missAll" style="width:auto;">顯示全部(含完整地址)</label>
           <button class="linkbtn" id="missRefresh">↻ 重新整理</button>
+          <button class="linkbtn" id="missTgl">收合 ▴</button>
         </div>
+        <div id="missBody">
         <div class="muted" style="font-size:12px; margin-top:6px;">全隊「還查不到座標」的地址(近 14 天,已解決的自動移除)。越多不同司機查過=越常用=越值得補;已查成功的不再出現。📩 原文=那張單的整段訊息,缺路名時看原文就知道是哪條路。點「補這個」貼座標。</div>
         <div id="missSummary" class="muted" style="font-size:12px; margin-top:9px;"></div>
         <div id="missList" style="margin-top:4px;"></div>
         <div class="empty hide" id="missEmpty">目前沒有待補的地標。</div>
+        </div>
       </div>
       <div class="card" id="batchCard">
         <div class="rowline">
           <span class="cardtitle">📥 批量匯入(貼清單 → 自動查座標 → 勾選寫入)</span>
+          <button class="linkbtn" id="batchTgl" style="margin-left:auto;">展開 ▾</button>
         </div>
+        <div id="batchBodyWrap">
         <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
           一行一筆,兩種格式:<b>只有名稱</b>(例:<code>三峽區鴛鴦谷烤肉區</code>)→ 用名稱搜尋;<b>名稱 | 地址</b>(例:<code>青城桔市社區 | 土城區中央路三段239巷</code>)→ 用地址查座標、以名稱存檔(Tab 分隔也可以)。<br>
           查詢先走<b>免費 OSM</b>,查不到才退 Google(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
@@ -620,6 +628,7 @@
         <div class="toolbar" style="margin-top:8px;">
           <button class="primary" id="batchLookup">🔍 開始查座標</button>
           <span class="muted" id="batchProg" style="font-size:12px;"></span>
+          <label class="muted" style="display:flex; align-items:center; gap:5px; font-size:12px; cursor:pointer;"><input type="checkbox" id="batchHideDone" style="width:auto;">隱藏已處理</label>
           <button class="primary hide" id="batchWrite" style="margin-left:auto;">✍️ 寫入勾選的到位置庫</button>
         </div>
         <div class="tablewrap hide" id="batchWrap" style="margin-top:8px;">
@@ -627,6 +636,7 @@
             <thead><tr><th style="width:34px;"><input type="checkbox" id="batchAll" style="width:auto;" checked></th><th>名稱</th><th>查到的地方</th><th>座標(點開核對)</th><th>狀態</th></tr></thead>
             <tbody id="batchBody"></tbody>
           </table>
+        </div>
         </div>
       </div>
       <div class="card">
@@ -1551,15 +1561,19 @@
        新分母 = 所有「App 端會顯示失敗」的原因加總 ÷ 當日全部定位請求。25% 黃、40% 紅。 */
     var FAIL_APIS = ["miss","cache_hit_miss","budget_blocked","driver_cap_blocked","miss_throttled",
                      "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded"];
+    // 0728 指標重製:失敗率改用 today_clean(排除測試機)—— 測試機一台佔全隊流量八成,會把真司機體感淹掉。
+    // 未跑 v13 SQL 時 today_clean 不存在 → 退回全量(相容舊 RPC)。
+    var frRows = s.today_clean || today;
+    var frTag = s.today_clean ? "(排除測試機)" : "";
     var failN = 0, allN = 0;
-    today.forEach(function(r){
+    frRows.forEach(function(r){
       allN += Number(r.n || 0);
       if(FAIL_APIS.indexOf(r.api) >= 0) failN += Number(r.n || 0);
     });
     if(allN >= 200){
       var fr = failN / allN;
-      if(fr >= 0.40) warns.push("🔴 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")—— 這是司機實際體感,新客戶會直接退訂,立刻查原因分佈");
-      else if(fr >= 0.25) warns.push("🟠 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")—— 已偏高,建議查是哪一類在漲");
+      if(fr >= 0.40) warns.push("🔴 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")" + frTag + "—— 這是司機實際體感,新客戶會直接退訂,立刻查原因分佈");
+      else if(fr >= 0.25) warns.push("🟠 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")" + frTag + "—— 已偏高,建議查是哪一類在漲");
     }
 
     /* ② 反向門檻(0727 新增):現有門檻【全部只抓「太高」,沒有一條抓得到「歸零」】——
@@ -1696,13 +1710,16 @@
       if(!rows.length) bars.innerHTML = "<div class='muted'>今天還沒有任何查詢。</div>";
 
       var dv = $('geoDrivers'); dv.innerHTML = "";
+      var testerKeys = (s.baseline && s.baseline.exclude) || [];   // 0728:測試機標籤(v13 RPC 提供)
       (s.today_by_driver || []).forEach(function(r){
         var tr = document.createElement('tr');
-        tr.innerHTML = "<td>" + esc(licName(r.lic)) + "</td><td>" + r.n + "</td>";
+        var tag = testerKeys.indexOf(r.lic) >= 0 ? " <span class='muted' style='font-size:11px;'>🧪測試機</span>" : "";
+        tr.innerHTML = "<td>" + esc(licName(r.lic)) + tag + "</td><td>" + r.n + "</td>";
         dv.appendChild(tr);
       });
       $('geoNote').textContent = "地址快取 " + (s.cache_rows || 0) + " 筆(同地址跨司機共用、90 天閒置才清)。免費額/單價為 2025 新制參考:Geocoding 與距離每月各 1 萬次免費、Places 文字搜尋 5 千次免費;實際以 Google Cloud 帳單為準。";
-      renderGeoAdvice({ today: today, month: month, cost: cost, gToday: gToday, hits: hits, cap: s.cap, drivers: s.today_by_driver || [] });
+      renderGeoAdvice({ today: today, month: month, cost: cost, gToday: gToday, hits: hits, cap: s.cap, drivers: s.today_by_driver || [],
+        cmpB: s.cmp_before || [], cmpA: s.cmp_after || [], baseline: s.baseline || null, testers: testerKeys });
       renderUsageTrend();
     });
   }
@@ -1768,9 +1785,31 @@
     if(blockedT > 0){
       tips.push({ s:2, h:"🟡 今日有 <b>"+blockedT+"</b> 次因超每日上限被擋(卡片退了直線)。正常量就調高上限;異常先查是哪個司機在狂打。" });
     }
-    var dr = (c.drivers || []).slice();
+    // 0728:排行警告排除測試機(測試機掛最忙的群、量天生就大,警告它=每天狼來了)
+    var dr = (c.drivers || []).filter(function(r){ return (c.testers || []).indexOf(r.lic) < 0; });
     if(dr.length >= 2 && dr[0].n > 200 && dr[0].n > dr[1].n * 3){
       tips.push({ s:2, h:"🟡 司機 <b>"+esc(licName(dr[0].lic))+"</b> 今日 "+dr[0].n+" 次,遠高於其他人，可能一直查不到在重打,值得看他的單。" });
+    }
+    /* 0728 指標重製:新版 vs 舊版對照(基線=v29/v30 上線日;兩邊都排除測試機)。
+       cmp_before=基線前 7 天、cmp_after=基線起至今 —— 舊資料就是對照組,所以什麼都不刪。 */
+    if(c.baseline && (c.cmpB || []).length && (c.cmpA || []).length){
+      var CMP_FAILS = ["miss","cache_hit_miss","budget_blocked","driver_cap_blocked","miss_throttled",
+                       "places_gate_dbfail","places_cap_hit","rate_limited","auto_disabled","geocode_exception","miss_skipped_degraded"];
+      var aggCmp = function(rows){
+        var all = 0, fail = 0, days = 1;
+        rows.forEach(function(r){ all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        return { all: all, fail: fail, days: days };
+      };
+      var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
+      if(B.all >= 200 && A.all >= 200){
+        var fb = Math.round(B.fail * 100 / B.all), fa = Math.round(A.fail * 100 / A.all);
+        tips.push({ s: (fa < fb ? 0 : 2),
+          h: "📊 <b>新版對照</b>(基線 " + esc(c.baseline.since) + " 起,前後皆排除測試機):定位失敗率 <b>" + fb + "% → " + fa + "%</b>" +
+             (fa < fb ? "(改善 " + (fb - fa) + " 個百分點 ✓)" : (fa === fb ? "(持平,續觀察)" : "(變差 " + (fa - fb) + " 點,要查)")) +
+             " · 日均查詢 " + Math.round(B.all / B.days).toLocaleString() + " → " + Math.round(A.all / A.days).toLocaleString() + " 次。" });
+      } else if(A.all < 200){
+        tips.push({ s:1, h:"📊 新版對照(基線 " + esc(c.baseline.since) + "):新版樣本還不足 200 次,累積中 —— 過一兩天再看這格。" });
+      }
     }
     tips.sort(function(a,b){ return b.s - a.s; });
     var SEV = { 3:{bd:'var(--red)',bg:'var(--red-soft)'}, 2:{bd:'var(--amber2)',bg:'var(--amber-soft)'}, 1:{bd:'var(--faint)',bg:'var(--chip)'}, 0:{bd:'var(--teal)',bg:'var(--teal-soft)'} };
@@ -1873,7 +1912,9 @@
   var BATCH = [];
   function batchRender(){
     var tb = $('batchBody'); tb.innerHTML = "";
+    var hideDone = $('batchHideDone') && $('batchHideDone').checked;   // 0728:清單很長時把已寫入/已有同名收掉,只剩待核對的
     BATCH.forEach(function(r, i){
+      if(hideDone && (r.state === "written" || r.state === "dup")) return;
       var tr = document.createElement('tr');
       var st = r.state==="pending" ? "<span class='muted'>待查</span>"
              : r.state==="looking" ? "查詢中…"
@@ -1957,6 +1998,26 @@
     }
     step();
   });
+  if($('batchHideDone')) $('batchHideDone').addEventListener('change', batchRender);
+
+  /* ── 卡片收合(0728 使用者需求:候選/待補/批量匯入三張長卡收得起來,頁面才捲得完)──
+     狀態記在瀏覽器;批量匯入預設收起(偶爾用的工具),另外兩張預設展開。 */
+  function wireCollapse(btnId, bodyId, defOpen){
+    var btn = $(btnId), body = $(bodyId);
+    if(!btn || !body) return;
+    var k = 'tr-fold-' + bodyId, open;
+    try{ var s = localStorage.getItem(k); open = (s === null) ? defOpen : (s === '1'); }catch(e){ open = defOpen; }
+    function apply(){ body.classList.toggle('hide', !open); btn.textContent = open ? '收合 ▴' : '展開 ▾'; }
+    btn.addEventListener('click', function(){
+      open = !open;
+      try{ localStorage.setItem(k, open ? '1' : '0'); }catch(e){}
+      apply();
+    });
+    apply();
+  }
+  wireCollapse('candTgl', 'candBody', true);
+  wireCollapse('missTgl', 'missBody', true);
+  wireCollapse('batchTgl', 'batchBodyWrap', false);
 
   /* ── 自動回填候選(Places 花錢換到的地名 → 一鍵收進位置庫) ──
      這張清單只是收集箱,完全不參與定位;按下「採用」才會走既有的「新增地點」流程(含重複別名檢查)。 */
