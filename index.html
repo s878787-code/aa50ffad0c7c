@@ -1596,8 +1596,8 @@
     var dbBytes = Number(s.db_bytes || 0);
     if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
 
-    /* 📉 Places 保險絲(0727 門檻由 600 降到 150):Google 後台物理鎖是 300/日,App 端 cap 已降到 250。
-       門檻設在物理鎖的一半,才來得及在「開始查無」之前示警。 */
+    /* 📉 Places 保險絲(0728 v29.0 更新):Google 端已換新版 API,配額 SearchText/GetPlace 各 2,000/日
+       (Console 可調);現在的瓶頸是【App/伺服器端 cap 250】。門檻 150 = cap 的六成,在「開始查無」之前示警。 */
     (function(){
       var byDay = {};
       (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
@@ -1606,7 +1606,7 @@
       var pPrev  = ds.length > 1 ? byDay[ds[ds.length-2]] : 0;
       if(pToday >= 150){
         var trend = pPrev ? (pToday <= pPrev ? "↓ 比昨天("+pPrev+")低" : "↑ 比昨天("+pPrev+")還高") : "";
-        warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — App 端上限 250、Google 後台物理鎖 300。" +
+        warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — App/伺服器端上限 250(v29.0 起 Google 端新版配額 2,000/日,瓶頸在我們自己的 cap)。" +
           "打到上限後「補錯城市/裸路名」會失去唯一救援層,司機開始整片查無。");
       }
     })();
@@ -1721,14 +1721,14 @@
       tips.push({ s:0, h:"🟢 本月目前 <b>US$0</b>，查座標/距離都走免費(自架 + 快取),沒花到 Google 錢。" });
     } else {
       var paid = [["Google Geocoding", Math.max(0, geoM-10000)*5/1000],
-                  ["Places", Math.max(0, placesM-5000)*32/1000],
+                  ["Places", Math.max(0, placesM-10000)*5/1000],
                   ["Google 距離", Math.max(0, distGM-10000)*5/1000]];
       paid.sort(function(a,b){ return b[1]-a[1]; });
-      tips.push({ s:3, h:"🔴 本月已產生 <b>US$"+c.cost.toFixed(2)+"</b>,主要來自 <b>"+esc(paid[0][0])+"</b>。往下看哪裡能砍。" });
+      tips.push({ s:3, h:"🔴 本月已產生 <b>US$"+c.cost.toFixed(2)+"</b>,主要來自 <b>"+esc(paid[0][0])+"</b>。往下看哪裡能砍。<br><small>7/28 切換兩段式:本月估算全用新價($5/千),切換前那段實際帳單較高 —— 絕對金額以 GCP 帳單為準,這裡看趨勢。</small>" });
     }
     var now = new Date(), dom = now.getDate(), dim = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
     function proj(m){ return Math.round(m / dom * dim); }
-    var pc = Math.max(0, proj(geoM)-10000)*5/1000 + Math.max(0, proj(placesM)-5000)*32/1000 + Math.max(0, proj(distGM)-10000)*5/1000;
+    var pc = Math.max(0, proj(geoM)-10000)*5/1000 + Math.max(0, proj(placesM)-10000)*5/1000 + Math.max(0, proj(distGM)-10000)*5/1000;
     if(pc >= c.cost + 1){
       tips.push({ s:2, h:"📈 照今日的量推估,本月底 Google 費用可能到 <b>~US$"+pc.toFixed(0)+"</b>(現在 $"+c.cost.toFixed(2)+");geocode 月推估 ~"+proj(geoM).toLocaleString()+" 次(免費額 10,000)。自架接手後會下降。" });
     }
