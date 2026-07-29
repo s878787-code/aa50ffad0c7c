@@ -1566,17 +1566,25 @@
     // 未跑 v13 SQL 時 today_clean 不存在 → 退回全量(相容舊 RPC)。
     var frRows = s.today_clean || today;
     var frTag = s.today_clean ? "(排除測試機)" : "";
-    var failN = 0, allN = 0;
+    var failN = 0, allN = 0, graveN = 0;
     frRows.forEach(function(r){
       /* db_layer_error 是「同一請求」的附加標記列(該請求的成敗已由其他列計入)—— 進分母會稀釋失敗率 */
       if(r.api === "db_layer_error") return;
-      allN += Number(r.n || 0);
-      if(FAIL_APIS.indexOf(r.api) >= 0) failN += Number(r.n || 0);
+      var n = Number(r.n || 0);
+      allN += n;
+      if(r.api === "cache_hit_miss") graveN += n;
+      if(FAIL_APIS.indexOf(r.api) >= 0) failN += n;
     });
-    if(allN >= 200){
-      var fr = failN / allN;
-      if(fr >= 0.40) warns.push("🔴 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")" + frTag + "—— 這是司機實際體感,新客戶會直接退訂,立刻查原因分佈");
-      else if(fr >= 0.25) warns.push("🟠 司機看得到的定位失敗率 " + Math.round(fr*100) + "%(" + failN + "/" + allN + ")" + frTag + "—— 已偏高,建議查是哪一類在漲");
+    /* 0730 口徑升級(使用者拍板):墓地吸收(死單重試撞 miss 快取)是防禦成功,舊口徑卻算失敗 ——
+       一張死單被自動重試幾百次就灌幾百筆分子,把失敗率虛推到 30%+ 嚇人(數的是「事件」不是「卡片」)。
+       兩行並列:「真實體感」(排除墓地)= 新單的實際成敗,警告門檻依它;「含重試事件」= 系統負載視角。 */
+    var allT = allN - graveN, failT = failN - graveN;
+    if(allT >= 200){
+      var frT = failT / allT, frRaw = allN ? failN / allN : 0;
+      var frMsg = "司機可見定位失敗率:真實體感 " + Math.round(frT*100) + "%(" + failT + "/" + allT + ")|含重試事件 " + Math.round(frRaw*100) + "%(" + failN + "/" + allN + ")" + frTag;
+      if(frT >= 0.40) warns.push("🔴 " + frMsg + " —— 體感已到危險區,新客戶會直接退訂,立刻查原因分佈");
+      else if(frT >= 0.25) warns.push("🟠 " + frMsg + " —— 已偏高,建議查是哪一類在漲");
+      else if(frRaw >= 0.40) warns.push("🟡 " + frMsg + " —— 體感正常,但重試事件量大 = 板上死單多(墓地在忙),有空看看死單哪來");
     }
 
     /* ② 反向門檻(0727 新增):現有門檻【全部只抓「太高」,沒有一條抓得到「歸零」】——
