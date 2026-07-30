@@ -473,7 +473,7 @@
         <div class="kpi" style="cursor:default;"><div class="n" id="geoToday">—</div><div class="t">今日 Google 呼叫</div></div>
         <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
-        <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 看單救援</div></div>
+        <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 抓址層(只修座標)</div></div>
       </div>
 
       <!-- 回報媒體用量 + 一鍵清理(取代要記得手動跑 media-cleanup.sh) -->
@@ -493,7 +493,7 @@
           <div class="seg" id="usageSeg" style="margin-left:auto;">
             <button data-u="google" class="on">Google 呼叫</button>
             <button data-u="cache">快取命中</button>
-            <button data-u="ai">AI 看單</button>
+            <button data-u="ai">AI 抓址</button>
             <button data-u="rate">命中率</button>
           </div>
         </div>
@@ -514,7 +514,7 @@
           <button class="ghost" id="geoCapBtn" style="padding:5px 12px;">設定</button>
         </div>
         <div class="rowline" id="aiCtl" style="margin-top:8px;">
-          <span class="muted" style="font-weight:700;">🤖 AI 看單</span>
+          <span class="muted" style="font-weight:700;">🤖 AI 抓址層</span>
           <button class="ghost" id="aiToggle" style="padding:5px 12px;">—</button>
           <span class="muted" style="font-size:12.5px;">每日上限</span>
           <input type="number" id="aiCap" min="0" style="width:90px;" placeholder="0=不限">
@@ -622,7 +622,7 @@
         <div id="batchBodyWrap">
         <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
           一行一筆,兩種格式:<b>只有名稱</b>(例:<code>三峽區鴛鴦谷烤肉區</code>)→ 用名稱搜尋;<b>名稱 | 地址</b>(例:<code>青城桔市社區 | 土城區中央路三段239巷</code>)→ 用地址查座標、以名稱存檔(Tab 分隔也可以)。<br>
-          查詢先走<b>免費 OSM</b>,查不到才退 Google(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
+          查詢先走 <b>Map8 台灣圖霸</b>(台灣本土圖資,回完整地址可核對),再退免費 OSM,最後才是 Google(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
         </div>
         <textarea id="batchInput" rows="7" style="width:100%; margin-top:8px; font-size:13px; font-family:inherit;" placeholder="三峽區鴛鴦谷烤肉區&#10;龜山嶺頂門市&#10;青城桔市社區 | 土城區中央路三段239巷"></textarea>
         <div class="toolbar" style="margin-top:8px;">
@@ -1364,27 +1364,58 @@
   }
 
   /* ── 用量成本 ── */
+  /* 📍 這張表的【順序 = 定位鏈的實際順序】(明細表依宣告序渲染)—— 從上往下讀就是一張單進來會經過的層。
+     v32.0 架構:免費層(位置庫→門牌庫→墓碑→自架→快取→路段)→ 🤖AI 抓址 → 🗺️Map8 → Google → 距離 → 量測。 */
   var GEO_PRICING = {
-    geocode:            { free: 10000, per1000: 5,  paid:true,  label: "Google Geocoding(長尾退路)" },
-    geocode_nominatim:  { free: 0,     per1000: 0,  paid:false, label: "自架 Nominatim 路名/地標(免費)" },
-    geocode_tgos:       { free: 0,     per1000: 0,  paid:false, label: "TGOS 門牌定位(內政部官方,免費)" },
-    places:             { free: 10000, per1000: 5,  paid:true,  label: "Places 就近補救(v29.0 新版兩段式)" },
-    distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "Google 距離(退路)" },
-    distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "Geoapify 距離(免費3000/日)" },
-    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "自架 OSRM 距離(免費)" },
-    cache_hit:          { free: 0,     per1000: 0,  paid:false, label: "快取命中(不花錢)" },
-    // 0717:門牌庫命中原本【漏在這張表外】→ 明細/長條圖都看不到它,但它其實是全系統最大免費來源
-    //(本月 46.9 萬次;沒有它這些全要打 Google $5/千 ≈ 多花 NT$7 萬/月)。per1000:0 → 不進成本計算;
-    // 命中率公式走 FREE_HITS 另一條路,不受此列影響(0713 拍板的分子定義維持原樣)。
-    door_hit:           { free: 0,     per1000: 0,  paid:false, label: "🏠 門牌庫命中(政府開放門牌 298 萬筆,免費)" },
-    community_hit:      { free: 0,     per1000: 0,  paid:false, label: "🏢 社區位置庫命中(免費)" },
-    budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "超每日上限被擋" },
-    aiparse:            { free: 0,     per1000: 1.5, paid:true, label: "🤖 AI 看單(Haiku)" },
-    aiparse_blocked:    { free: 0,     per1000: 0,  paid:false, label: "🤖 AI 超每日上限被擋" },
-    // 0717 量測(不計成本,純診斷):App「補了城市卻查無」的量,判斷「無證據就別補主場城市」該不該做。
-    //   scoped_zero=上界(補了城市查無,含門牌打錯);city_wrong=下界(剝掉城市就查到=確定補錯城市)。
+    // ── 免費層(命中率的主力,越靠上越便宜)──────────────────────────
+    community_hit:      { free: 0,     per1000: 0,  paid:false, label: "①🏢 位置庫命中(策展地標,最高優先·免費)" },
+    door_hit:           { free: 0,     per1000: 0,  paid:false, label: "②🏠 門牌庫命中(政府開放門牌 298 萬筆·免費)" },
+    cache_hit_miss:     { free: 0,     per1000: 0,  paid:false, label: "③🪦 墓碑命中(已判死的單,2 次讀取秒回·免費)" },
+    cache_hit:          { free: 0,     per1000: 0,  paid:false, label: "④💾 座標快取命中(全隊共享 90 天·免費)" },
+    cache_hit_road:     { free: 0,     per1000: 0,  paid:false, label: "④💾 路段快取命中(同路段共用·免費)" },
+    cache_hit_route:    { free: 0,     per1000: 0,  paid:false, label: "④💾 路線距離快取命中(200m 分格·免費)" },
+    geocode_nominatim:  { free: 0,     per1000: 0,  paid:false, label: "⑤🗺️ 自架 Nominatim 路名/地標(免費)" },
+    geocode_tgos:       { free: 0,     per1000: 0,  paid:false, label: "⑥🏛️ TGOS 門牌定位(內政部官方·免費,未啟用)" },
+    // ── 🤖 AI 抓址層(1.9):看不懂的單→判讀→重跑免費層;救回=完全沒花圖資錢 ──
+    ai_parse:           { free: 0,     per1000: 0.11, paid:true, label: "⑦🤖 AI 抓址判讀(Mistral·救回=零圖資費)" },
+    ai_err:             { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 失敗/產出被反腦補閘擋下(已放行下層)" },
+    ai_capped:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 超每日上限被擋" },
+    ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
+    // ── 🗺️ Map8 台灣圖霸(1.95,試用至 08-07):NT$0.07/次 ≈ Google 45 折,不分 API ──
+    map8:               { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 圖霸 地址定位(試用中)" },
+    map8_err:           { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 呼叫失敗(逾時/錯誤→標降級)" },
+    map8_capped:        { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 超自家日上限被擋(4000/日)" },
+    map8_shadow:        { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:查無救援試驗(評估用)" },
+    map8_shadow_cmp:    { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:與 Google 座標對照抽樣" },
+    map8_shadow_err:    { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 shadow 呼叫失敗" },
+    // ── 💰 Google(最後手段;每日上限保險絲擋在前面)──────────────
+    geocode:            { free: 10000, per1000: 5,  paid:true,  label: "⑨💰 Google Geocoding(長尾退路)" },
+    places:             { free: 10000, per1000: 5,  paid:true,  label: "⑩💰 Places 就近補救(地標名·新版兩段式)" },
+    places_cap_hit:     { free: 0,     per1000: 0,  paid:false, label: "⑩💰 Places 上限已滿被擋(全隊1000/個人60)" },
+    budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "🔴 超 Google 每日上限被擋(全隊斷糧)" },
+    // ── 🪦 墓碑寫入(死單安息機制,研磨機的解藥)────────────────
+    miss_capped:        { free: 0,     per1000: 0,  paid:false, label: "🪦 寫 6 小時短效墓碑(額度用盡類)" },
+    miss_skipped_degraded: { free: 0,  per1000: 0,  paid:false, label: "🛡️ 系統故障→拒寫墓碑(0724 鐵律,防誤烙印)" },
+    // ── 📏 距離(算 km 與 ETA;OSRM 順便回行車秒數)──────────────
+    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "📏 自架 OSRM 距離+ETA(免費)" },
+    distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "📏 Geoapify 距離(免費 3000/日)" },
+    distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "📏💰 Google 距離(退路)" },
+    // ── 🧾 分類器歸因(每張新判死的單背景貼標籤 → 下一輪該修哪裡)──
+    ai_cls_dirty:       { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:行首髒前綴/時間黏頭" },
+    ai_cls_city:        { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:缺城市或城市黏錯" },
+    ai_cls_landmark:    { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:地標名未入庫" },
+    ai_cls_broken:      { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:地址殘缺或打錯" },
+    ai_cls_ad:          { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:廣告/非車單誤抓" },
+    ai_cls_other:       { free: 0,     per1000: 0.05, paid:true, label: "🧾 歸因:其他" },
+    // ── 📊 量測/診斷(不花錢,判斷該修哪裡)────────────────────
+    lead_noise:         { free: 0,     per1000: 0,  paid:false, label: "📊 行首髒前綴被清掉(=Parser 漏認的活案例)" },
     scoped_zero:        { free: 0,     per1000: 0,  paid:false, label: "📊 補城市卻查無(量測·上界)" },
-    city_wrong:         { free: 0,     per1000: 0,  paid:false, label: "📊 確定補錯城市(量測·下界)" }
+    city_wrong:         { free: 0,     per1000: 0,  paid:false, label: "📊 確定補錯城市(量測·下界)" },
+    nominatim_timeout:  { free: 0,     per1000: 0,  paid:false, label: "⚠️ 自架 Nominatim 逾時(掛機偵測)" },
+    db_unavailable:     { free: 0,     per1000: 0,  paid:false, label: "⚠️ 資料庫讀不到(司機看到「稍後重試」)" },
+    // ── 🗑️ 已移除功能的歷史資料(留著看得懂舊帳)──────────────
+    aiparse:            { free: 0,     per1000: 1.5, paid:true, label: "🗑️ AI 看單 Haiku(0731 腦補事故後已整支移除)" },
+    aiparse_blocked:    { free: 0,     per1000: 0,  paid:false, label: "🗑️ AI 看單超上限(已移除)" }
   };
   var GOOGLE_APIS = ["geocode", "places", "distance_google"];
   // 命中率公式(0713 使用者拍板修回上一版):只算 cache_hit ÷ (cache_hit + Google 呼叫)。
@@ -1405,7 +1436,7 @@
   });
   $('aiToggle').addEventListener('click', function(){
     api("setAiConfig", { enabled: !aiEnabled, cap: parseInt($('aiCap').value || "0", 10) || 0 }).then(function(res){
-      if(res.ok){ toast(res.ai_enabled ? "🤖 AI 看單已開啟" : "⛔ AI 看單已關閉"); loadGeoUsage(); }
+      if(res.ok){ toast(res.ai_enabled ? "🤖 AI 抓址層已開啟" : "⛔ AI 抓址層已關閉"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
     });
   });
@@ -1568,8 +1599,12 @@
     var frTag = s.today_clean ? "(排除測試機)" : "";
     var failN = 0, allN = 0, graveN = 0;
     frRows.forEach(function(r){
-      /* db_layer_error 是「同一請求」的附加標記列(該請求的成敗已由其他列計入)—— 進分母會稀釋失敗率 */
-      if(r.api === "db_layer_error") return;
+      /* db_layer_error 是「同一請求」的附加標記列(該請求的成敗已由其他列計入)—— 進分母會稀釋失敗率。
+         0731:shadow 類(map8_*/places_new_shadow)是影子量測不是真請求,同樣剔出(v10 觸發器把
+         null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
+      if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
+        || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
+        || r.api === "ai_err" || r.api === "ai_capped") return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列) */
       var n = Number(r.n || 0);
       allN += n;
       if(r.api === "cache_hit_miss") graveN += n;
@@ -1638,6 +1673,59 @@
     /* Places cap 已經打到 → 這是「現在就在壞」,不是預警 */
     var capHit = null; today.forEach(function(r){ if(r.api === "places_cap_hit") capHit = r; });
     if(capHit && capHit.n > 0) warns.push("🔴 Places 每日上限已觸發 " + capHit.n + " 次 —— 從觸發那一刻起,補錯城市/裸路名的單全部失去救援層");
+    /* 🗺️ Map8 試用監控(0731 使用者點名;試用 key 至 08-07 17:30):正式層收單率+shadow 救回率
+       是回 Zola 談級距的兩個核心數字。有任何 map8 活動就常駐顯示。 */
+    (function(){
+      var m8n=0,m8ok=0,shn=0,shok=0,e8=0,c8=0;
+      today.forEach(function(r){
+        if(r.api==="map8"){m8n+=r.n;m8ok+=r.ok_n;}
+        else if(r.api==="map8_shadow"){shn+=r.n;shok+=r.ok_n;}
+        else if(r.api==="map8_err"||r.api==="map8_shadow_err"){e8+=r.n;}
+        else if(r.api==="map8_capped"){c8+=r.n;}
+      });
+      if(m8n+shn+e8>0){
+        warns.push("🗺️ Map8 試用中(至 08-07):正式層今日 "+m8n+" 次、收單 "+m8ok+"("+(m8n?Math.round(100*m8ok/m8n):0)+"%)"
+          +" | shadow 查無救回 "+shok+"/"+shn
+          +(e8?" | ⚠️ 呼叫失敗 "+e8+" 次":"")
+          +(c8?" | 🔴 已觸自家日上限 4000":"")
+          +" —— 推估費用見下方用量成本表");
+      }
+      /* 🤖 AI 抓址層(1.9):救回率 = 「AI 判讀後在免費層命中」的比例,每一筆都等於省下一發付費圖資 */
+      var an=0,aok=0,ae=0,ac=0;
+      today.forEach(function(r){
+        if(r.api==="ai_parse"){an+=r.n;aok+=r.ok_n;}
+        else if(r.api==="ai_err"){ae+=r.n;} else if(r.api==="ai_capped"){ac+=r.n;}
+      });
+      var ast=0,astok=0;
+      today.forEach(function(r){ if(r.api==="ai_assist"){ast+=r.n;astok+=r.ok_n;} });
+      if(an+ae>0){
+        warns.push("🤖 AI 抓址今日 "+an+" 次、免費層直接救回 "+aok+"("+(an?Math.round(100*aok/an):0)+"%)"
+          +(ast?" | 判讀轉交付費層:成 "+astok+"/敗 "+(ast-astok):"")
+          +" —— 每救回 1 筆 ≈ 省一發 Map8/Google"
+          +(ae?" | ⚠️ 呼叫失敗/不合格 "+ae+" 次(已放行付費層,未卡司機)":"")
+          +(ac?" | 🔴 已觸 ai_daily_cap":""));
+      }
+      /* 🤖 AI 成長曲線(近 7 天救回率;需 migrations_v15 讓 days 桶帶 ok_n,沒跑 SQL 前自動隱藏) */
+      (function(){
+        var byDay={};
+        (s.days||[]).forEach(function(r){
+          if(r.api==="ai_parse" && r.ok_n!=null){ byDay[r.day]=byDay[r.day]||{n:0,ok:0}; byDay[r.day].n+=r.n; byDay[r.day].ok+=Number(r.ok_n||0); }
+        });
+        var ds=Object.keys(byDay).sort();
+        if(ds.length>=2){
+          var line=ds.map(function(d){ var b=byDay[d]; return d.slice(3)+"日"+(b.n?Math.round(100*b.ok/b.n):0)+"%"; }).join(" → ");
+          warns.push("📈 AI 救回率成長曲線:"+line+"(拍板越多、教得越多,這條線就越高)");
+        }
+      })();
+      /* 🧾 查無歸因分佈(分類器 ai_cls_*):哪類死單在漲 = 下一個該修的地方,自動浮出 */
+      var cls={dirty:"髒前綴",city:"城市錯",landmark:"地標未收",broken:"殘缺",ad:"廣告誤抓",other:"其他"};
+      var clsParts=[],clsTotal=0;
+      Object.keys(cls).forEach(function(k){
+        var t=0; today.forEach(function(r){ if(r.api==="ai_cls_"+k) t+=r.n; });
+        if(t>0){ clsParts.push(cls[k]+" "+t); clsTotal+=t; }
+      });
+      if(clsTotal>0) warns.push("🧾 今日查無歸因("+clsTotal+" 筆):"+clsParts.join("|")+" —— 最大宗就是下一輪該修的");
+    })();
     return warns;
   }
 
@@ -1809,7 +1897,7 @@
                        "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ if(r.api === "db_layer_error") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
