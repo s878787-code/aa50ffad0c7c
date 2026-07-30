@@ -1383,6 +1383,10 @@
     ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
     // ── 🗺️ Map8 台灣圖霸(1.95,試用至 08-07):NT$0.07/次 ≈ Google 45 折,不分 API ──
     map8:               { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 圖霸 地址定位(試用中)" },
+    /* 0731 分家:map8 ok:false=Map8 自己查無;map8_guard=它給了答案但被我們的護欄擋下
+       (路名不符/兜底級 level 5-6/界外)。分開才知道「命中率低」是它不行還是我們太嚴。 */
+    map8_guard:         { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 有結果但被我們護欄擋下" },
+    map8_guard_why:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ (量測)被擋原因:level/信心/回傳地址" },
     map8_err:           { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 呼叫失敗(逾時/錯誤→標降級)" },
     map8_capped:        { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 超自家日上限被擋(4000/日)" },
     map8_shadow:        { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:查無救援試驗(評估用)" },
