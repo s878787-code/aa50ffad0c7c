@@ -1600,7 +1600,7 @@
     var failN = 0, allN = 0, graveN = 0;
     frRows.forEach(function(r){
       /* db_layer_error 是「同一請求」的附加標記列(該請求的成敗已由其他列計入)—— 進分母會稀釋失敗率。
-         0731:shadow 類(map8_*/places_new_shadow)是影子量測不是真請求,同樣剔出(v10 觸發器把
+         0731:shadow 類(map8_ 前綴與 places_new_shadow)是影子量測不是真請求,同樣剔出(v10 觸發器把
          null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
