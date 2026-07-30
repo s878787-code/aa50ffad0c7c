@@ -1621,17 +1621,17 @@
     var dbBytes = Number(s.db_bytes || 0);
     if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
 
-    /* 📉 Places 保險絲(0729 更新:全隊 cap 250→600、個人 20→40,新價時代重訂;帶門牌號的地址已不走
-       Places 就近,只剩地標名會用)。門檻 360 = cap 的六成,在「開始查無」之前示警。 */
+    /* 📉 Places 保險絲(0731 更新:全隊 cap 600→1000、個人 40→60,使用者拍板服務優先;帶門牌號的
+       地址不走 Places,只剩地標名會用)。門檻 600 = cap 的六成,在「開始查無」之前示警。 */
     (function(){
       var byDay = {};
       (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
       var ds = Object.keys(byDay).sort();
       var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
       var pPrev  = ds.length > 1 ? byDay[ds[ds.length-2]] : 0;
-      if(pToday >= 360){
+      if(pToday >= 600){
         var trend = pPrev ? (pToday <= pPrev ? "↓ 比昨天("+pPrev+")低" : "↑ 比昨天("+pPrev+")還高") : "";
-        warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — 全隊上限 600/日、個人 40/日(0729 新價重訂;帶門牌號地址已不走 Places,只剩地標名)。" +
+        warns.push("🟠 Places 就近今日 " + pToday + " 次 " + trend + " — 全隊上限 1000/日、個人 60/日(0731 服務優先重訂;帶門牌號地址不走 Places,只剩地標名)。" +
           "打到上限後「地標名」會失去唯一救援層開始查無(地址類不受影響,走門牌庫/Google)。");
       }
     })();
