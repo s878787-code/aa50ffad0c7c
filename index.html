@@ -474,6 +474,11 @@
         <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 抓址層(只修座標)</div></div>
+        <!-- 0731:ETA 改由 Map8 路徑規劃主辦 → 這格看它今天扛了多少、後備接了多少。
+             可用度掉下來就代表 Map8 那邊在出事,司機看到的預估時間會退回 OSRM 的口徑。 -->
+        <div class="kpi" style="cursor:default;grid-column:span 2;">
+          <div class="n" id="etaSrc">—</div><div class="t" id="etaSrcSub">距離+預估時間來源(今日)</div>
+        </div>
       </div>
 
       <!-- 回報媒體用量 + 一鍵清理(取代要記得手動跑 media-cleanup.sh) -->
@@ -1409,6 +1414,18 @@
     map8_guard:         { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 有結果但被我們護欄擋下" },
     map8_guard_why:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ (量測)被擋原因:level/信心/回傳地址" },
     map8_err:           { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 呼叫失敗(逾時/錯誤→標降級)" },
+    /* 🗺️ Map8 路徑規劃:0731 起【距離與預估時間都走這裡】(使用者拍板)。一發拿兩個數字,
+       比分開算少一趟熱路徑往返,而且 km 與分鐘出自同一條路線。
+       與地址定位共用同一個 4000/日 錢包與同一個單價。
+       ⚠️ 盯 distance_osrm:它每跳一次就是一次【後備】—— 那個比值就是 Map8 的可用度。 */
+    map8_route:         { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 路徑規劃(距離+預估時間·主用)" },
+    map8_route_err:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃失敗(→ 退 OSRM 後備)" },
+    map8_route_capped:  { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃 超日上限被擋(與定位共用 4000)" },
+    /* 零成本量測:同一發 Map8 呼叫本來就會回距離,拿它跟 OSRM 的距離對照。
+       ok=true 代表兩邊差 ≤5%。這一格是在回答「距離要不要也切給 Map8」——
+       差得小就切(順便省掉 OSRM 那一發、km 與分鐘也會出自同一條路線);差很大就別動。
+       q 欄位寫著 osrm=…m map8=…m d=…% ,點進明細看得到每一筆。 */
+    map8_route_cmp:     { free: 0,     per1000: 0,  paid:false, label: "📊 (背景量測)Map8 vs OSRM 距離/時間差(ok=距離差≤5%)" },
     map8_capped:        { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 超自家日上限被擋(4000/日)" },
     map8_shadow:        { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:查無救援試驗(評估用)" },
     map8_shadow_cmp:    { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:與 Google 座標對照抽樣" },
@@ -1422,7 +1439,7 @@
     miss_capped:        { free: 0,     per1000: 0,  paid:false, label: "🪦 寫 6 小時短效墓碑(額度用盡類)" },
     miss_skipped_degraded: { free: 0,  per1000: 0,  paid:false, label: "🛡️ 系統故障→拒寫墓碑(0724 鐵律,防誤烙印)" },
     // ── 📏 距離(算 km 與 ETA;OSRM 順便回行車秒數)──────────────
-    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "📏 自架 OSRM 距離+ETA(免費)" },
+    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "📏 OSRM 距離+ETA(後備·Map8 算不出來才跳)" },
     distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "📏 Geoapify 距離(免費 3000/日)" },
     distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "📏💰 Google 距離(退路)" },
     // ── 🧾 分類器歸因(每張新判死的單背景貼標籤 → 下一輪該修哪裡)──
@@ -1829,6 +1846,27 @@
          抽出的原因見 #healthBar 註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
+      /* ── ETA 來源健康度(0731)──
+         Map8 路徑規劃是主辦、OSRM 是後備。可用度 = map8_route ÷ (map8_route + 後備實際算成的)。
+         看的是「有多少張卡的預估時間真的出自 Map8」,不是呼叫成功率 —— 後者會漏掉
+         「Map8 逾時 → OSRM 補上」那一整類(對司機來說那張卡的 ETA 就不是 Map8 的口徑)。 */
+      (function(){
+        var t = (res.stats && res.stats.today) || [];
+        function n(api){ var x = 0; t.forEach(function(r){ if(r.api === api) x += Number(r.n||0); }); return x; }
+        /* Map8 主辦距離+ETA 之後,distance_osrm 只在【後備】時才記帳
+           (背景對照那一發刻意不記帳,不然會污染這個分母)。所以它就是後備次數。 */
+        var m8 = n("map8_route"), cap = n("map8_route_capped"), err = n("map8_route_err");
+        var fb = n("distance_osrm") + n("distance_geoapify") + n("distance_google");
+        var tot = m8 + fb;
+        var el = $('etaSrc'), sub = $('etaSrcSub');
+        if(!el) return;
+        if(tot === 0){ el.textContent = "—"; el.style.color = ""; sub.textContent = "預估時間來源(今日):尚無資料"; return; }
+        var pct = Math.round(m8 * 100 / tot);
+        el.textContent = pct + "%";
+        el.style.color = pct >= 90 ? "var(--teal)" : (pct >= 60 ? "var(--amber)" : "var(--red)");
+        sub.textContent = "距離+預估時間出自 Map8 · 🗺️" + m8.toLocaleString() + " 張;後備 " + fb.toLocaleString() + " 張"
+          + (err ? " · 失敗 " + err : "") + (cap ? " · 🔴超上限 " + cap : "");
+      })();
       aiEnabled = res.ai_enabled !== false;
       $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
       $('aiToggle').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
