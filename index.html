@@ -495,12 +495,13 @@
             <button data-u="map8">Map8 呼叫</button>
             <button data-u="cache">快取命中</button>
             <button data-u="ai">AI 抓址</button>
+            <button data-u="rescue">看單救援</button>
             <button data-u="rate">命中率</button>
           </div>
         </div>
         <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
         <div class="chartbox" id="usageChart"></div>
-        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8 呼叫=命中+被護欄擋下(兩者都計費,約 Google 45 折);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8 呼叫=命中+被護欄擋下(兩者都計費,約 Google 45 折);AI 抓址／看單救援=實際打出去的發數(含逾時與被腦補閘擋下的,<b>就是各自保險絲數的那個數字</b>,兩層額度獨立);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
       </div>
 
       <div class="card" id="capCard">
@@ -1445,6 +1446,12 @@
   // 命中率公式(0713 使用者拍板修回上一版):只算 cache_hit ÷ (cache_hit + Google 呼叫)。
   //   門牌庫/社區庫命中不進分子(FREE_HITS 僅供逐司機明細的免費歸類用)。
   var FREE_HITS = ["cache_hit", "door_hit", "community_hit"];
+  /* 兩層 AI 的「呼叫量」名單 —— ⚠️ 必須與伺服器【保險絲數的那一份】逐字一致:
+     geocode/index.ts 的 AI_EXTRACT_APIS、airescue/index.ts 的 AI_RESCUE_APIS。
+     一致才代表圖上的數字就是「離每日上限還有多遠」;對不起來的話這張圖等於在誤導。
+     兩層的額度 0731 起【分家】(migrations_v19),所以名單也是各自獨立的兩份。 */
+  var AI_EXTRACT_APIS = ["ai_parse", "ai_err", "aiparse"];
+  var AI_RESCUE_APIS  = ["ai_rescue", "ai_rescue_err", "ai_rescue_blocked"];
   function geoSum(arr, apis){ var s = 0; (arr||[]).forEach(function(r){ if(apis.indexOf(r.api) >= 0) s += r.n; }); return s; }
   function licName(k){
     for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
@@ -2429,7 +2436,7 @@
     if(!res || !res.stats || !res.stats.days || !res.stats.days.length) return null;
     var map = {}, order = [];
     res.stats.days.forEach(function(r){
-      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, map8:0, cache:0, ai:0 }; order.push(r.day); }
+      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, map8:0, cache:0, ai:0, rescue:0 }; order.push(r.day); }
       var m = map[r.day];
       if(GOOGLE_APIS.indexOf(r.api) >= 0) m.google += r.n;
       /* 🗺️ Map8 呼叫量:【只算會被收費的】—— map8(命中)+ map8_guard(它給了答案但被我們護欄擋下,
@@ -2437,9 +2444,14 @@
          用 GEO_PRICING 的 paid 旗標判而不寫死名單:以後加新的 map8_ 列,計價一改這裡自動跟上。 */
       else if(r.api.indexOf("map8") === 0){ if(GEO_PRICING[r.api] && GEO_PRICING[r.api].paid) m.map8 += r.n; }
       else if(FREE_HITS.indexOf(r.api) >= 0) m.cache += r.n;   // 快取+門牌庫+社區庫 都算免費命中
-      /* 0731 修:這裡原本比對 "aiparse"(0731 已整支移除的舊 Haiku 看單)→ 這條線永遠是 0,
-         「AI 抓址」分頁等於一直在畫空圖。現行的抓址層記的是 ai_parse。 */
-      else if(r.api === "ai_parse") m.ai += r.n;
+      /* 🤖 AI 抓址 / 🔍 看單救援 的呼叫量:名單【與各自保險絲數的那一份一致】——
+         geocode 的 AI_EXTRACT_APIS、airescue 的 AI_RESCUE_APIS。這樣圖上的數字就是
+         「離每日上限還有多遠」的那個數字,兩邊對不起來的話這張圖等於在誤導。
+         逾時(ai_err/ai_rescue_err)與被腦補閘擋下(ai_rescue_blocked)都【已經打出去過】,
+         算呼叫;快取命中與被上限擋下沒打,不算。
+         0731 修:ai 這條原本只比對 "aiparse"(已整支移除的舊 Haiku)→ 永遠是 0,一直在畫空圖。 */
+      else if(AI_EXTRACT_APIS.indexOf(r.api) >= 0) m.ai += r.n;
+      else if(AI_RESCUE_APIS.indexOf(r.api) >= 0) m.rescue += r.n;
     });
     return order.map(function(d){ var m=map[d]; m.rate = (m.cache+m.google)>0 ? Math.round(m.cache*100/(m.cache+m.google)) : 0; return m; });
   }
