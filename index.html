@@ -492,6 +492,7 @@
         <div class="rowline"><span class="cardtitle">每日用量趨勢</span>
           <div class="seg" id="usageSeg" style="margin-left:auto;">
             <button data-u="google" class="on">Google 呼叫</button>
+            <button data-u="map8">Map8 呼叫</button>
             <button data-u="cache">快取命中</button>
             <button data-u="ai">AI 抓址</button>
             <button data-u="rate">命中率</button>
@@ -499,7 +500,7 @@
         </div>
         <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
         <div class="chartbox" id="usageChart"></div>
-        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8 呼叫=命中+被護欄擋下(兩者都計費,約 Google 45 折);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
       </div>
 
       <div class="card" id="capCard">
@@ -2412,11 +2413,17 @@
     if(!res || !res.stats || !res.stats.days || !res.stats.days.length) return null;
     var map = {}, order = [];
     res.stats.days.forEach(function(r){
-      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, cache:0, ai:0 }; order.push(r.day); }
+      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, map8:0, cache:0, ai:0 }; order.push(r.day); }
       var m = map[r.day];
       if(GOOGLE_APIS.indexOf(r.api) >= 0) m.google += r.n;
+      /* 🗺️ Map8 呼叫量:【只算會被收費的】—— map8(命中)+ map8_guard(它給了答案但被我們護欄擋下,
+         照樣是一發付費呼叫)。map8_err/map8_capped/map8_guard_why 不是成功呼叫,不計。
+         用 GEO_PRICING 的 paid 旗標判而不寫死名單:以後加新的 map8_ 列,計價一改這裡自動跟上。 */
+      else if(r.api.indexOf("map8") === 0){ if(GEO_PRICING[r.api] && GEO_PRICING[r.api].paid) m.map8 += r.n; }
       else if(FREE_HITS.indexOf(r.api) >= 0) m.cache += r.n;   // 快取+門牌庫+社區庫 都算免費命中
-      else if(r.api === "aiparse") m.ai += r.n;
+      /* 0731 修:這裡原本比對 "aiparse"(0731 已整支移除的舊 Haiku 看單)→ 這條線永遠是 0,
+         「AI 抓址」分頁等於一直在畫空圖。現行的抓址層記的是 ai_parse。 */
+      else if(r.api === "ai_parse") m.ai += r.n;
     });
     return order.map(function(d){ var m=map[d]; m.rate = (m.cache+m.google)>0 ? Math.round(m.cache*100/(m.cache+m.google)) : 0; return m; });
   }
