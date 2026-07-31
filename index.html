@@ -520,12 +520,15 @@
           <span class="muted" style="font-size:12.5px;">每日上限</span>
           <input type="number" id="aiCap" min="0" style="width:90px;" placeholder="0=不限">
           <button class="ghost" id="aiCapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;">只修座標,不改卡片文字 · 上限兩顆共用(0=不限)</span>
+          <span class="muted" style="font-size:11.5px;">只修座標,不改卡片文字(0=不限)</span>
         </div>
         <div class="rowline" id="aiRescueCtl" style="margin-top:8px;">
           <span class="muted" style="font-weight:700;">🔍 AI 看單救援</span>
           <button class="ghost" id="aiRescueToggle" style="padding:5px 12px;">—</button>
-          <span class="muted" style="font-size:11.5px;">規則抓 0 張時,AI 指出地址在原文哪一段,卡片仍由規則建 · 卡片標「🤖 AI 確認中」</span>
+          <span class="muted" style="font-size:12.5px;">每日上限</span>
+          <input type="number" id="aiRescueCap" min="0" style="width:90px;" placeholder="0=不限">
+          <button class="ghost" id="aiRescueCapBtn" style="padding:5px 12px;">設定</button>
+          <span class="muted" style="font-size:11.5px;">規則抓 0 張時才跑 · 卡片標「🤖 AI 確認中」· 額度與抓址層各自獨立</span>
         </div>
       </div>
 
@@ -1476,12 +1479,23 @@
       else toast("設定失敗(需管理員密碼)");
     });
   });
+  /* 三個保險絲【完全獨立】:Google / AI 抓址層 / AI 看單救援,各數各的、互不排擠。
+     0731 使用者裁決 —— 共用版試過,問題是很容易寫成單向(v18 踩過),而且兩層 AI 的量級差太遠,
+     綁在一起會讓抓址層把額度吃光、救援層被連坐停擺,後台還只看得到「capped」查不出是誰吃的。 */
   $('aiCapBtn').addEventListener('click', function(){
     if(!aiLoaded) return toast("設定還沒載入,請稍候");
     var cap = parseInt($('aiCap').value || "0", 10) || 0;
     /* 只設上限、不動開關:which 送 extract 並回填它【當下的值】,避免順手把抓址層切掉 */
     api("setAiConfig", { which: "extract", enabled: aiEnabled, cap: cap }).then(function(res){
-      if(res.ok){ toast(cap ? "AI 每日上限已設為 " + cap + "(兩顆共用)" : "AI 已取消上限(0=不限)"); loadGeoUsage(); }
+      if(res.ok){ toast(cap ? "抓址層每日上限已設為 " + cap : "抓址層已取消上限(0=不限)"); loadGeoUsage(); }
+      else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  $('aiRescueCapBtn').addEventListener('click', function(){
+    if(!aiLoaded) return toast("設定還沒載入,請稍候");
+    var cap = parseInt($('aiRescueCap').value || "0", 10) || 0;
+    api("setAiConfig", { which: "rescue", enabled: aiRescueEnabled, cap: cap }).then(function(res){
+      if(res.ok){ toast(cap ? "看單救援每日上限已設為 " + cap : "看單救援已取消上限(0=不限)"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
     });
   });
@@ -1822,6 +1836,8 @@
       aiRescueEnabled = res.ai_rescue_enabled === true;
       $('aiRescueToggle').textContent = aiRescueEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
       $('aiRescueToggle').style.color = aiRescueEnabled ? "var(--teal)" : "var(--red)";
+      /* 同上:null=讀不到 → 不覆寫輸入框,免得按鈕把 0 寫回 DB */
+      if(res.ai_rescue_cap != null && document.activeElement !== $('aiRescueCap')) $('aiRescueCap').value = res.ai_rescue_cap;
       $('aiRescueCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
 
       // 明細表
