@@ -519,7 +519,12 @@
           <span class="muted" style="font-size:12.5px;">每日上限</span>
           <input type="number" id="aiCap" min="0" style="width:90px;" placeholder="0=不限">
           <button class="ghost" id="aiCapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;">關掉=全隊不打 AI(退回純規則)</span>
+          <span class="muted" style="font-size:11.5px;">只修座標,不改卡片文字 · 上限兩顆共用(0=不限)</span>
+        </div>
+        <div class="rowline" id="aiRescueCtl" style="margin-top:8px;">
+          <span class="muted" style="font-weight:700;">🔍 AI 看單救援</span>
+          <button class="ghost" id="aiRescueToggle" style="padding:5px 12px;">—</button>
+          <span class="muted" style="font-size:11.5px;">規則抓 0 張時,AI 指出地址在原文哪一段,卡片仍由規則建 · 卡片標「🤖 AI 確認中」</span>
         </div>
       </div>
 
@@ -673,6 +678,8 @@
   var ROLE = "admin";          // 伺服器依密碼判定;viewer=唯讀(牆在伺服器,這裡只是藏按鈕)
   var REP_FILTER = "open", REP_TYPE = "全部", REP_QUERY = "";
   var aiEnabled = true;
+  var aiRescueEnabled = false;   /* AI 看單救援:預設關(0731 事故功能的重寫版,由使用者自己開) */
+  var aiLoaded = false;          /* getStats 成功回來過沒有 —— 沒載入就不准按任何 AI 按鈕(避免拿未載入的頁面變數回寫 DB) */
   var GROWTH_METRIC = 'drivers';
   var USAGE_METRIC = 'google';
   var GEO_CACHE_RES = null;    // 最近一次 geoUsage 回應(總覽 KPI 共用)
@@ -1381,6 +1388,15 @@
     ai_err:             { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 失敗/產出被反腦補閘擋下(已放行下層)" },
     ai_capped:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 超每日上限被擋" },
     ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
+    /* ── 🔍 AI 看單救援(airescue,App 端):規則抓 0 張 → AI 指出地址在原文哪一段 → 規則重跑建卡 ──
+       不在定位鏈上(是抓單鏈),但共用 ai_daily_cap 錢包,所以記在同一本帳。
+       ⚠️ ai_rescue_blocked 是【最該盯的一格】:它=模型想加字被硬閘擋下的次數。
+          這格對 ai_rescue 的比值一路往上 = 這顆模型在這個任務上不老實 → 回後台把開關關掉。 */
+    ai_rescue:          { free: 0,     per1000: 0.11, paid:true, label: "🔍 AI 看單救援(Mistral·ok=剪出可用地址)" },
+    ai_rescue_err:      { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 呼叫失敗/逾時(不建卡,零影響)" },
+    ai_rescue_blocked:  { free: 0,     per1000: 0,  paid:false, label: "🚨 看單救援【腦補被硬閘擋下】(比值飆高就關開關)" },
+    ai_rescue_cache:    { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 命中結果快取(同一則單 N 個司機只打一次)" },
+    ai_rescue_capped:   { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 超每日上限被擋" },
     // ── 🗺️ Map8 台灣圖霸(1.95,試用至 08-07):NT$0.07/次 ≈ Google 45 折,不分 API ──
     map8:               { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 圖霸 地址定位(試用中)" },
     /* 0731 分家:map8 ok:false=Map8 自己查無;map8_guard=它給了答案但被我們的護欄擋下
@@ -1438,16 +1454,33 @@
       loadGeoUsage();
     });
   });
+  /* 兩顆 AI 開關【完全獨立】,which 決定動哪一顆(後端同名欄位對照見 admin/index.ts setAiConfig)。
+     絕不可再合併成一顆 —— 0731 就是共用一顆開關,開抓址層連帶喚醒看單救援,腦補出假地址給司機看。 */
+  /* 三顆按鈕都【不帶 cap】除非使用者真的按了「設定」—— 後端 cap 省略就不動它。
+     0731 審查 HIGH:原本每顆按鈕都把輸入框現值當 cap 一起寫回,而 getStats 讀取失敗時
+     會回 0 並填進輸入框,於是「切一下開關」就順手把上限靜默改成 0 了。 */
   $('aiToggle').addEventListener('click', function(){
-    api("setAiConfig", { enabled: !aiEnabled, cap: parseInt($('aiCap').value || "0", 10) || 0 }).then(function(res){
-      if(res.ok){ toast(res.ai_enabled ? "🤖 AI 抓址層已開啟" : "⛔ AI 抓址層已關閉"); loadGeoUsage(); }
+    if(!aiLoaded) return toast("設定還沒載入,請稍候");
+    api("setAiConfig", { which: "extract", enabled: !aiEnabled }).then(function(res){
+      if(res.ok){ toast(res.enabled ? "🤖 AI 抓址層已開啟" : "⛔ AI 抓址層已關閉"); loadGeoUsage(); }
+      else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  $('aiRescueToggle').addEventListener('click', function(){
+    if(!aiLoaded) return toast("設定還沒載入,請稍候");
+    /* 開啟前確認一次:這顆會讓 AI 影響「會出卡」的路徑,比抓址層高一級風險 */
+    if(!aiRescueEnabled && !confirm("開啟 AI 看單救援?\n\n規則抓 0 張時,AI 會指出地址在原文的哪一段,再由規則建卡。\n卡片會標「🤖 AI 確認中」提醒司機自行核對地址。\n\n有任何異常隨時回來關掉,全隊立即生效。")) return;
+    api("setAiConfig", { which: "rescue", enabled: !aiRescueEnabled }).then(function(res){
+      if(res.ok){ toast(res.enabled ? "🔍 AI 看單救援已開啟" : "⛔ AI 看單救援已關閉"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
     });
   });
   $('aiCapBtn').addEventListener('click', function(){
+    if(!aiLoaded) return toast("設定還沒載入,請稍候");
     var cap = parseInt($('aiCap').value || "0", 10) || 0;
-    api("setAiConfig", { enabled: aiEnabled, cap: cap }).then(function(res){
-      if(res.ok){ toast(cap ? "AI 每日上限已設為 " + cap : "AI 已取消上限"); loadGeoUsage(); }
+    /* 只設上限、不動開關:which 送 extract 並回填它【當下的值】,避免順手把抓址層切掉 */
+    api("setAiConfig", { which: "extract", enabled: aiEnabled, cap: cap }).then(function(res){
+      if(res.ok){ toast(cap ? "AI 每日上限已設為 " + cap + "(兩顆共用)" : "AI 已取消上限(0=不限)"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
     });
   });
@@ -1608,7 +1641,8 @@
          null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
-        || r.api === "ai_err" || r.api === "ai_capped") return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列) */
+        || r.api === "ai_err" || r.api === "ai_capped"
+        || r.api.indexOf("ai_rescue") === 0) return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
       var n = Number(r.n || 0);
       allN += n;
       if(r.api === "cache_hit_miss") graveN += n;
@@ -1778,8 +1812,16 @@
       $('aiToggle').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
       $('aiState').textContent = aiEnabled ? "開啟" : "關閉";
       $('aiState').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
-      if(document.activeElement !== $('aiCap')) $('aiCap').value = res.ai_daily_cap != null ? res.ai_daily_cap : 0;
+      /* null = 伺服器讀不到設定 → 【不覆寫】輸入框(舊行為是填 0,按下任一按鈕就把上限寫死成 0) */
+      if(res.ai_daily_cap != null && document.activeElement !== $('aiCap')) $('aiCap').value = res.ai_daily_cap;
+      aiLoaded = true;
       $('aiCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
+      /* 看單救援:預設關,且【=== true 才算開】—— 舊版伺服器沒有這個欄位時 undefined → 顯示關閉,
+         fail-safe 方向跟抓址層(!== false)刻意相反,因為這顆碰得到出卡路徑。 */
+      aiRescueEnabled = res.ai_rescue_enabled === true;
+      $('aiRescueToggle').textContent = aiRescueEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
+      $('aiRescueToggle').style.color = aiRescueEnabled ? "var(--teal)" : "var(--red)";
+      $('aiRescueCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
 
       // 明細表
       var tb = $('geoBody'); tb.innerHTML = "";
@@ -1901,7 +1943,7 @@
                        "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api.indexOf("ai_rescue") === 0) return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
