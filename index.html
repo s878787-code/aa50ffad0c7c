@@ -1404,6 +1404,10 @@
     ai_parse:           { free: 0,     per1000: 0.11, paid:true, label: "⑦🤖 AI 抓址判讀(Mistral·救回=零圖資費)" },
     ai_err:             { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 失敗/產出被反腦補閘擋下(已放行下層)" },
     ai_capped:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 超每日上限被擋" },
+    /* 0801:ai_err 拆出原因量測(q 欄=「429/timeout/hallucinated… | 查詢」)——
+       七小時 54% 失敗率但三種原因修法完全不同,混著記永遠只能猜。 */
+    ai_err_why:         { free: 0,     per1000: 0,  paid:false, label: "⑦📊 (量測)AI 失敗原因(點明細看 q 欄)" },
+    ai_break:           { free: 0,     per1000: 0,  paid:false, label: "⑦⛔ AI 斷路器跳開中被略過(連 5 敗→斷 5 分)" },
     ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
     /* ── 🔍 AI 看單救援(airescue,App 端):規則抓 0 張 → AI 指出地址在原文哪一段 → 規則重跑建卡 ──
        不在定位鏈上(是抓單鏈),但共用 ai_daily_cap 錢包,所以記在同一本帳。
@@ -1415,17 +1419,20 @@
     ai_rescue_cache:    { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 命中結果快取(同一則單 N 個司機只打一次)" },
     ai_rescue_capped:   { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 超每日上限被擋" },
     // ── 🗺️ Map8 台灣圖霸(1.95,試用至 08-07):NT$0.07/次 ≈ Google 45 折,不分 API ──
-    map8:               { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 圖霸 地址定位(試用中)" },
+    map8:               { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 圖霸 地址定位(試用免費至 08-07)" },
     /* 0731 分家:map8 ok:false=Map8 自己查無;map8_guard=它給了答案但被我們的護欄擋下
        (路名不符/兜底級 level 5-6/界外)。分開才知道「命中率低」是它不行還是我們太嚴。 */
-    map8_guard:         { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 有結果但被我們護欄擋下" },
+    map8_guard:         { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 有結果但被我們護欄擋下(試用免費)" },
     map8_guard_why:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ (量測)被擋原因:level/信心/回傳地址" },
     map8_err:           { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 呼叫失敗(逾時/錯誤→標降級)" },
+    /* ⚠️ Map8 全系列 0731 起 per1000=0【不計入本月預估成本】—— 試用免費至 08-07(使用者拍板)。
+       原單價 US$2.26/千 記在 trial 欄位;到期轉正式時把 trial 的值搬回 per1000 即恢復計費。
+       用量本身照記(趨勢圖「Map8 呼叫」),談級距要用的就是那個量。 */
     /* 🗺️ Map8 路徑規劃:0731 起【距離與預估時間都走這裡】(使用者拍板)。一發拿兩個數字,
        比分開算少一趟熱路徑往返,而且 km 與分鐘出自同一條路線。
        與地址定位共用同一個 4000/日 錢包與同一個單價。
        ⚠️ 盯 distance_osrm:它每跳一次就是一次【後備】—— 那個比值就是 Map8 的可用度。 */
-    map8_route:         { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 路徑規劃(距離+預估時間·主用)" },
+    map8_route:         { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 路徑規劃(距離+預估時間·主用·試用免費)" },
     map8_route_err:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃失敗(→ 退 OSRM 後備)" },
     map8_route_capped:  { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃 超日上限被擋(與定位共用 10000)" },
     /* 已停用的一次性量測(0731):Map8 vs OSRM 距離/時間對照,109 筆後結論明確就移除了 ——
@@ -1433,8 +1440,8 @@
        之後調完自架 OSRM 的 car.lua 想再比一次,把 geocode 那段 waitUntil 加回來就會再有資料。 */
     map8_route_cmp:     { free: 0,     per1000: 0,  paid:false, label: "🗑️ (已停用量測)Map8 vs OSRM 距離/時間差" },
     map8_capped:        { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 超自家日上限被擋(與路徑規劃共用 10000/日)" },
-    map8_shadow:        { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:查無救援試驗(評估用)" },
-    map8_shadow_cmp:    { free: 0,     per1000: 2.26, paid:true, label: "⑧🗺️ Map8 shadow:與 Google 座標對照抽樣" },
+    map8_shadow:        { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 shadow:查無救援試驗(試用免費)" },
+    map8_shadow_cmp:    { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 shadow:與 Google 對照抽樣(試用免費)" },
     map8_shadow_err:    { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 shadow 呼叫失敗" },
     // ── 💰 Google(最後手段;每日上限保險絲擋在前面)──────────────
     geocode:            { free: 10000, per1000: 5,  paid:true,  label: "⑨💰 Google Geocoding(長尾退路)" },
@@ -1696,7 +1703,7 @@
          null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
-        || r.api === "ai_err" || r.api === "ai_capped"
+        || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break"
         || r.api.indexOf("ai_rescue") === 0) return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
       var n = Number(r.n || 0);
       allN += n;
@@ -2034,7 +2041,7 @@
                        "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api.indexOf("ai_rescue") === 0) return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api === "ai_err_why" || r.api === "ai_break" || r.api.indexOf("ai_rescue") === 0) return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
@@ -2509,7 +2516,9 @@
       /* 🗺️ Map8 呼叫量:【只算會被收費的】—— map8(命中)+ map8_guard(它給了答案但被我們護欄擋下,
          照樣是一發付費呼叫)。map8_err/map8_capped/map8_guard_why 不是成功呼叫,不計。
          用 GEO_PRICING 的 paid 旗標判而不寫死名單:以後加新的 map8_ 列,計價一改這裡自動跟上。 */
-      else if(r.api.indexOf("map8") === 0){ if(GEO_PRICING[r.api] && GEO_PRICING[r.api].paid) m.map8 += r.n; }
+      /* 0731 試用期改 paid:false 之後,判準改成「有標價的呼叫」(per1000 或 trial 任一有值)——
+         趨勢圖要的是【實際打出去的量】,那是 8/7 談級距的核心數字,不能因為試用免費就歸零。 */
+      else if(r.api.indexOf("map8") === 0){ var mp=GEO_PRICING[r.api]; if(mp && (mp.per1000 || mp.trial)) m.map8 += r.n; }
       else if(FREE_HITS.indexOf(r.api) >= 0) m.cache += r.n;   // 快取+門牌庫+社區庫 都算免費命中
       /* 🤖 AI 抓址 / 🔍 看單救援 的呼叫量:名單【與各自保險絲數的那一份一致】——
          geocode 的 AI_EXTRACT_APIS、airescue 的 AI_RESCUE_APIS。這樣圖上的數字就是
