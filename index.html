@@ -545,6 +545,26 @@
         </div>
       </div>
 
+      <!-- C1+C2:AI 學習迴圈的控制台(0802)。規則你自己改,範例它自己學。 -->
+      <div class="card" id="aiBrainCard">
+        <div class="rowline"><span class="cardtitle">🧠 AI 看單規則(可編輯)</span>
+          <span class="muted" style="font-size:11.5px;">改完最多 60 秒生效 · 反腦補鐵律硬編在程式裡,這裡改不到也覆蓋不了</span>
+          <button class="linkbtn" id="aiBrainLoad" style="margin-left:auto;">↻ 載入</button>
+        </div>
+        <textarea id="aiRules" rows="8" style="width:100%;margin-top:8px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
+          placeholder="載入後顯示目前規則。留空=用程式內建預設。"></textarea>
+        <div class="rowline" style="margin-top:8px;">
+          <input type="text" id="aiRulesNote" style="flex:1;" placeholder="改動理由(選填,但強烈建議寫 —— 出事時這是唯一的線索)">
+          <button class="ghost" id="aiRulesSave" style="padding:5px 14px;">儲存並套用</button>
+        </div>
+        <div class="muted" style="font-size:11.5px;margin-top:10px;" id="aiBrainStat">—</div>
+        <div id="aiHistBox" style="margin-top:8px;"></div>
+        <div class="rowline" style="margin-top:10px;">
+          <span class="muted" style="font-size:11.5px;">懷疑學歪了?清空範例庫重新累積(規則不動)</span>
+          <button class="ghost" id="aiExClear" style="padding:4px 12px;margin-left:auto;">清空範例庫</button>
+        </div>
+      </div>
+
       <div class="card"><span class="cardtitle">診斷 &amp; 省錢建議</span><div id="geoAdvice" style="margin-top:10px;"></div><div class="empty hide" id="advEmpty">目前沒有需要注意的事。</div></div>
 
       <div class="card" id="abuseCard">
@@ -1395,6 +1415,11 @@
     community_hit:      { free: 0,     per1000: 0,  paid:false, label: "①🏢 位置庫命中(策展地標,最高優先·免費)" },
     door_hit:           { free: 0,     per1000: 0,  paid:false, label: "②🏠 門牌庫命中(政府開放門牌 298 萬筆·免費)" },
     cache_hit_miss:     { free: 0,     per1000: 0,  paid:false, label: "③🪦 墓碑命中(已判死的單,2 次讀取秒回·免費)" },
+    /* 0802 錯別字修正層(0.52):精確比對 miss → 用 door_roads 找最像的真實路名 → 換掉重查。
+       模糊只用在「猜哪條路」,座標一律來自【真實門牌的精確比對】—— 所以修不出假地址。
+       door_fuzzy_why 的 q 欄寫著「學城路 -> 學成路 | 原查詢」,誤修才有機會被發現。 */
+    door_fuzzy:         { free: 0,     per1000: 0,  paid:false, label: "②🔤 門牌庫錯別字修正命中(免費·省一發付費層)" },
+    door_fuzzy_why:     { free: 0,     per1000: 0,  paid:false, label: "②📊 (量測)修了什麼字(點明細看 q 欄)" },
     cache_hit:          { free: 0,     per1000: 0,  paid:false, label: "④💾 座標快取命中(全隊共享 90 天·免費)" },
     cache_hit_road:     { free: 0,     per1000: 0,  paid:false, label: "④💾 路段快取命中(同路段共用·免費)" },
     cache_hit_route:    { free: 0,     per1000: 0,  paid:false, label: "④💾 路線距離快取命中(200m 分格·免費)" },
@@ -1526,6 +1551,50 @@
     api("setAiConfig", { which: "extract", enabled: aiEnabled, cap: cap }).then(function(res){
       if(res.ok){ toast(cap ? "抓址層每日上限已設為 " + cap : "抓址層已取消上限(0=不限)"); loadGeoUsage(); }
       else toast("設定失敗(需管理員密碼)");
+    });
+  });
+  /* ── 🧠 AI 學習迴圈控制台(C1+C2)────────────────────────────────
+     規則:使用者可編輯,存 app_config.ai_prompt_rules,每次改動寫一筆版本歷史。
+     範例:系統自動累積【事後證實查得到座標】的剪法,下次同型單檢索出來當 few-shot。
+     ⚠️ 反腦補鐵律硬編在 geocode,永遠串在使用者規則之後 —— 這裡改壞最壞是剪得爛,不會腦補。 */
+  function renderAiBrain(res){
+    if(!res || !res.ok) return;
+    if(document.activeElement !== $('aiRules')) $('aiRules').value = res.rules || "";
+    var top = (res.examples_top || []).map(function(e){
+      return "<div style='font-size:11.5px;color:#8D9A97;padding:3px 0;border-bottom:1px solid var(--line-soft)'>"
+        + "<b style='color:var(--teal)'>×" + e.hits + "</b> " + esc(e.addr) + " <span style='opacity:.6'>← " + esc((e.raw||"").slice(0,46)) + "…</span></div>";
+    }).join("");
+    $('aiBrainStat').innerHTML = "已學會 <b>" + (res.examples_n||0) + "</b> 個成功範例"
+      + ((res.examples_n||0) ? "(最常被檢索的:)" : "(還沒累積 —— AI 抓址成功一次就會存一筆)") + top;
+    $('aiHistBox').innerHTML = (res.history||[]).slice(0,5).map(function(h){
+      return "<div class='rowline' style='font-size:11.5px;padding:4px 0;'>"
+        + "<span class='muted'>" + fmtReportTime(h.created_at) + " · " + esc(h.changed_by||"?") + "</span>"
+        + "<span style='flex:1;color:#8D9A97;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(h.note||"(未寫理由)") + "</span>"
+        + "<button class='linkbtn' data-rollback='" + h.id + "'>回滾</button></div>";
+    }).join("");
+    $('aiHistBox').querySelectorAll('[data-rollback]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var h = (res.history||[]).filter(function(x){ return String(x.id) === b.getAttribute('data-rollback'); })[0];
+        if(!h) return;
+        if(!confirm("回滾到這個版本?\n\n" + (h.note || "(未寫理由)"))) return;
+        $('aiRules').value = h.rules || "";
+        $('aiRulesNote').value = "回滾至 " + fmtReportTime(h.created_at);
+        toast("已填入,確認後按「儲存並套用」");
+      });
+    });
+  }
+  function loadAiBrain(){ api("getAiPrompt", {}).then(renderAiBrain); }
+  $('aiBrainLoad').addEventListener('click', loadAiBrain);
+  $('aiRulesSave').addEventListener('click', function(){
+    api("setAiPrompt", { rules: $('aiRules').value, note: $('aiRulesNote').value }).then(function(r){
+      if(r.ok){ toast("已套用(最多 60 秒生效)"); $('aiRulesNote').value=""; loadAiBrain(); }
+      else toast(r.error || "儲存失敗(需管理員密碼)");
+    });
+  });
+  $('aiExClear').addEventListener('click', function(){
+    if(!confirm("清空範例庫?\n\nAI 會從零重新累積(規則不受影響)。懷疑它學歪了才需要這樣做。")) return;
+    api("clearAiExamples", {}).then(function(r){
+      if(r.ok){ toast("範例庫已清空,重新學習中"); loadAiBrain(); } else toast("失敗");
     });
   });
   $('map8CapBtn').addEventListener('click', function(){
@@ -1704,7 +1773,7 @@
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
         || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break"
-        || r.api.indexOf("ai_rescue") === 0) return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
+        || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
       var n = Number(r.n || 0);
       allN += n;
       if(r.api === "cache_hit_miss") graveN += n;
@@ -2041,7 +2110,7 @@
                        "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api === "ai_err_why" || r.api === "ai_break" || r.api.indexOf("ai_rescue") === 0) return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api === "ai_err_why" || r.api === "ai_break" || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
