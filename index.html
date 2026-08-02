@@ -2146,7 +2146,8 @@
     var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
     return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
   }
-  function openPlaceForm(p, pre){
+  // onSaved(選填):入庫成功後的回呼 —— 候選卡「採用」用它在入庫後順手 dismiss 該筆候選(0803)。
+  function openPlaceForm(p, pre, onSaved){
     openModal(p ? "編輯地點:"+(p.name||"") : "新增地點", [
       {id:"name", label:"名稱", value:p?p.name:(pre&&pre.name||""), placeholder:"例:吉祥大樓"},
       {id:"alias", label:"別名(逗號分隔,可空)", value:p?(p.aliases||[]).join(", "):(pre&&pre.alias||""), placeholder:"例:吉祥社區, 吉祥"},
@@ -2165,6 +2166,7 @@
       api(p?"editPlace":"addPlace", payload).then(function(res){
         if(res.error){ toast("失敗:"+res.error); return; }
         closeModal(); toast(p?"已儲存":"已新增"); loadPlaces();
+        if(onSaved) onSaved();
       });
     }, p ? "儲存修改" : "新增");
     // 查座標:免開 Google 地圖,先用免費 OSM 找;找不到再自己貼
@@ -2354,7 +2356,9 @@
     if(!CANDS.length){ $('candList').innerHTML = ""; return; }
     var wrap = document.createElement('div');
     wrap.className = "tablewrap";
-    wrap.innerHTML = "<table><thead><tr><th>名稱</th><th>次數</th><th>司機</th><th>離散</th><th class='hide-m'>座標</th><th>動作</th></tr></thead><tbody></tbody></table>";
+    var canEdit = (ROLE!=="viewer");
+    // 批次忽略(0803 使用者需求):洪流期候選一天幾十筆,一筆一筆按太慢 → 勾選+一鍵忽略。
+    wrap.innerHTML = "<table><thead><tr>"+(canEdit?"<th style='width:28px;'><input type='checkbox' id='candAll' title='全選'></th>":"")+"<th>名稱</th><th>次數</th><th>司機</th><th>離散</th><th class='hide-m'>座標</th><th>動作</th></tr></thead><tbody></tbody></table>";
     var tb = wrap.querySelector('tbody');
     CANDS.forEach(function(c){
       var sp = c.spread_m|0, spTxt;
@@ -2365,6 +2369,7 @@
       var who = (c.drivers||[]).slice(0,3).join("、") + ((c.drivers||[]).length>3 ? "…" : "");
       var tr = document.createElement('tr');
       tr.innerHTML =
+        (canEdit?"<td><input type='checkbox' class='candck' data-k='"+esc(c.norm_key)+"'></td>":"")+
         "<td><b>"+esc(c.name||"?")+"</b></td>"+
         "<td>"+(c.n||0)+"</td>"+
         "<td>"+(c.drivers_n||0)+(who? "<br><small class='muted'>"+esc(who)+"</small>":"")+"</td>"+
@@ -2375,8 +2380,13 @@
       if(ROLE!=="viewer"){
         // 採用 = 開既有的「新增地點」視窗並預填名稱與座標(不直接寫庫)——
         // 走同一條路才會經過重複別名檢查、台灣界檢查,而且「驗證」要你自己打勾。
+        // 【名稱/別名/座標都可以改,改完才入庫】(0803 使用者需求的「編輯後入庫」就是這條路)。
+        // 入庫成功後順手 dismiss 這筆候選:名稱若被改到 norm_key 對不上位置庫,
+        // 「已採用就隱藏」的比對會失效,這筆會永遠掛在清單上 —— dismiss 才兩邊都乾淨。
         tr.querySelector("[data-a='ad']").addEventListener('click', function(){
-          openPlaceForm(null, { name: c.name, coord: Number(c.lat)+", "+Number(c.lng) });
+          openPlaceForm(null, { name: c.name, coord: Number(c.lat)+", "+Number(c.lng) }, function(){
+            api("dismissCandidate", { norm_key: c.norm_key }).then(function(){ loadCands(); });
+          });
         });
         tr.querySelector("[data-a='sk']").addEventListener('click', function(){
           if(!confirm("忽略「"+(c.name||"")+"」?\n\n它不會再出現在這張清單。次數仍會繼續累加,日後想反悔可以在資料庫把 dismissed 改回 false。")) return;
@@ -2389,6 +2399,34 @@
     });
     $('candList').innerHTML = "";
     $('candList').appendChild(wrap);
+    if(canEdit){
+      // 批次忽略工具列:逐筆呼叫既有的 dismissCandidate(不加新端點=admin 函式不用重新部署)。
+      var bar = document.createElement('div');
+      bar.style.cssText = "margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;";
+      var bb = document.createElement('button');
+      bb.textContent = "🚫 忽略勾選的";
+      bb.addEventListener('click', function(){
+        var ks = [].slice.call(wrap.querySelectorAll('.candck:checked')).map(function(el){ return el.getAttribute('data-k'); });
+        if(!ks.length){ toast("先勾選要忽略的候選"); return; }
+        if(!confirm("批次忽略 "+ks.length+" 筆?\n\n它們不會再出現在這張清單;次數仍繼續累加,日後可在資料庫把 dismissed 改回 false 反悔。")) return;
+        bb.disabled = true; bb.textContent = "忽略中…";
+        Promise.all(ks.map(function(k){ return api("dismissCandidate", { norm_key: k }); })).then(function(rs){
+          var okN = rs.filter(function(r){ return r && r.ok; }).length;
+          toast("已忽略 "+okN+"/"+ks.length+" 筆");
+          loadCands();
+        });
+      });
+      bar.appendChild(bb);
+      var hint = document.createElement('span');
+      hint.className = "muted"; hint.style.fontSize = "12px";
+      hint.textContent = "勾第一欄(表頭勾=全選)→ 一鍵忽略;〔採用〕開編輯視窗,名稱/別名/座標改好再入庫。";
+      bar.appendChild(hint);
+      $('candList').appendChild(bar);
+      var all = wrap.querySelector('#candAll');
+      if(all) all.addEventListener('change', function(){
+        [].slice.call(wrap.querySelectorAll('.candck')).forEach(function(el){ el.checked = all.checked; });
+      });
+    }
   }
 
   /* ── 待補地標(全隊查無座標的熱門地址) ── */
