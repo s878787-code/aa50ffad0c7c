@@ -1084,6 +1084,22 @@
     // 但【健康預警是例外】(0727):它必須在登入當下就跑,而且不管你停在哪個分頁都要持續更新 ——
     //   否則就會重演 0724:整隊停擺一小時,後台一片正常。
     loadHealth();
+    handleDeepLink();
+  }
+
+  /* 深層連結(0803):子頁「AI 學習記憶」的〔補位置庫 →〕帶著地名跳回來 —— #addplace=<地名>。
+     跳到位置庫分頁 + 自動開新增視窗並預填名稱,省去手動切頁再打字。
+     ⚠️ 只預填【名稱】,座標仍要你按「🔍 查座標」或自己貼、並開地圖核對過才存 ——
+     位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,這一步不能自動化。 */
+  function handleDeepLink(){
+    var m = /^#addplace=(.+)$/.exec(location.hash || "");
+    if(!m) return;
+    var name = "";
+    try { name = decodeURIComponent(m[1]); } catch(e) { name = m[1]; }
+    location.hash = "";                       // 用掉就清,重整不會又跳出來
+    if(ROLE === "viewer") return;             // 唯讀角色沒有新增權限
+    goTab("places");
+    setTimeout(function(){ openPlaceForm(null, { name: name }); }, 60);
   }
   // 每個分頁的重查詢只在「第一次切進去」時載入一次(之後靠各卡片的「重新整理」鈕手動刷新)。
   var TAB_LOADED = {};

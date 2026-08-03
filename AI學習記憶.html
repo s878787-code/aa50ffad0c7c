@@ -73,6 +73,10 @@
   .nm{font-size:13px;font-weight:650;word-break:break-all;}
   .raw{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.5;word-break:break-all;}
   .tag{font-size:11px;font-weight:700;color:var(--red);white-space:nowrap;flex-shrink:0;align-self:center;}
+  .mini{font-family:inherit;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;align-self:center;
+    background:var(--surface);color:var(--muted);border:1px solid var(--line-2);padding:4px 10px;
+    border-radius:var(--r-pill);cursor:pointer;transition:border-color var(--dur),color var(--dur),background var(--dur);}
+  .mini:hover{border-color:var(--teal-line);color:var(--teal-ink);background:var(--teal-soft);}
   .empty{color:var(--muted);font-size:13px;padding:18px 0;text-align:center;}
   .search{width:100%;font-family:inherit;font-size:13.5px;padding:9px 12px;border:1px solid var(--line-2);
     border-radius:var(--r-sm);background:var(--surface);color:var(--ink);margin-bottom:10px;}
@@ -132,7 +136,14 @@
       <div class="card">
         <div style="font-size:12.5px;font-weight:700;color:var(--red);margin-bottom:4px;">❌ 待修 — AI 剪了、還是查不到</div>
         <div id="loopLoseBody"><div class="empty">載入中…</div></div>
-        <div class="note">同一個地名重複出現越多次,越該<b>補進位置庫</b>(後台「位置庫」頁)。補進去之後這一層就永遠免費了。</div>
+        <div class="note">
+          <b>⚠️ 不是每一筆都該補位置庫</b> —— 先看它是哪種病:<br>
+          ・<b>店名/地標/社區名</b>(例「北投捷運站」「XX社區」)→ ✅ <b>補位置庫</b>,補完永久免費<br>
+          ・<b>完整門牌卻查不到</b>(例「五股區民義路128號」)→ ❌ 是門牌庫缺這條路,補位置庫治標不治本<br>
+          ・<b>有錯字</b>(例「誒太順街」)→ ❌ 原文就錯,補了反而把錯的固化<br>
+          ・<b>行首黏了代號/時間/城市寫錯</b>(例「桃園市09'20三峽…」)→ ❌ 這是 <b>Parser 要修</b>的,補位置庫沒用<br>
+          次數多只代表「常出現」,不代表「該補」。座標一定要開地圖核對過再存 —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯。
+        </div>
       </div>
       <div class="card">
         <div style="font-size:12.5px;font-weight:700;color:var(--teal-ink);margin-bottom:4px;">✅ 救回 — AI 剪對、查到座標</div>
@@ -235,8 +246,17 @@ function loadLoop(){
     $('loopLoseBody').innerHTML = L.length ? L.map(function(e){
       return "<div class='row'><span class='badge bad'>" + e.n + " 次</span>"
         + "<div class='body'><div class='nm'>" + esc(e.q) + "</div></div>"
-        + (e.n>=3 ? "<span class='tag'>優先補位置庫</span>" : "") + "</div>";
+        + "<button class='mini' data-add='" + esc(e.q) + "'>補位置庫 →</button>"
+        + (e.n>=3 ? "<span class='tag'>優先</span>" : "") + "</div>";
     }).join("") : "<div class='empty'>今天沒有失敗的判讀 👍</div>";
+    /* 快捷:帶著這個地名跳到後台位置庫頁(用 hash 傳參,後台會自動開新增視窗並預填名稱)。
+       ⚠️ 刻意【不做】一鍵直接寫入:位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,
+       座標一定要人工開地圖核對過。而且下面這些「查不到」有一半根本不該補位置庫(見卡片下方說明)。 */
+    $('loopLoseBody').querySelectorAll('[data-add]').forEach(function(b){
+      b.addEventListener('click', function(){
+        location.href = "index.html#addplace=" + encodeURIComponent(b.getAttribute('data-add'));
+      });
+    });
     $('loopWinBody').innerHTML = W.length ? W.map(function(e){
       return "<div class='row'><span class='badge hit'>" + e.n + " 次</span>"
         + "<div class='body'><div class='nm'>" + esc(e.q) + "</div></div></div>";
