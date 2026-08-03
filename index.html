@@ -665,6 +665,15 @@
         </div>
       </div>
 
+      <div class="card" id="aiTrendCard">
+        <div class="rowline"><span class="cardtitle">AI 抓址救回率 · 逐日</span>
+          <span class="muted" style="font-size:12px;">AI 出手的單裡,最後真的查到座標的比例</span>
+          <span class="muted" id="aiTrendNow" style="margin-left:auto;font-family:var(--mono);font-weight:700;">—</span>
+        </div>
+        <div class="chartbox" id="aiTrendChart" style="margin-top:8px;"></div>
+        <div class="muted" id="aiTrendNote" style="font-size:11.5px;margin-top:6px;line-height:1.6;"></div>
+      </div>
+
       <!-- 🤖 AI 抓址提示詞(0802 可編輯規則 + 0803 顯示完整框架)。規則你自己改,範例它自己學。 -->
       <div class="card" id="aiBrainCard">
         <div class="rowline"><span class="cardtitle">🤖 AI 抓址規則(可編輯)</span>
@@ -954,6 +963,17 @@
     if(diff < day)   return "今天 " + p2(new Date(iso).getHours()) + ":" + p2(new Date(iso).getMinutes());
     if(diff < 2*day) return "昨天";
     return Math.floor(diff/day) + " 天前";
+  }
+
+  /* 規則版本歷史用的時間格式(0803 補:這支被呼叫 4 次卻【從來沒有定義過】——
+     跟 geocode 的 aiSubsetOk 同一類潛伏 bug。它只在「規則有改動歷史」時才會執行,
+     而歷史一直是 0 筆,所以從沒爆過;第一次儲存規則之後,下次載入就會整個 render 失敗。
+     這裡刻意用【絕對時間】而不是 rel() 的「3 天前」—— 出事回溯時要能跟伺服器 log 對得上。 */
+  function fmtReportTime(iso){
+    if(!iso) return "—";
+    var d = new Date(iso);
+    if(isNaN(d.getTime())) return String(iso).slice(0, 16).replace("T", " ");
+    return (d.getMonth()+1) + "/" + d.getDate() + " " + p2(d.getHours()) + ":" + p2(d.getMinutes());
   }
 
   function api(action, extra){
@@ -1806,16 +1826,52 @@
      規則:使用者可編輯,存 app_config.ai_prompt_rules,每次改動寫一筆版本歷史。
      範例:系統自動累積【事後證實查得到座標】的剪法,下次同型單檢索出來當 few-shot。
      ⚠️ 反腦補鐵律硬編在 geocode,永遠串在使用者規則之後 —— 這裡改壞最壞是剪得爛,不會腦補。 */
+
+  /* 📈 AI 抓址救回率逐日曲線(0803,取代原本擠在警告列的一行文字)。
+     定義:ai_parse 這一層【出手的單】裡,最後真的查到座標的比例(ok_n / n)。
+     它會隨「範例庫累積 + 規則被教」而上升 —— 是這條學習迴圈唯一的成效指標。
+     重用既有 trendSVG(同一套 SVG 繪圖,不另外引函式庫)。 */
+  function renderAiTrend(res){
+    var host = $('aiTrendChart'); if(!host) return;
+    var byDay = {};
+    ((res.stats && res.stats.days) || []).forEach(function(r){
+      if(r.api === "ai_parse" && r.ok_n != null){
+        byDay[r.day] = byDay[r.day] || { n:0, ok:0 };
+        byDay[r.day].n += Number(r.n||0); byDay[r.day].ok += Number(r.ok_n||0);
+      }
+    });
+    var ds = Object.keys(byDay).sort();
+    if(ds.length < 2){
+      host.innerHTML = "<div class='muted' style='font-size:12.5px;padding:14px 0;'>資料還不夠畫線(需要至少兩天)。</div>";
+      $('aiTrendNow').textContent = "—"; $('aiTrendNote').textContent = ""; return;
+    }
+    var vals = ds.map(function(d){ var b = byDay[d]; return b.n ? Math.round(100*b.ok/b.n) : 0; });
+    var labels = ds.map(function(d){ return d.slice(5).replace("-","/"); });
+    trendSVG(host, labels, vals, function(v){ return v + "%"; }, 100);   // fixedMax=100:百分比軸固定,不會因當日高點而變形
+    var last = vals[vals.length-1], first = vals[0];
+    $('aiTrendNow').textContent = last + "%";
+    $('aiTrendNow').style.color = last >= first ? "var(--teal-ink)" : "var(--amber)";
+    var totalN = ds.reduce(function(a,d){ return a + byDay[d].n; }, 0);
+    $('aiTrendNote').innerHTML = "區間 <b>" + labels[0] + "</b> → <b>" + labels[labels.length-1] + "</b> · 共 "
+      + totalN.toLocaleString() + " 次判讀 · 起 " + first + "% → 今 " + last + "%"
+      + (last > first ? " <span style='color:var(--teal-ink);font-weight:600;'>↑ 學習中</span>"
+         : (last < first ? " <span style='color:var(--amber);font-weight:600;'>↓ 退步,檢查規則或難單型態</span>" : ""))
+      + "<br>救回率低不一定是壞事 —— 很多單原文本來就沒有地址(AI 正確回 null 也算沒救回)。看<b>趨勢</b>比看絕對值準。";
+  }
+
   function renderAiBrain(res){
     if(!res || !res.ok) return;
     if(document.activeElement !== $('aiRules')) $('aiRules').value = res.rules || "";
-    var top = (res.examples_top || []).map(function(e){
-      return "<div style='font-size:11.5px;color:#8D9A97;padding:3px 0;border-bottom:1px solid var(--line-soft)'>"
-        + "<b style='color:var(--teal)'>×" + e.hits + "</b> " + esc(e.addr) + " <span style='opacity:.6'>← " + esc((e.raw||"").slice(0,46)) + "…</span></div>";
-    }).join("");
-    $('aiBrainStat').innerHTML = "已學會 <b>" + (res.examples_n||0) + "</b> 個成功範例"
-      + ((res.examples_n||0) ? "(最常被檢索的:)" : "(還沒累積 —— AI 抓址成功一次就會存一筆)") + top;
-    $('aiHistBox').innerHTML = (res.history||[]).slice(0,5).map(function(h){
+    /* 0803:這裡【只留一行摘要】。範例清單原本整串印在這個統計行裡,會隨累積越拉越長,
+       把下面的「改動理由 / 儲存並套用」擠到看不見 —— 而完整清單(可搜尋)子頁已經有了。
+       主後台=每天要按的控制項,觀察類資料一律歸子頁,同一份東西不兩邊維護。 */
+    var exN = res.examples_n || 0;
+    $('aiBrainStat').innerHTML = exN
+      ? ("已學會 <b>" + exN + "</b> 個成功範例 · <a href='AI學習記憶.html' style='color:var(--teal-ink);font-weight:600;'>看清單 →</a>")
+      : "還沒累積範例 —— AI 抓址成功一次就會存一筆,下次同型的單拿它當範例。";
+    /* 版本歷史【留在主後台】—— 它帶「回滾」按鈕,那是操作不是觀察(子頁那份是唯讀的)。
+       但只留最近 3 筆:要翻更早的去子頁,這裡不讓它長。 */
+    $('aiHistBox').innerHTML = (res.history||[]).slice(0,3).map(function(h){
       return "<div class='rowline' style='font-size:11.5px;padding:4px 0;'>"
         + "<span class='muted'>" + fmtReportTime(h.created_at) + " · " + esc(h.changed_by||"?") + "</span>"
         + "<span style='flex:1;color:#8D9A97;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(h.note||"(未寫理由)") + "</span>"
@@ -2216,9 +2272,18 @@
         warns.push(msg);
       }
     })();
-    /* Places cap 已經打到 → 這是「現在就在壞」,不是預警 */
+    /* Places cap 打到 → 註解原本寫「現在就在壞」,但實作看的是【今日累計】——
+       0803 實測:早上 08:19 前累積 334 次、拉高上限後三小時零觸發,告警卻整天紅著。
+       修好之後還在喊的告警,下次真的壞時你會忽略它。改成【最近一小時】才算「現在就在壞」;
+       今日累計仍顯示但降級成灰字補充,讓你知道今天曾經發生過。 */
     var capHit = null; today.forEach(function(r){ if(r.api === "places_cap_hit") capHit = r; });
-    if(capHit && capHit.n > 0) warns.push("🔴 Places 每日上限已觸發 " + capHit.n + " 次 —— 從觸發那一刻起,補錯城市/裸路名的單全部失去救援層");
+    var capNow = 0;
+    (res.recent || []).forEach(function(r){ if(r.api === "places_cap_hit") capNow += Number(r.n||0); });
+    if(capNow > 0){
+      warns.push("🔴 Places 上限【現在正在擋】(近 1 小時 " + capNow + " 次)—— 補錯城市/裸路名的單失去救援層,請到「用量成本」拉高上限");
+    } else if(capHit && capHit.n > 0){
+      warns.push("🟡 Places 上限今天曾觸發 " + capHit.n + " 次,<b>但近 1 小時已無</b> —— 若剛調高過上限,代表止血生效,可忽略");
+    }
     /* 🗺️ Map8 試用監控(0731 使用者點名;試用 key 至 08-07 17:30):正式層收單率+shadow 救回率
        是回 Zola 談級距的兩個核心數字。有任何 map8 活動就常駐顯示。 */
     (function(){
@@ -2257,10 +2322,15 @@
         (s.days||[]).forEach(function(r){
           if(r.api==="ai_parse" && r.ok_n!=null){ byDay[r.day]=byDay[r.day]||{n:0,ok:0}; byDay[r.day].n+=r.n; byDay[r.day].ok+=Number(r.ok_n||0); }
         });
+        /* 0803:這行原本每天都出現在警告列 —— 但它是【常態指標】不是異常,天天佔版面會稀釋真正的警告。
+           改成「AI 大腦」頁的真實折線圖(renderAiTrend);這裡只在【明顯退步】時才叫你一聲。 */
         var ds=Object.keys(byDay).sort();
-        if(ds.length>=2){
-          var line=ds.map(function(d){ var b=byDay[d]; return d.slice(3)+"日"+(b.n?Math.round(100*b.ok/b.n):0)+"%"; }).join(" → ");
-          warns.push("📈 AI 救回率成長曲線:"+line+"(拍板越多、教得越多,這條線就越高)");
+        if(ds.length>=3){
+          var rate=function(d){ var b=byDay[d]; return b.n? b.ok/b.n : 0; };
+          var last=rate(ds[ds.length-1]), prev=rate(ds[ds.length-2]), prev2=rate(ds[ds.length-3]);
+          /* 連兩天下滑且跌幅顯著 → 才報(單日波動不報:量小的日子比例本來就跳) */
+          if(last<prev && prev<prev2 && (prev2-last)>=0.15 && byDay[ds[ds.length-1]].n>=20)
+            warns.push("📉 AI 救回率連兩天下滑:"+Math.round(prev2*100)+"% → "+Math.round(prev*100)+"% → <b>"+Math.round(last*100)+"%</b> —— 檢查是不是規則被改壞、或難單型態變了(見 AI 大腦頁曲線)");
         }
       })();
       /* 🧾 查無歸因分佈(分類器 ai_cls_*)。0803:完整分佈改用「診斷提醒」頁的獨立卡片呈現
@@ -2372,6 +2442,7 @@
          抽出的原因見上方健康預警註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
       renderClsCard(today);
+      renderAiTrend(res);
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       /* ── ETA 來源健康度(0731)──
          Map8 路徑規劃是主辦、OSRM 是後備。可用度 = map8_route ÷ (map8_route + 後備實際算成的)。
