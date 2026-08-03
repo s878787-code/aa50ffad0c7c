@@ -2,7 +2,9 @@
 <!-- ⚠️ 後台同步注意:這份 TripRadar-後台.html == GitHub Pages 後台 aa50ffad0c7c/index.html —— 是「同一個後台」的兩份副本,要保持一致。
      ▸ 改後台:先 pull aa50ffad0c7c 最新版,在其上【只加不刪】,別整份覆蓋(0709 回滾 / 0713 發公告按鈕被洗掉事件的教訓)。
      ▸ 同步 line-trip 時,若這份有變動 → 記得【一併同步 aa50ffad0c7c】,否則 Pages 後台看不到新功能(例:發公告)。
-     ▸ 別用 scripts/publish-houtai.sh 從這份整份覆蓋 Pages(line-trip 若落後會洗掉協作者的 Pages 工作)。 -->
+     ▸ 0803:第二條入口(houtai 函式 + storage 上的 HTML 副本 + publish-houtai.sh)【已全部退役】——
+       它吐的是 7/17 的舊後台,與這份分歧了兩週而沒人發現。現在後台只有 GitHub Pages 一條路,
+       不會再有「兩個版本同時活著」的問題。要復原的話備份在 scratchpad(當日)。 -->
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
@@ -1661,6 +1663,9 @@
        七小時 54% 失敗率但三種原因修法完全不同,混著記永遠只能猜。 */
     ai_err_why:         { free: 0,     per1000: 0,  paid:false, label: "⑦📊 (量測)AI 失敗原因(點明細看 q 欄)" },
     ai_break:           { free: 0,     per1000: 0,  paid:false, label: "⑦⛔ AI 斷路器跳開中被略過(連 5 敗→斷 5 分)" },
+    /* 0803:三層 AI(抓址/看單救援/分類器)共用同一把 Mistral key。這一列 = 供應商回 429 限流。
+       平常應該是 0;開始有數字就代表尖峰在互相排擠,要嘛降量、要嘛把某一層換獨立帳號。 */
+    ai_ratelimit:       { free: 0,     per1000: 0,  paid:false, label: "🚦 AI 被限流 429(共用金鑰互相排擠的訊號)" },
     ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
     /* ── 🔍 AI 看單救援(airescue,App 端):規則抓 0 張 → AI 指出地址在原文哪一段 → 規則重跑建卡 ──
        不在定位鏈上(是抓單鏈),但共用 ai_daily_cap 錢包,所以記在同一本帳。
@@ -2118,7 +2123,7 @@
          null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
-        || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break"
+        || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break" || r.api === "ai_ratelimit"
         || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
       var n = Number(r.n || 0);
       allN += n;
@@ -2196,6 +2201,19 @@
         var ds = Object.keys(byDay).sort();
         var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
         if(pToday >= GCAP * 0.6) warns.push("🟠 Places 就近今日 " + pToday + " 次(含測試機,舊版伺服器無法拆分)— 全隊上限 " + GCAP + "/日、個人 " + DCAP + "/日。");
+      }
+    })();
+    /* 🚦 AI 限流(0803):三層 AI 共用同一把 Mistral key —— 429 一出現就代表尖峰時它們在互相排擠。
+       這是「要不要分帳號」的唯一客觀訊號,平常應該恆為 0,所以【只要非零就報】,不設寬容門檻。
+       量大時升級成紅字:那已經不是偶發,是真的卡住了(司機端會看到定位變慢/查無變多)。 */
+    (function(){
+      var rl = 0; today.forEach(function(r){ if(r.api === "ai_ratelimit") rl += Number(r.n||0); });
+      if(rl > 0){
+        var msg = (rl >= 20 ? "🔴" : "🟠") + " AI 今日被限流(429)<b>" + rl + "</b> 次 —— 三層 AI 共用同一把 Mistral 金鑰,"
+          + "尖峰時開始互相排擠。" + (rl >= 20
+            ? "已達顯著程度:建議把【看單救援】換一把獨立金鑰(改 AI_API_KEY 環境變數即可),或調低該層每日上限。"
+            : "先觀察;持續上升就該分帳號或降量。");
+        warns.push(msg);
       }
     })();
     /* Places cap 已經打到 → 這是「現在就在壞」,不是預警 */
