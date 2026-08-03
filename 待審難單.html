@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>待審難單 · TripRadar</title>
+<!--
+  待審難單工作台(0803 重建,取代舊「待審區.html」)
+  ─────────────────────────────────────────────────────────────────
+  ⚠️ 舊待審區為什麼失效:它撈 api="aiparse",而 0731「AI 腦補事故根治」把那層改名成
+     ai_parse / ai_rescue 後,那個字串在 DB 裡一筆都不存在 → 整頁永遠是空的(靜默失效)。
+     這一頁改撈 ai_rescue(規則抓 0 張時才跑的看單救援),資料是活的。
+
+  這頁在做什麼:
+     規則(DispatchParser)抓不到、但 AI 讀出地址的單 = Parser 的知識缺口。
+     把它變成 DriverCaseLibrary 的永久案例 + 修好 Parser → 那類單從此免費、不必再問 AI。
+
+  ⚠️ 網頁【無法直接改 Parser】:DispatchParser.kt 是編進 APK 的 Kotlin,改它要跑 647 個測試 + 出版。
+     所以這頁做的是把 SOP 的①②③自動化:看單 → 一鍵產生可貼進案例庫的測試碼 → 你貼給工程端改。
+     ④人工核對 ⑤改 Parser 仍走正規流程(測試鎖住,不能繞過)。
+-->
+<script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#EEF3F1;
+    --ink:#131C19; --muted:#54645E; --faint:#65746D;
+    --line:#E4EAE7; --line-2:#D4DCD8;
+    --teal:#0D7A6E; --teal-ink:#0A5A51; --teal-soft:#DBEDE8; --teal-line:#B2DAD1;
+    --red:#AE3823; --red-soft:#F5E1DB; --amber:#8A5D0F; --amber-soft:#F3E9D2;
+    --r:10px; --r-sm:7px; --r-pill:999px; --dur:.16s; --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84; --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }
+  @media(prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84; --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:940px;margin:0 auto;padding:20px 16px 60px;}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+  h1{font-size:20px;margin:0;font-weight:700;}
+  .back{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line-2);padding:6px 12px;border-radius:var(--r-sm);}
+  .back:hover{border-color:var(--teal-line);color:var(--teal-ink);}
+  .sub{color:var(--muted);font-size:13px;margin:4px 0 14px;line-height:1.65;}
+  .sub b{color:var(--ink);}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  select,button{font-family:inherit;font-size:13px;}
+  select{padding:7px 10px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .btn{background:var(--surface);color:var(--ink);border:1px solid var(--line-2);padding:7px 13px;border-radius:var(--r-sm);cursor:pointer;font-weight:600;transition:border-color var(--dur),color var(--dur);}
+  .btn:hover{border-color:var(--teal-line);color:var(--teal-ink);}
+  .btn.primary{background:var(--teal);color:#fff;border-color:var(--teal);}
+  .btn.primary:hover{opacity:.9;color:#fff;}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .stat{flex:1 1 120px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;}
+  .stat .n{font-size:22px;font-weight:800;font-family:var(--mono);}
+  .stat .t{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .case{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;margin-bottom:10px;}
+  .case.done{opacity:.45;}
+  .chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);font-family:var(--mono);white-space:nowrap;}
+  .badge.hot{background:var(--red-soft);color:var(--red);}
+  .badge.warm{background:var(--amber-soft);color:var(--amber);}
+  .badge.cool{background:var(--teal-soft);color:var(--teal-ink);}
+  .who{font-size:11.5px;color:var(--faint);margin-left:auto;}
+  .raw{font-family:var(--mono);font-size:12px;line-height:1.7;background:var(--surface-2);border-radius:var(--r-sm);
+    padding:9px 11px;white-space:pre-wrap;word-break:break-all;max-height:130px;overflow:auto;}
+  .acts{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;}
+  .empty{color:var(--muted);font-size:13.5px;padding:26px 0;text-align:center;}
+  .login{max-width:340px;margin:16vh auto;text-align:center;}
+  .login input{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .login button{width:100%;margin-top:10px;background:var(--teal);color:#fff;border:none;padding:11px;font-size:15px;font-weight:700;border-radius:var(--r-sm);cursor:pointer;font-family:inherit;}
+  .err{color:var(--red);font-size:12.5px;min-height:17px;margin-top:8px;}
+  .hide{display:none !important;}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:var(--bg);
+    padding:10px 18px;border-radius:var(--r-pill);font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;}
+  .toast.on{opacity:1;}
+  .how{background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r);padding:12px 15px;margin-bottom:14px;font-size:12.5px;line-height:1.75;color:var(--muted);}
+  .how b{color:var(--ink);}
+  .how ol{margin:6px 0 0;padding-left:20px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login" class="login">
+    <div style="font-size:38px;">🧩</div>
+    <h1 style="margin:8px 0 4px;">待審難單</h1>
+    <div class="sub">需要後台管理密碼</div>
+    <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
+    <button id="go">進入</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="top">
+      <h1>🧩 待審難單</h1>
+      <a class="back" href="index.html">← 回後台</a>
+    </div>
+    <div class="sub">規則(Parser)抓不到、但 AI 讀出地址的單。<b>把它變成永久案例 + 修好 Parser,那類單從此免費</b> —— 不必每次都花錢問 AI。</div>
+
+    <div class="how">
+      <b>怎麼用</b>
+      <ol>
+        <li>看下面的原文,確認 AI 讀出來的<b>上車地址</b>對不對</li>
+        <li>對的話按 <b>📋 複製測試碼</b>,把剪貼簿內容貼給工程端(或直接貼給 Claude)</li>
+        <li>工程端把它加進 <code>DriverCaseLibraryTest</code> → 修 Parser → 全庫測試綠燈 → 出新版</li>
+        <li>處理完按 <b>✓ 已處理</b>,它就不再出現在這張清單</li>
+      </ol>
+      ⚠️ <b>Parser 無法在網頁上修改</b> —— 它是編進 App 的程式,每次改動都必須通過全部案例庫測試才能發版(這是防止改一條規則、悄悄弄壞十種單的保護)。
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n" id="sN">—</div><div class="t">待處理難單</div></div>
+      <div class="stat"><div class="n" id="sHot">—</div><div class="t">最多司機遇到</div></div>
+      <div class="stat"><div class="n" id="sDays">—</div><div class="t">統計範圍</div></div>
+    </div>
+
+    <div class="bar">
+      <select id="days">
+        <option value="3">近 3 天</option>
+        <option value="7">近 7 天</option>
+        <option value="14">近 14 天</option>
+      </select>
+      <button class="btn" id="reload">↻ 重新整理</button>
+      <span style="font-size:11.5px;color:var(--faint);">依「幾位司機遇到」排序 —— 越多人踩到的越優先修</span>
+    </div>
+
+    <div id="list"><div class="empty">載入中…</div></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* 與後台【逐字相同】的呼叫方式:admin 收 password(不是 pw),不帶 ANON header。 */
+var URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
+var $ = function(i){ return document.getElementById(i); };
+var esc = function(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+var PW = sessionStorage.getItem("tr_pw") || "";
+var ROWS = [];
+
+function api(action, extra){
+  return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
+    .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
+    .catch(function(){ return { error:"network" }; });
+}
+function toast(m){ var t=$('toast'); t.textContent=m; t.classList.add('on'); setTimeout(function(){ t.classList.remove('on'); }, 1900); }
+
+function enter(){ $('login').classList.add('hide'); $('app').classList.remove('hide'); load(); }
+$('go').addEventListener('click', function(){
+  PW = $('pw').value.trim();
+  if(!PW){ $('err').textContent="請輸入密碼"; return; }
+  $('err').textContent="驗證中…";
+  api("hardCases", { days:3 }).then(function(r){
+    if(r && r.ok){ sessionStorage.setItem("tr_pw", PW); $('err').textContent=""; enter(); }
+    else $('err').textContent = "密碼錯誤或無權限";
+  });
+});
+$('pw').addEventListener('keydown', function(e){ if(e.key==="Enter") $('go').click(); });
+
+function load(){
+  $('list').innerHTML = "<div class='empty'>載入中…</div>";
+  api("hardCases", { days: parseInt($('days').value,10) }).then(function(res){
+    if(!res || !res.ok){ $('list').innerHTML = "<div class='empty'>載入失敗:" + esc((res&&res.error)||"?") + "</div>"; return; }
+    ROWS = res.rows || [];
+    $('sN').textContent = ROWS.length;
+    $('sHot').textContent = ROWS.length ? (ROWS[0].dn + " 位") : "—";
+    $('sDays').textContent = "近 " + (res.days||3) + " 天";
+    render();
+  });
+}
+$('reload').addEventListener('click', load);
+$('days').addEventListener('change', load);
+
+/* 產生可貼進 DriverCaseLibraryTest 的測試碼草稿。
+   ⚠️ 斷言【故意留空給人填】—— AI 讀的不一定對,自動塞斷言等於把錯的東西固化進案例庫。 */
+function draft(q){
+  var d = new Date(), id = ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+  var lit = JSON.stringify(q);   // JSON.stringify 幫我們處理換行/引號跳脫,直接就是合法 Kotlin 字串
+  return 'RealCase("' + id + '-XX(待填:現象描述,例「規則抓 0 張,AI 讀得出上車地」)",\n'
+       + '    ' + lit + ', 1) {\n'
+       + '    // TODO 依實際情況填斷言,例:\n'
+       + '    // assertTrue(it[0].pickupText.contains("填入上車地關鍵段"))\n'
+       + '    // assertEquals("填入下車地", it[0].dropoffText)\n'
+       + '    // assertEquals("HH:MM", it[0].reservedTime)\n'
+       + '},';
+}
+function copyText(t){
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+  var a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select();
+  try{ document.execCommand('copy'); }catch(e){} document.body.removeChild(a);
+  return Promise.resolve();
+}
+
+function render(){
+  if(!ROWS.length){ $('list').innerHTML = "<div class='empty'>目前沒有待處理的難單 👍<br><span style='font-size:12px'>(規則都抓得到,或都已標記處理過)</span></div>"; return; }
+  $('list').innerHTML = ROWS.map(function(r, i){
+    var cls = r.dn >= 3 ? "hot" : (r.dn === 2 ? "warm" : "cool");
+    return "<div class='case' data-i='" + i + "'>"
+      + "<div class='chead'>"
+        + "<span class='badge " + cls + "'>" + r.dn + " 位司機</span>"
+        + "<span class='badge cool'>出現 " + r.n + " 次</span>"
+        + "<span class='who'>" + esc((r.drivers||[]).join("、")) + " · " + esc(String(r.last||"").replace("T"," ").slice(0,16)) + "</span>"
+      + "</div>"
+      + "<div class='raw'>" + esc(r.q) + "</div>"
+      + "<div class='acts'>"
+        + "<button class='btn primary' data-a='copy' data-i='" + i + "'>📋 複製測試碼</button>"
+        + "<button class='btn' data-a='raw' data-i='" + i + "'>複製原文</button>"
+        + "<button class='btn' data-a='done' data-i='" + i + "'>✓ 已處理</button>"
+      + "</div></div>";
+  }).join("");
+}
+
+$('list').addEventListener('click', function(e){
+  var b = e.target.closest('button[data-a]'); if(!b) return;
+  var r = ROWS[parseInt(b.getAttribute('data-i'),10)]; if(!r) return;
+  var a = b.getAttribute('data-a');
+  if(a === "copy"){ copyText(draft(r.q)).then(function(){ toast("測試碼已複製 —— 貼給工程端"); }); }
+  else if(a === "raw"){ copyText(r.q).then(function(){ toast("原文已複製"); }); }
+  else if(a === "done"){
+    if(!confirm("標記為已處理?\n\n這則不再出現在待審清單(已寫進案例庫、或判定是噪音時才按)。")) return;
+    api("markHardCase", { q: r.q }).then(function(x){
+      if(x && x.ok){ toast("已標記處理"); load(); } else toast("失敗:" + ((x&&x.error)||"?")); });
+  }
+});
+
+if(PW) enter();
+</script>
+</body>
+</html>

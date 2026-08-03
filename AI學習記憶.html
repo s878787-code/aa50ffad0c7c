@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 學習記憶 · TripRadar</title>
+<!--
+  AI 學習記憶(0803 獨立子頁)
+  ─────────────────────────────────────────────────────────────────
+  為什麼獨立成一頁:範例庫與成敗迴路會【隨時間越長越長】,塞在後台「AI 大腦」分頁裡
+  會把開關/規則那些【每天要用】的控制項擠到看不到。這裡是「想深入看的時候才進來」的地方。
+
+  三個分頁:
+    ① 範例庫    ai_examples —— AI 抓址成功且【事後證實查得到座標】才會存,下次同型單當 few-shot
+    ② 成敗迴路  今日 ai_assist —— 成=AI 剪的字串付費層解得出;敗=AI 出手仍查無(待修清單)
+    ③ 規則版本  ai_prompt_history —— 兩套提示詞的改動歷史(誰改的、為什麼)
+
+  共用後台的登入:密碼放 sessionStorage.tr_pw(同源),沒有就要求輸入,不另存一份。
+  主題沿用 localStorage.tr_theme,深淺色跟後台一致。
+-->
+<script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#EEF3F1;
+    --ink:#131C19; --muted:#54645E; --faint:#65746D;
+    --line:#E4EAE7; --line-2:#D4DCD8;
+    --teal:#0D7A6E; --teal-ink:#0A5A51; --teal-soft:#DBEDE8; --teal-line:#B2DAD1;
+    --red:#AE3823; --red-soft:#F5E1DB; --amber:#8A5D0F; --amber-soft:#F3E9D2;
+    --r:10px; --r-sm:7px; --r-pill:999px; --dur:.16s; --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }
+  @media(prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:960px;margin:0 auto;padding:20px 16px 60px;}
+  a{color:var(--teal-ink);}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+  h1{font-size:20px;margin:0;font-weight:700;}
+  .back{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line-2);
+    padding:6px 12px;border-radius:var(--r-sm);transition:border-color var(--dur),color var(--dur);}
+  .back:hover{border-color:var(--teal-line);color:var(--teal-ink);}
+  .sub{color:var(--muted);font-size:13px;margin:4px 0 16px;line-height:1.6;}
+  .segbar{display:flex;gap:3px;background:var(--surface-2);border-radius:var(--r-sm);padding:3px;margin-bottom:14px;flex-wrap:wrap;}
+  .segbar button{flex:1 1 120px;background:none;border:none;font-family:inherit;font-size:13px;font-weight:600;
+    color:var(--muted);padding:9px 12px;border-radius:5px;cursor:pointer;transition:background var(--dur),color var(--dur);}
+  .segbar button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .stat{flex:1 1 130px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;}
+  .stat .n{font-size:23px;font-weight:800;font-family:var(--mono);}
+  .stat .t{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .stat.win .n{color:var(--teal-ink);} .stat.lose .n{color:var(--red);}
+  .row{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--line);}
+  .row:last-child{border-bottom:none;}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);white-space:nowrap;font-family:var(--mono);flex-shrink:0;}
+  .badge.hit{background:var(--teal-soft);color:var(--teal-ink);}
+  .badge.bad{background:var(--red-soft);color:var(--red);}
+  .badge.warn{background:var(--amber-soft);color:var(--amber);}
+  .body{flex:1;min-width:0;}
+  .nm{font-size:13px;font-weight:650;word-break:break-all;}
+  .raw{font-size:11.5px;color:var(--faint);margin-top:3px;line-height:1.5;word-break:break-all;}
+  .tag{font-size:11px;font-weight:700;color:var(--red);white-space:nowrap;flex-shrink:0;align-self:center;}
+  .empty{color:var(--muted);font-size:13px;padding:18px 0;text-align:center;}
+  .search{width:100%;font-family:inherit;font-size:13.5px;padding:9px 12px;border:1px solid var(--line-2);
+    border-radius:var(--r-sm);background:var(--surface);color:var(--ink);margin-bottom:10px;}
+  .search:focus{outline:none;border-color:var(--teal-line);}
+  .login{max-width:340px;margin:16vh auto;text-align:center;}
+  .login input{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .login button{width:100%;margin-top:10px;background:var(--teal);color:#fff;border:none;padding:11px;font-size:15px;font-weight:700;border-radius:var(--r-sm);cursor:pointer;font-family:inherit;}
+  .err{color:var(--red);font-size:12.5px;min-height:17px;margin-top:8px;}
+  .hide{display:none !important;}
+  .note{font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login" class="login">
+    <div style="font-size:38px;">🧠</div>
+    <h1 style="margin:8px 0 4px;">AI 學習記憶</h1>
+    <div class="sub">需要後台管理密碼</div>
+    <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
+    <button id="go">進入</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="top">
+      <h1>🧠 AI 學習記憶</h1>
+      <a class="back" href="index.html">← 回後台</a>
+    </div>
+    <div class="sub">AI 學到什麼、今天判對判錯了什麼、規則被誰改過。<b>這裡只看不改</b> —— 要改規則回後台「AI 大腦」頁。</div>
+
+    <div class="segbar" id="seg">
+      <button data-v="ex" class="on">範例庫</button>
+      <button data-v="loop">成敗迴路 · 今日</button>
+      <button data-v="hist">規則版本</button>
+    </div>
+
+    <!-- ① 範例庫 -->
+    <div id="v-ex">
+      <div class="stats">
+        <div class="stat"><div class="n" id="exN">—</div><div class="t">已學會的範例</div></div>
+        <div class="stat"><div class="n" id="exHot">—</div><div class="t">最常被檢索次數</div></div>
+      </div>
+      <div class="card">
+        <input class="search" id="exQ" placeholder="搜尋地址或原文…">
+        <div id="exBody"><div class="empty">載入中…</div></div>
+        <div class="note">每筆 = AI 剪出的地址【事後證實查得到座標】才會存。<b>×N</b> 是它被當範例檢索過幾次 —— 次數越高代表這個剪法越常派上用場。原文已遮蔽電話姓名。</div>
+      </div>
+    </div>
+
+    <!-- ② 成敗迴路 -->
+    <div id="v-loop" class="hide">
+      <div class="stats">
+        <div class="stat win"><div class="n" id="loopWin">—</div><div class="t">今日救回(省下查無)</div></div>
+        <div class="stat lose"><div class="n" id="loopLose">—</div><div class="t">今日仍查無(待修)</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:12.5px;font-weight:700;color:var(--red);margin-bottom:4px;">❌ 待修 — AI 剪了、還是查不到</div>
+        <div id="loopLoseBody"><div class="empty">載入中…</div></div>
+        <div class="note">同一個地名重複出現越多次,越該<b>補進位置庫</b>(後台「位置庫」頁)。補進去之後這一層就永遠免費了。</div>
+      </div>
+      <div class="card">
+        <div style="font-size:12.5px;font-weight:700;color:var(--teal-ink);margin-bottom:4px;">✅ 救回 — AI 剪對、查到座標</div>
+        <div id="loopWinBody"><div class="empty">載入中…</div></div>
+      </div>
+    </div>
+
+    <!-- ③ 規則版本 -->
+    <div id="v-hist" class="hide">
+      <div class="card">
+        <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🤖 AI 抓址規則 · 改動歷史</div>
+        <div id="histExtract"><div class="empty">載入中…</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🔍 AI 看單救援規則 · 改動歷史</div>
+        <div id="histRescue"><div class="empty">載入中…</div></div>
+      </div>
+      <div class="note">要改規則或回滾,回後台「AI 大腦」分頁操作 —— 這裡只顯示歷史,避免兩個地方都能改造成混亂。</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 設定:與後台【逐字相同】的呼叫方式(index.html 的 URL_BASE / api())——
+   ⚠️ admin 函式收的參數名是 password 不是 pw,而且【不帶】ANON header(門禁只有管理密碼)。
+   照抄待審區那支的寫法會 401,這裡對齊後台。 */
+var URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
+var $ = function(i){ return document.getElementById(i); };
+var esc = function(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+var PW = sessionStorage.getItem("tr_pw") || "";
+
+function api(action, extra){
+  return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
+    .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
+    .catch(function(){ return { error:"network" }; });
+}
+
+/* 登入:沿用後台已存的密碼,存在就直接進 */
+function enter(){
+  $('login').classList.add('hide'); $('app').classList.remove('hide');
+  loadEx(); loadLoop(); loadHist();
+}
+$('go').addEventListener('click', function(){
+  PW = $('pw').value.trim();
+  if(!PW){ $('err').textContent = "請輸入密碼"; return; }
+  $('err').textContent = "驗證中…";
+  api("getAiPrompt", { which:"extract" }).then(function(r){
+    if(r && r.ok){ sessionStorage.setItem("tr_pw", PW); $('err').textContent=""; enter(); }
+    else $('err').textContent = "密碼錯誤或無權限";
+  });
+});
+$('pw').addEventListener('keydown', function(e){ if(e.key==="Enter") $('go').click(); });
+
+/* 分頁切換 */
+$('seg').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if(!b) return;
+  var v = b.getAttribute('data-v');
+  [].forEach.call($('seg').children, function(x){ x.classList.toggle('on', x===b); });
+  ['ex','loop','hist'].forEach(function(k){ $('v-'+k).classList.toggle('hide', k!==v); });
+});
+
+/* ① 範例庫 */
+var EX = [];
+function loadEx(){
+  api("getAiPrompt", { which:"extract" }).then(function(res){
+    if(!res || !res.ok){ $('exBody').innerHTML = "<div class='empty'>載入失敗</div>"; return; }
+    EX = res.examples_top || [];
+    $('exN').textContent = (res.examples_n||0).toLocaleString();
+    $('exHot').textContent = EX.length ? ("×" + (EX[0].hits||1)) : "—";
+    renderEx();
+  });
+}
+function renderEx(){
+  var q = ($('exQ').value||"").trim().toLowerCase();
+  var list = q ? EX.filter(function(e){
+    return String(e.addr||"").toLowerCase().indexOf(q)>=0 || String(e.raw||"").toLowerCase().indexOf(q)>=0;
+  }) : EX;
+  if(!list.length){ $('exBody').innerHTML = "<div class='empty'>" + (q? "找不到符合的範例" : "還沒累積 —— AI 抓址成功一次就會存一筆") + "</div>"; return; }
+  $('exBody').innerHTML = list.map(function(e){
+    return "<div class='row'><span class='badge hit'>×" + (e.hits||1) + "</span>"
+      + "<div class='body'><div class='nm'>" + esc(e.addr) + "</div>"
+      + "<div class='raw'>← " + esc(e.raw) + "</div></div></div>";
+  }).join("");
+}
+$('exQ').addEventListener('input', renderEx);
+
+/* ② 成敗迴路 */
+function loadLoop(){
+  api("aiLoop", {}).then(function(res){
+    if(!res || !res.ok){
+      $('loopLoseBody').innerHTML = $('loopWinBody').innerHTML = "<div class='empty'>載入失敗:" + esc((res&&res.error)||"?") + "</div>";
+      return;
+    }
+    var W = res.win||[], L = res.lose||[];
+    var wn = W.reduce(function(a,b){return a+b.n;},0), ln = L.reduce(function(a,b){return a+b.n;},0);
+    /* truncated=伺服器只給取樣(RPC 未建時的退路)→ 標明,不謊稱總數 */
+    var cap = res.truncated ? " *" : "";
+    $('loopWin').textContent = wn + cap; $('loopLose').textContent = ln + cap;
+    $('loopLoseBody').innerHTML = L.length ? L.map(function(e){
+      return "<div class='row'><span class='badge bad'>" + e.n + " 次</span>"
+        + "<div class='body'><div class='nm'>" + esc(e.q) + "</div></div>"
+        + (e.n>=3 ? "<span class='tag'>優先補位置庫</span>" : "") + "</div>";
+    }).join("") : "<div class='empty'>今天沒有失敗的判讀 👍</div>";
+    $('loopWinBody').innerHTML = W.length ? W.map(function(e){
+      return "<div class='row'><span class='badge hit'>" + e.n + " 次</span>"
+        + "<div class='body'><div class='nm'>" + esc(e.q) + "</div></div></div>";
+    }).join("") : "<div class='empty'>今天 AI 還沒成功救回過</div>";
+    if(res.truncated){
+      $('loopLoseBody').insertAdjacentHTML('afterbegin',
+        "<div class='note' style='color:var(--amber);margin:0 0 8px;'>* 伺服器端聚合尚未啟用,以下為<b>最近 400 筆取樣</b>,非今日總數。</div>");
+    }
+  });
+}
+
+/* ③ 規則版本歷史 */
+function loadHist(){
+  [["extract","histExtract"],["rescue","histRescue"]].forEach(function(p){
+    api("getAiPrompt", { which:p[0] }).then(function(res){
+      var box = $(p[1]);
+      if(!res || !res.ok){ box.innerHTML = "<div class='empty'>載入失敗</div>"; return; }
+      var H = res.history || [];
+      if(!H.length){ box.innerHTML = "<div class='empty'>還沒有人改過 —— 目前用程式內建預設規則</div>"; return; }
+      box.innerHTML = H.map(function(h){
+        var t = String(h.created_at||"").replace("T"," ").slice(0,16);
+        return "<div class='row'><span class='badge warn'>" + esc(t) + "</span>"
+          + "<div class='body'><div class='nm'>" + esc(h.changed_by||"?") + "</div>"
+          + "<div class='raw'>" + esc(h.note || "(未寫改動理由)") + "</div></div></div>";
+      }).join("");
+    });
+  });
+}
+
+/* 有後台留下的密碼就直接進,沒有才顯示登入 */
+if(PW) enter();
+</script>
+</body>
+</html>

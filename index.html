@@ -123,6 +123,67 @@
   .primary:disabled{ background:var(--surface-2); color:var(--faint); cursor:not-allowed; }
   .ghost{ background:var(--surface); color:var(--ink); border:1px solid var(--line-2); padding:7px 13px; font-size:13px; font-weight:550; border-radius:var(--r-sm); transition:border-color var(--dur),background var(--dur); }
   .promptfix{ background:var(--surface-2,var(--surface)); color:var(--muted); border:1px dashed var(--line-2); border-radius:var(--r-sm); padding:8px 10px; margin:0; font-family:ui-monospace,Menlo,monospace; font-size:11.5px; line-height:1.55; white-space:pre-wrap; word-break:break-word; overflow-x:auto; }
+
+  /* 主題切換:自繪圖標(0803,取代文字)。切換時圖標旋轉淡入,並保留可讀的 aria-label */
+  .themetgl{ display:inline-grid; place-items:center; width:34px; height:34px; padding:0;
+    border:1px solid var(--line-2); background:var(--surface); color:var(--ink);
+    border-radius:var(--r-sm); cursor:pointer; transition:border-color var(--dur), background var(--dur), color var(--dur); }
+  .themetgl:hover{ border-color:var(--teal-line); color:var(--teal-ink); background:var(--surface-2); }
+  .themetgl svg{ width:17px; height:17px; display:block; animation:thspin .42s var(--ease); }
+  @keyframes thspin{ from{ opacity:0; transform:rotate(-90deg) scale(.6);} to{ opacity:1; transform:none;} }
+  aside .foot .themetgl{ background:transparent; border-color:rgba(255,255,255,.16); color:var(--side-tx); width:auto; padding:6px 10px; gap:8px; grid-auto-flow:column; }
+  aside .foot .themetgl:hover{ color:#fff; border-color:rgba(255,255,255,.34); background:rgba(255,255,255,.06); }
+  @media (prefers-reduced-motion: reduce){ .themetgl svg{ animation:none; } }
+  /* ── 運作流程圖(0803)。科技感動畫:掃描光束 + 資料流動 + 逐步點亮,全部可被 reduced-motion 關掉 ── */
+  .fchain{ display:flex; flex-wrap:wrap; gap:6px; align-items:stretch; position:relative; }
+  .fstep{ flex:1 1 116px; min-width:104px; border:1px solid var(--line-2); background:var(--surface);
+    border-radius:var(--r-sm); padding:8px 10px; position:relative; overflow:hidden;
+    opacity:0; transform:translateY(6px); animation:fin .42s var(--ease) forwards; }
+  .fstep .fn{ font-size:10px; font-weight:700; color:var(--faint); letter-spacing:1px; font-family:var(--mono); }
+  .fstep .ft{ font-size:12.5px; font-weight:650; margin-top:2px; line-height:1.35; position:relative; z-index:1; }
+  .fstep .fs{ font-size:11px; color:var(--muted); margin-top:3px; line-height:1.45; position:relative; z-index:1; }
+  .fstep.free{ border-color:var(--teal-line); background:var(--teal-soft); }
+  .fstep.paid{ border-color:#E2CFA4; background:var(--amber-soft); }
+  .fstep.opt{ border-style:dashed; }
+  /* 最快路徑:發光邊框 + 掃描光束掠過 */
+  .fstep.fast{ border-color:var(--teal); background:var(--teal-soft);
+    box-shadow:0 0 0 1px var(--teal) inset, 0 0 12px -2px color-mix(in srgb, var(--teal) 55%, transparent); }
+  .fstep.fast::before{ content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--teal) 28%, transparent) 50%, transparent 65%);
+    transform:translateX(-120%); animation:fsweep 3.4s ease-in-out infinite; }
+  /* 進行中指示:雙環脈衝 */
+  .fpulse::after{ content:''; position:absolute; right:8px; top:8px; width:7px; height:7px; border-radius:50%;
+    background:var(--teal); box-shadow:0 0 0 0 color-mix(in srgb, var(--teal) 70%, transparent);
+    animation:fping 1.8s cubic-bezier(.3,0,.2,1) infinite; }
+  @keyframes fin{ to{ opacity:1; transform:translateY(0);} }
+  @keyframes fsweep{ 0%{ transform:translateX(-120%);} 55%,100%{ transform:translateX(120%);} }
+  @keyframes fping{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--teal) 70%, transparent);} 70%,100%{ box-shadow:0 0 0 9px transparent;} }
+  /* 箭頭:資料點沿著流動 */
+  .farrow{ align-self:center; color:var(--line-2); font-size:13px; padding:0 1px; position:relative; }
+  .farrow::after{ content:''; position:absolute; left:0; top:50%; width:4px; height:4px; margin-top:-2px;
+    border-radius:50%; background:var(--teal); opacity:0; animation:fflow 2.6s linear infinite; }
+  @keyframes fflow{ 0%{ transform:translateX(-2px); opacity:0;} 15%{opacity:.95;} 85%{opacity:.95;} 100%{ transform:translateX(16px); opacity:0;} }
+  /* 瀑布列:逐列點亮 + 命中數跳動 */
+  .frow{ display:flex; align-items:center; gap:7px; padding:6px 0; border-bottom:1px solid var(--line);
+    opacity:0; animation:fin .38s var(--ease) forwards; }
+  .frow:last-child{ border-bottom:none; }
+  .frow.hot .fname{ color:var(--teal-ink); }
+  .fbadge{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:var(--r-pill); white-space:nowrap; font-family:var(--mono); }
+  .fbadge.free{ background:var(--teal-soft); color:var(--teal-ink); }
+  .fbadge.paid{ background:var(--amber-soft); color:var(--amber); }
+  .fname{ font-size:12.5px; font-weight:600; }
+  .fdesc{ font-size:11.5px; color:var(--muted); margin-left:auto; text-align:right; }
+  .fhit{ font-family:var(--mono); font-size:11.5px; font-weight:700; color:var(--teal-ink); min-width:58px; text-align:right; }
+  .fhit.zero{ color:var(--faint); font-weight:500; }
+  .fbar{ height:3px; border-radius:2px; background:var(--teal); opacity:.5; margin-top:4px; width:0; animation:fgrow .9s var(--ease) forwards; }
+  .fbar.paid{ background:var(--amber); }
+  @keyframes fgrow{ to{ width:var(--w,0%);} }
+  @media (prefers-reduced-motion: reduce){
+    .fstep,.frow{ opacity:1 !important; transform:none !important; animation:none !important; }
+    .fstep.fast::before,.fpulse::after,.farrow::after{ animation:none !important; }
+    .fpulse::after{ opacity:1; }
+    .fbar{ animation:none !important; width:var(--w,0%) !important; }
+  }
   .ghost:hover{ border-color:var(--faint); background:var(--surface-2); }
   .linkbtn{ background:none; border:none; color:var(--muted); font-size:12.5px; padding:4px 6px; border-radius:4px; transition:color var(--dur); }
   .linkbtn:hover{ color:var(--teal); text-decoration:none; }
@@ -279,7 +340,7 @@
     <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
     <button class="primary" id="loginBtn">進入後台</button>
     <div class="err" id="loginErr"></div>
-    <button class="linkbtn" id="themeBtnLogin" style="margin-top:10px;">🌙 深色模式</button>
+    <button class="themetgl" id="themeBtnLogin" style="margin-top:10px;" aria-label="切換深色/淺色模式" title="切換深色/淺色模式"></button>
   </div>
 </div>
 
@@ -292,13 +353,20 @@
       <button data-tab="keys"><span class="ic"><svg viewBox='0 0 24 24'><circle cx='8' cy='15.5' r='3.6'/><path d='M10.6 13 20 3.6M16.2 4.4l2.6 2.6M13.4 7.2l2.2 2.2'/></svg></span>司機金鑰</button>
       <button data-tab="reports"><span class="ic"><svg viewBox='0 0 24 24'><path d='M12 3 2.6 20h18.8L12 3Z'/><path d='M12 9.5v5M12 17.6h.01'/></svg></span>問題回報<span class="bdg hide" id="navRepBdg"></span></button>
       <button data-tab="usage"><span class="ic"><svg viewBox='0 0 24 24'><path d='M3 13h3.5l2.5 6 4-13 2.5 7H21'/></svg></span>用量成本</button>
+      <button data-tab="alerts"><span class="ic"><svg viewBox='0 0 24 24'><path d='M12 3.5a6.5 6.5 0 0 0-6.5 6.5c0 4.2-1.5 5.5-1.5 5.5h16s-1.5-1.3-1.5-5.5A6.5 6.5 0 0 0 12 3.5Z'/><path d='M10.3 19a2 2 0 0 0 3.4 0'/></svg></span>診斷提醒<span class="bdg hide" id="navAlertBdg"></span></button>
+      <button data-tab="ai"><span class="ic"><svg viewBox='0 0 24 24'><rect x='4' y='7' width='16' height='12' rx='3'/><path d='M12 7V4M8.5 12.5h.01M15.5 12.5h.01M9.5 16h5'/></svg></span>AI 大腦</button>
       <button data-tab="places"><span class="ic"><svg viewBox='0 0 24 24'><path d='M19.5 10.2c0 5.4-7.5 11-7.5 11s-7.5-5.6-7.5-11a7.5 7.5 0 0 1 15 0Z'/><circle cx='12' cy='10' r='2.4'/></svg></span>位置庫</button>
+      <button data-tab="sys"><span class="ic"><svg viewBox='0 0 24 24'><circle cx='12' cy='12' r='3.2'/><path d='M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1'/></svg></span>系統</button>
+      <button data-tab="flow"><span class="ic"><svg viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='5' rx='1.5'/><rect x='14' y='3' width='7' height='5' rx='1.5'/><rect x='8.5' y='16' width='7' height='5' rx='1.5'/><path d='M6.5 8v3.5h11V8M12 11.5V16'/></svg></span>運作流程</button>
     </div>
     <div class="grow"></div>
     <div class="foot">
       <div class="who" id="whoLine">—</div>
-      <a href="AI待審區.html">AI 待審難單 →</a>
-      <button id="themeBtn">🌙 深色模式</button>
+      <!-- 0803:舊 AI待審區.html 撈的 api="aiparse" 在 0731 改版後已不存在(整頁永遠空的)→ 換成重建的兩支子頁。
+           獨立成子頁的理由:這兩份資料會【隨時間越長越長】,塞進分頁會把每天要用的控制項擠掉。 -->
+      <a href="待審難單.html">🧩 待審難單 →</a>
+      <a href="AI學習記憶.html">🧠 AI 學習記憶 →</a>
+      <button class="themetgl" id="themeBtn" aria-label="切換深色/淺色模式" title="切換深色/淺色模式"></button>
       <button id="logoutBtn">登出</button>
     </div>
   </aside>
@@ -318,7 +386,6 @@
            【只有切到「用量成本」分頁才會跑】—— 兩個條件永遠不會同時成立,所以它從來沒亮過。
            已改成:計算抽成 loadHealth() 獨立跑(登入即跑 + 20 秒輪詢),並另外顯示在下面那條
            固定置頂橫幅 #healthTop(每個分頁都看得見)。這一條保留當總覽內的詳細版。 -->
-      <div id="healthBar" class="hide" style="border:1px solid var(--red); background:var(--red-soft); color:var(--red); border-radius:var(--r); padding:10px 14px; margin-bottom:12px; font-size:13.5px; font-weight:600; line-height:1.7;"></div>
       <div class="kpis">
         <div class="kpi good" data-go="keys"><div class="n" id="kActive">0</div><div class="t">有效司機</div></div>
         <div class="kpi" data-go="keys"><div class="n" id="kAccToday">—</div><div class="t">今日接單(全體)</div></div>
@@ -482,17 +549,7 @@
         </div>
       </div>
 
-      <!-- 回報媒體用量 + 一鍵清理(取代要記得手動跑 media-cleanup.sh) -->
-      <div class="card">
-        <div class="rowline"><span class="cardtitle">回報圖片/影片 儲存空間</span>
-          <button class="linkbtn" id="storageRefresh" style="margin-left:auto;">重新整理</button></div>
-        <div id="storageBody" class="muted" style="font-size:13px;padding:6px 0;">點「重新整理」載入用量</div>
-        <div id="storageAction" class="hide" style="margin-top:8px;">
-          <button data-a="cleanmedia" style="background:var(--surface);color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;">
-            清理 45 天前的媒體(保留回報文字)</button>
-          <span class="muted" style="font-size:12px;margin-left:8px;">建議:快撞方案容量時清一次;文字紀錄不會被刪</span>
-        </div>
-      </div>
+
 
       <div class="card">
         <div class="rowline"><span class="cardtitle">每日用量趨勢</span>
@@ -513,7 +570,7 @@
       <div class="card" id="capCard">
         <div class="rowline">
           <span class="cardtitle">保險絲</span>
-          <span class="muted" style="font-size:12px;">超過上限當天就停打付費 API,卡片照出、只少距離</span>
+          <span class="muted" style="font-size:12px;">超過上限當天就停打付費 API,卡片照出、只少距離 · AI 兩層的上限在「AI 大腦」頁</span>
           <button class="linkbtn" id="geoRefresh" style="margin-left:auto;">↻ 重新整理</button>
         </div>
         <div class="rowline" style="margin-top:10px;">
@@ -537,7 +594,58 @@
           <button class="ghost" id="placesGlobalCapBtn" style="padding:5px 12px;">設定</button>
           <span class="muted" style="font-size:11.5px;">個人=單機失控閘 · 全隊=預算閘 · 空=用內建預設(80/2000)· 最多 60 秒生效</span>
         </div>
-        <div class="rowline" id="aiCtl" style="margin-top:8px;">
+        
+        
+      </div>
+
+      <!-- ⚠️ 下面兩個灰框的「硬編開頭/鐵律」文字必須與 edge function 保持同步(顯示對照用):
+           抓址=geocode/index.ts 的 aiPromptOf/AI_LAW;救援=airescue/index.ts 的 PROMPT_HEAD/PROMPT_LAW。
+           改了程式那邊要記得改這裡,否則畫面會誤導。真正的行為以程式為準。 -->
+
+
+
+
+      
+
+      
+
+      <div class="card">
+        <span class="cardtitle">今日查詢組成(免費 vs 付費)</span>
+        <div class="bars" id="geoBars"></div>
+        <div class="muted" style="font-size:11.5px; margin-top:8px;">深色=付費 API・淺色=免費(快取/自架/官方免費源)。長條比例=今日次數。</div>
+      </div>
+
+      <div class="card">
+        <span class="cardtitle">明細</span>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th></tr></thead>
+            <tbody id="geoBody"></tbody>
+          </table>
+        </div>
+        <div class="tablewrap" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>今日各司機(前 20)</th><th>次數</th></tr></thead>
+            <tbody id="geoDrivers"></tbody>
+          </table>
+        </div>
+        <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
+      </div>
+
+
+    </section>
+
+
+    <!-- ═══ AI 大腦 ═══ -->
+    <section id="tab-ai" class="hide">
+      <div class="pagehead"><h1>AI 大腦</h1><div class="sub">兩個 AI 各司其職:<b>看單救援</b>在規則抓 0 張時救整張卡,<b>抓址</b>在地址查不到座標時剪地址。這頁管它們的開關、規則、以及它學到的東西。</div></div>
+
+      <div class="card" id="aiFuseCard">
+        <div class="rowline"><span class="cardtitle">開關與每日上限</span>
+          <span class="muted" style="font-size:12px;">超過上限當天就停用該層,卡片照出、不影響抓單</span>
+          <button class="linkbtn" id="aiFuseRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+<div class="rowline" id="aiCtl" style="margin-top:8px;">
           <span class="muted" style="font-weight:700;">🤖 AI 抓址層</span>
           <button class="ghost" id="aiToggle" style="padding:5px 12px;">—</button>
           <span class="muted" style="font-size:12.5px;">每日上限</span>
@@ -545,7 +653,7 @@
           <button class="ghost" id="aiCapBtn" style="padding:5px 12px;">設定</button>
           <span class="muted" style="font-size:11.5px;">只修座標,不改卡片文字(0=不限)</span>
         </div>
-        <div class="rowline" id="aiRescueCtl" style="margin-top:8px;">
+<div class="rowline" id="aiRescueCtl" style="margin-top:8px;">
           <span class="muted" style="font-weight:700;">🔍 AI 看單救援</span>
           <button class="ghost" id="aiRescueToggle" style="padding:5px 12px;">—</button>
           <span class="muted" style="font-size:12.5px;">每日上限</span>
@@ -555,9 +663,6 @@
         </div>
       </div>
 
-      <!-- ⚠️ 下面兩個灰框的「硬編開頭/鐵律」文字必須與 edge function 保持同步(顯示對照用):
-           抓址=geocode/index.ts 的 aiPromptOf/AI_LAW;救援=airescue/index.ts 的 PROMPT_HEAD/PROMPT_LAW。
-           改了程式那邊要記得改這裡,否則畫面會誤導。真正的行為以程式為準。 -->
       <!-- 🤖 AI 抓址提示詞(0802 可編輯規則 + 0803 顯示完整框架)。規則你自己改,範例它自己學。 -->
       <div class="card" id="aiBrainCard">
         <div class="rowline"><span class="cardtitle">🤖 AI 抓址規則(可編輯)</span>
@@ -623,62 +728,25 @@
         <div id="rsHistBox" style="margin-top:8px;"></div>
       </div>
 
-      <div class="card"><span class="cardtitle">診斷 &amp; 省錢建議</span><div id="geoAdvice" style="margin-top:10px;"></div><div class="empty hide" id="advEmpty">目前沒有需要注意的事。</div></div>
+      
 
-      <div class="card" id="abuseCard">
-        <div class="rowline">
-          <span class="cardtitle">高風險用量</span>
-          <span class="pill ok hide" id="abuseState">—</span>
-          <button class="linkbtn" id="abuseRefresh" style="margin-left:auto;">↻ 重新整理</button>
-        </div>
-        <div class="muted" style="font-size:12px; margin-top:6px;">抓「亂刷」:近 24 小時 <b>高用量 + 高查無率(假地址查不到)+ 零接單</b> = 風險越高。怕的是有人拿序號自建群狂貼假地址燒 Google 錢。點司機名可跳到金鑰頁停用。</div>
-        <div class="tablewrap" style="margin-top:8px;">
-          <table>
-            <thead><tr><th>司機</th><th>風險</th><th>24h 查詢</th><th>geocode</th><th>查無率</th><th class="hide-m">今日接單</th></tr></thead>
-            <tbody id="abuseBody"></tbody>
-          </table>
-        </div>
-        <div class="empty hide" id="abuseEmpty">近 24 小時沒有值得注意的流量。</div>
-        <div class="muted" id="abuseNote" style="font-size:11.5px; margin-top:6px;"></div>
-      </div>
-
+      
       <div class="card">
-        <span class="cardtitle">今日查詢組成(免費 vs 付費)</span>
-        <div class="bars" id="geoBars"></div>
-        <div class="muted" style="font-size:11.5px; margin-top:8px;">深色=付費 API・淺色=免費(快取/自架/官方免費源)。長條比例=今日次數。</div>
-      </div>
-
-      <div class="card">
-        <span class="cardtitle">明細</span>
-        <div class="tablewrap" style="margin-top:8px;">
-          <table>
-            <thead><tr><th>API</th><th>今日</th><th>本月</th><th>本月免費額</th><th>超額單價</th></tr></thead>
-            <tbody id="geoBody"></tbody>
-          </table>
+        <div class="rowline"><span class="cardtitle">想看它學到什麼?</span></div>
+        <div class="muted" style="font-size:12.5px;margin-top:8px;line-height:1.75;">
+          範例庫、今日成敗迴路、規則改動歷史 —— 這些會<b>越累積越長</b>,放在
+          <a href="AI學習記憶.html" style="color:var(--teal-ink);font-weight:600;">🧠 AI 學習記憶</a> 子頁,
+          這頁只留每天要操作的開關與規則。<br>
+          規則抓不到、AI 讀出來的難單在
+          <a href="待審難單.html" style="color:var(--teal-ink);font-weight:600;">🧩 待審難單</a> —— 修好 Parser 那類單就永遠免費。
         </div>
-        <div class="tablewrap" style="margin-top:10px;">
-          <table>
-            <thead><tr><th>今日各司機(前 20)</th><th>次數</th></tr></thead>
-            <tbody id="geoDrivers"></tbody>
-          </table>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+          <a class="ghost" href="AI學習記憶.html" style="text-decoration:none;display:inline-block;">🧠 AI 學習記憶 →</a>
+          <a class="ghost" href="待審難單.html" style="text-decoration:none;display:inline-block;">🧩 待審難單 →</a>
         </div>
-        <div class="muted" id="geoNote" style="font-size:12px; margin-top:8px;"></div>
-      </div>
-
-      <!-- 🌐 官網流量(site_views 表;官網 sendBeacon → sitehit 函式計數,零個資) -->
-      <div class="card" id="siteViewCard">
-        <div class="rowline"><span class="cardtitle">🌐 官網流量</span>
-          <button class="linkbtn" id="siteViewRefresh" style="margin-left:auto;">↻ 重新整理</button></div>
-        <div class="tablewrap" style="margin-top:8px;">
-          <table>
-            <thead><tr><th>官網</th><th>今日</th><th>近 7 日</th><th>近 30 日</th><th>累積</th></tr></thead>
-            <tbody id="siteViewBody"></tbody>
-          </table>
-        </div>
-        <div class="chartbox" id="siteViewChart" style="margin-top:8px;"></div>
-        <div class="muted" style="font-size:11.5px; margin-top:6px;">人次=同一瀏覽器分頁工作階段算一次(重新整理/站內換頁不重複計);不跑 JS 的爬蟲、封鎖儲存空間的瀏覽器不計(略為低估)。趨勢圖=兩站合計,每點一天。</div>
       </div>
     </section>
+
 
     <!-- ═══ 位置庫 ═══ -->
     <section id="tab-places" class="hide">
@@ -755,6 +823,90 @@
         <div class="empty hide" id="placeEmpty">還沒有任何社區。從「新增地點」開始建,或從定位失敗的回報一筆筆補。</div>
       </div>
     </section>
+
+
+    <!-- ═══ 診斷提醒 ═══ -->
+    <section id="tab-alerts" class="hide">
+      <div class="pagehead"><h1>診斷提醒</h1><div class="sub">系統自己發現的問題與省錢機會。<b>沒有紅字就代表一切正常</b>,不用天天看。</div></div>
+
+      <div class="card" id="healthCard">
+        <div class="rowline"><span class="cardtitle">系統健康</span>
+          <span class="muted" style="font-size:12px;">每 60 秒自動檢查 · 超過門檻才會亮</span>
+          <button class="linkbtn" id="healthRefresh" style="margin-left:auto;">↻ 重新檢查</button>
+        </div>
+        <div id="healthBody" style="margin-top:10px;"></div>
+        <div class="empty hide" id="healthEmpty">✅ 目前一切正常,沒有需要處理的警告。</div>
+      </div>
+
+<div class="card"><span class="cardtitle">診斷 &amp; 省錢建議</span><div id="geoAdvice" style="margin-top:10px;"></div><div class="empty hide" id="advEmpty">目前沒有需要注意的事。</div></div>
+    </section>
+
+    <!-- ═══ 系統 ═══ -->
+    <section id="tab-sys" class="hide">
+      <div class="pagehead"><h1>系統</h1><div class="sub">防濫用、儲存空間、官網流量 —— 平常不用管,有紅字才要看。</div></div>
+
+<div class="card" id="abuseCard">
+        <div class="rowline">
+          <span class="cardtitle">高風險用量</span>
+          <span class="pill ok hide" id="abuseState">—</span>
+          <button class="linkbtn" id="abuseRefresh" style="margin-left:auto;">↻ 重新整理</button>
+        </div>
+        <div class="muted" style="font-size:12px; margin-top:6px;">抓「亂刷」:近 24 小時 <b>高用量 + 高查無率(假地址查不到)+ 零接單</b> = 風險越高。怕的是有人拿序號自建群狂貼假地址燒 Google 錢。點司機名可跳到金鑰頁停用。</div>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>司機</th><th>風險</th><th>24h 查詢</th><th>geocode</th><th>查無率</th><th class="hide-m">今日接單</th></tr></thead>
+            <tbody id="abuseBody"></tbody>
+          </table>
+        </div>
+        <div class="empty hide" id="abuseEmpty">近 24 小時沒有值得注意的流量。</div>
+        <div class="muted" id="abuseNote" style="font-size:11.5px; margin-top:6px;"></div>
+      </div>
+
+      <!-- 回報媒體用量 + 一鍵清理(取代要記得手動跑 media-cleanup.sh) -->
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">回報圖片/影片 儲存空間</span>
+          <button class="linkbtn" id="storageRefresh" style="margin-left:auto;">重新整理</button></div>
+        <div id="storageBody" class="muted" style="font-size:13px;padding:6px 0;">點「重新整理」載入用量</div>
+        <div id="storageAction" class="hide" style="margin-top:8px;">
+          <button data-a="cleanmedia" style="background:var(--surface);color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;">
+            清理 45 天前的媒體(保留回報文字)</button>
+          <span class="muted" style="font-size:12px;margin-left:8px;">建議:快撞方案容量時清一次;文字紀錄不會被刪</span>
+        </div>
+      </div>
+
+      <!-- 🌐 官網流量(site_views 表;官網 sendBeacon → sitehit 函式計數,零個資) -->
+      <div class="card" id="siteViewCard">
+        <div class="rowline"><span class="cardtitle">🌐 官網流量</span>
+          <button class="linkbtn" id="siteViewRefresh" style="margin-left:auto;">↻ 重新整理</button></div>
+        <div class="tablewrap" style="margin-top:8px;">
+          <table>
+            <thead><tr><th>官網</th><th>今日</th><th>近 7 日</th><th>近 30 日</th><th>累積</th></tr></thead>
+            <tbody id="siteViewBody"></tbody>
+          </table>
+        </div>
+        <div class="chartbox" id="siteViewChart" style="margin-top:8px;"></div>
+        <div class="muted" style="font-size:11.5px; margin-top:6px;">人次=同一瀏覽器分頁工作階段算一次(重新整理/站內換頁不重複計);不跑 JS 的爬蟲、封鎖儲存空間的瀏覽器不計(略為低估)。趨勢圖=兩站合計,每點一天。</div>
+      </div>
+    </section>
+
+
+    <!-- ═══ 運作流程 ═══ -->
+    <section id="tab-flow" class="hide">
+      <div class="pagehead"><h1>運作流程</h1><div class="sub">一則 LINE 訊息從進來到司機進群,系統做了哪些事。灰色=免費、橘色=付費、青色=最快路徑。</div></div>
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">階段一 · 訊息進來 → 出卡</span><span class="muted" style="font-size:12px;">解析 → 定位 → 排序</span></div>
+        <div id="flowStage1" style="margin-top:10px;"></div>
+      </div>
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">定位瀑布 · 便宜的先跑</span><span class="muted" style="font-size:12px;">上面沒中才往下,越下面越貴</span></div>
+        <div id="flowWaterfall" style="margin-top:10px;"></div>
+      </div>
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">階段二 · 點接單 → 進群</span><span class="muted" style="font-size:12px;">跳轉決策樹</span></div>
+        <div id="flowJump" style="margin-top:10px;"></div>
+      </div>
+    </section>
+
   </main>
 </div>
 
@@ -803,14 +955,17 @@
   }
 
   /* ── 分頁切換 ── */
-  var TABS = ["home","keys","reports","usage","places"];
+  var TABS = ["home","keys","reports","usage","alerts","ai","places","sys","flow"];
   function goTab(t){
     if(TABS.indexOf(t)<0) t="home";
     TABS.forEach(function(x){
       $('tab-'+x).classList.toggle('hide', x!==t);
     });
     document.querySelectorAll('#nav button').forEach(function(b){
-      b.classList.toggle('on', b.getAttribute('data-tab')===t);
+      var on = b.getAttribute('data-tab')===t;
+      b.classList.toggle('on', on);
+      /* 窄螢幕側欄變成可橫捲的一排(8 個分頁塞不下)→ 把選中的捲進視野,不然按了看不到自己在哪 */
+      if(on && window.innerWidth<=860 && b.scrollIntoView) b.scrollIntoView({inline:'center',block:'nearest'});
     });
     window.scrollTo(0,0);
     lazyLoadTab(t);
@@ -906,7 +1061,15 @@
   function lazyLoadTab(t){
     if(TAB_LOADED[t]) return;
     TAB_LOADED[t] = true;
-    if(t==="usage"){ loadGeoUsage(); loadAbuse(); loadSiteViews(); }
+    if(t==="usage"){ loadGeoUsage(); }
+    /* 0803 審查 P2:原本 loadHealth()+loadGeoUsage() 會把較重的 geo_usage_stats RPC 打兩次。
+       loadGeoUsage 內部已經呼叫 renderHealth(computeHealthWarns(res)),行為相同、負載減半。 */
+    else if(t==="alerts"){ loadGeoUsage(); }
+    else if(t==="ai"){ loadGeoUsage(); loadAiBrain(); loadRescue(); }
+    /* 0803 審查 P2:儲存卡從 usage 搬到這裡後沒人載入它 → 三張卡只有它是空的。
+       同時把 loadGeoUsage 裡那行順帶呼叫拿掉(那個耦合只因為以前同頁)。 */
+    else if(t==="sys"){ loadAbuse(); loadSiteViews(); if(typeof loadStorage==='function') loadStorage(); }
+    else if(t==="flow"){ renderFlow(); }
     else if(t==="places"){ loadPlaces(); loadMiss(); loadCands(); }
   }
   $('logoutBtn').addEventListener('click', function(){
@@ -1570,7 +1733,8 @@
     for(var i = 0; i < ROWS.length; i++){ if(ROWS[i].key === k) return ROWS[i].driver_name || k; }
     return k;
   }
-  $('geoRefresh').addEventListener('click', function(){ loadGeoUsage(); loadAbuse(); });
+  /* 0803 審查 P2:abuse 卡已搬到「系統」頁,這裡不再順手刷它(跨頁刷新只是白打 API)。 */
+  $('geoRefresh').addEventListener('click', function(){ loadGeoUsage(); });
   $('geoCapBtn').addEventListener('click', function(){
     var cap = parseInt($('geoCap').value || "0", 10) || 0;
     api("setGeoCap", { cap: cap }).then(function(res){
@@ -1694,6 +1858,77 @@
       else toast(r.error || "儲存失敗(需管理員密碼)");
     });
   });
+
+  /* ── 🤖 學習記憶(範例庫)。resue getAiPrompt 的 examples_top,不另外打 API ── */
+  /* 0803 審查 P1:這顆原本沒有任何 listener(死按鈕)。loadGeoUsage 正是填 aiCtl/aiRescueCtl 的那支。 */
+  if($('aiFuseRefresh')) $('aiFuseRefresh').addEventListener('click', loadGeoUsage);
+  if($('healthRefresh')) $('healthRefresh').addEventListener('click', loadHealth);
+
+  /* ── 🤖 成敗迴路:今天 AI 判讀的實際內容。敗的 = 待修清單 ── */
+
+  /* ── 🔀 運作流程圖(靜態說明圖,不打 API)。分三塊:出卡鏈 / 定位瀑布 / 跳轉決策 ── */
+  var FLOW_DONE = false;
+  function step(n, t, sub, cls, idx){
+    return "<div class='fstep " + (cls||"") + "' style='animation-delay:" + ((idx||0)*70) + "ms'>"
+      + "<div class='fn'>" + n + "</div><div class='ft'>" + t + "</div>"
+      + (sub ? "<div class='fs'>" + sub + "</div>" : "") + "</div>";
+  }
+  function chain(steps){ return "<div class='fchain'>" + steps.join("<span class='farrow'>→</span>") + "</div>"; }
+  /* 流程圖【吃即時數據】:各層今日命中數直接來自用量頁已載入的 GEO_CACHE_RES,
+     所以這張圖不會過期 —— 哪一層在扛、哪一層沒在動,看數字就知道。 */
+  function flowHits(){
+    var m = {};
+    try{
+      var rows = (GEO_CACHE_RES && GEO_CACHE_RES.stats) || [];
+      rows.forEach(function(r){ m[r.api] = (m[r.api]||0) + (r.today||r.n||0); });
+    }catch(e){}
+    return m;
+  }
+  function renderFlow(){
+    if(FLOW_DONE) return; FLOW_DONE = true;
+    $('flowStage1').innerHTML = chain([
+      step("01","收到通知","記住開群入口、清群名尾綴","",0),
+      step("02","規則解析","切塊、否決聊天/費率、判上下車","",1),
+      step("03","AI 看單救援","規則抓 0 張才跑","paid opt",2),
+      step("04","去重","主群＞免＞聯 · 同群重貼回春","",3),
+      step("05","定位","見下方瀑布","fast fpulse",4),
+      step("06","出卡","排序+分類+範圍篩選","",5)
+    ]);
+    var H = flowHits();
+    var W = [
+      ["free","① 位置庫","策展地標,最高優先",["place_hit"]],
+      ["free","② 門牌庫","政府開放門牌 298 萬筆",["door_hit"]],
+      ["free","③ 錯字修正","門牌庫模糊比對",["door_fuzzy"]],
+      ["free","④ 墓碑/快取","查過的秒回",["cache_hit","cache_hit_road","cache_hit_route","miss_hit"]],
+      ["free","⑤ 自架 Nominatim","自己的圖資機",["geocode_nominatim"]],
+      ["paid","⑥ AI 抓址","地址剪乾淨再查一次",["ai_parse"]],
+      ["paid","⑦ Map8","台灣圖霸",["map8","map8_route"]],
+      ["paid","⑧ Google","長尾退路",["geocode"]],
+      ["paid","⑨ Places","裸店名最後救援",["places"]]
+    ];
+    var vals = W.map(function(r){ return r[3].reduce(function(a,k){ return a + (H[k]||0); },0); });
+    var max = Math.max.apply(null, vals.concat([1]));
+    $('flowWaterfall').innerHTML = W.map(function(r,ix){
+      var v = vals[ix], pct = Math.round(v*100/max);
+      return "<div class='frow" + (v>0?" hot":"") + "' style='animation-delay:" + (ix*55) + "ms'>"
+        + "<span class='fbadge " + r[0] + "'>" + (r[0]==="free"?"免費":"付費") + "</span>"
+        + "<span class='fname'>" + r[1] + "</span>"
+        + "<span class='fdesc'>" + r[2] + "</span>"
+        + "<span class='fhit" + (v?"":" zero") + "'>" + (v?v.toLocaleString():"—") + "</span>"
+        + "<div class='fbar" + (r[0]==="paid"?" paid":"") + "' style='--w:" + pct + "%;animation-delay:" + (ix*55+120) + "ms'></div>"
+        + "</div>";
+    }).join("") + "<div class='muted' style='font-size:11.5px;margin-top:8px;'>數字=<b>今日該層命中次數</b>(即時,切到「用量成本」頁後更準)。上面沒中才往下,越下面越貴。</div>";
+    $('flowJump').innerHTML = chain([
+      step("⓪","已在群?","是 → 免跳轉,0 秒","fast",0),
+      step("⓪.5","LINE 開著?","直接點進群,免入口免 BAL","fast fpulse",1),
+      step("①","通知入口","①→①b→②→②b,去重後最多送 2 次","",2),
+      step("③","開 LINE 主體","落在聊天列表","",3),
+      step("④⑤","無障礙接管","掃列表點進目標群","opt",4),
+      step("✓","Mention 狀態機","@ 派單人 → 送出","fast",5)
+    ]) + "<div class='muted' style='font-size:11.5px;margin-top:8px;'>由左往右降級,任一步成功就停。"
+       + "<b>⓪.5</b> 是繞開 Android 15/16 跳轉限制的主力(需開「跳轉補救」開關)。</div>";
+  }
+
   $('aiExClear').addEventListener('click', function(){
     if(!confirm("清空範例庫?\n\nAI 會從零重新累積(規則不受影響)。懷疑它學歪了才需要這樣做。")) return;
     api("clearAiExamples", {}).then(function(r){
@@ -1843,7 +2078,8 @@
   var _svr = $('siteViewRefresh'); if(_svr) _svr.addEventListener('click', loadSiteViews);
   /* ══ 系統健康預警(0727 抽出成獨立函式)══
      為什麼要抽:原本這段埋在 loadGeoUsage() 裡面,只有【切到「用量成本」分頁】才會算;
-     而顯示的元素 #healthBar 在【總覽分頁】裡面 —— 兩個條件永遠不會同時成立,所以它從來沒亮過。
+     而顯示的元素在【總覽分頁】裡面 —— 兩個條件永遠不會同時成立,所以它從來沒亮過。
+     (0803:警告清單已改放「診斷提醒」分頁,頂部只留一行摘要 + 跳轉;#healthBar 元素已移除。)
      0724 那場一小時的全隊停擺,後台完全沒有任何紅字。
      現在:登入即算、每 60 秒重算,並同時寫進固定置頂橫幅 #healthTop(每個分頁都看得見)。
      間隔用 60 秒不是 20 秒:geoUsage 走 geo_usage_stats RPC 比較重,20 秒會給資料庫不必要的壓力。 */
@@ -1934,20 +2170,25 @@
        測試機的量誤當司機需求(實測:總量 841 看似八成滿,扣測試機 203 其實才 638)。
        數字來自 admin 的 places_today(與 geocode 閘門同口徑);舊伺服器沒這欄位時退回總量口徑。 */
     (function(){
+      /* 0803:門檻【跟著後台設定走】。v24 起 Places 個人/全隊上限可在後台調(app_config),
+         警告若還寫死 2000/80 就會在你拉高上限後一直跳假警報(實測:拉到 6000 後 652 就被警告)。
+         admin 讀不到欄位時回 null → 退回 geocode 的內建預設 80/2000,與伺服器端行為一致。 */
+      var GCAP = Number(res.places_global_cap) > 0 ? Number(res.places_global_cap) : 2000;
+      var DCAP = Number(res.places_driver_cap) > 0 ? Number(res.places_driver_cap) : 80;
       var pt = res.places_today;
       if(pt){
-        var line = "🟠 Places 今日 真司機 " + pt.fleet + "/2000" +
+        var line = "🟠 Places 今日 真司機 " + pt.fleet + "/" + GCAP +
           (pt.testers ? "(另測試機 " + pt.testers + " 次不佔配額)" : "");
-        if(pt.capped > 0) line += " · 已有 " + pt.capped + " 台頂滿個人 80";
+        if(pt.capped > 0) line += " · 已有 " + pt.capped + " 台頂滿個人 " + DCAP;
         line += " — 帶門牌號地址不走 Places;打滿後「地標名」失去唯一救援層開始查無。";
         /* 門檻:全隊過六成、或有任何一台頂滿個人閘,才進警示區(平常不洗版) */
-        if(pt.fleet >= 1200 || pt.capped > 0) warns.push(line);
+        if(pt.fleet >= GCAP * 0.6 || pt.capped > 0) warns.push(line);
       } else {
         var byDay = {};
         (s.days || []).forEach(function(r){ if(r.api === "places"){ byDay[r.day] = (byDay[r.day]||0) + r.n; } });
         var ds = Object.keys(byDay).sort();
         var pToday = ds.length ? byDay[ds[ds.length-1]] : 0;
-        if(pToday >= 1200) warns.push("🟠 Places 就近今日 " + pToday + " 次(含測試機,舊版伺服器無法拆分)— 全隊上限 2000/日、個人 80/日。");
+        if(pToday >= GCAP * 0.6) warns.push("🟠 Places 就近今日 " + pToday + " 次(含測試機,舊版伺服器無法拆分)— 全隊上限 " + GCAP + "/日、個人 " + DCAP + "/日。");
       }
     })();
     /* Places cap 已經打到 → 這是「現在就在壞」,不是預警 */
@@ -2010,13 +2251,28 @@
   }
 
   /** 同時寫進總覽內的詳細條與固定置頂橫幅;兩個都沒警示就一起隱藏。 */
+  /* 健康預警雙軌顯示(0803):頂部橫幅只給【一行摘要 + 跳轉】—— 緊急事項不能只藏在分頁裡;
+     完整清單放「診斷提醒」分頁。nav 徽章顯示幾條,讓人不用切分頁就知道有沒有事。 */
   function renderHealth(warns){
-    var html = warns.join("<br>");
-    ["healthBar", "healthTop"].forEach(function(id){
-      var el = $(id); if(!el) return;
-      if(warns.length){ el.innerHTML = html; el.classList.remove("hide"); }
-      else el.classList.add("hide");
-    });
+    warns = warns || [];
+    var top = $('healthTop'), body = $('healthBody'), bdg = $('navAlertBdg');
+    if(bdg){ bdg.textContent = warns.length; bdg.classList.toggle('hide', warns.length===0); }
+    if(top){
+      if(!warns.length){ top.classList.add('hide'); top.innerHTML = ''; }
+      else{
+        top.classList.remove('hide');
+        top.innerHTML = "⚠️ 系統有 <b>" + warns.length + "</b> 項需要注意"
+          + "<span style='opacity:.85;font-weight:500;'> · " + esc(String(warns[0]).replace(/<[^>]*>/g,'').slice(0,44)) + "…</span>"
+          + "<button class='linkbtn' data-go='alerts' style='margin-left:10px;color:inherit;text-decoration:underline;'>看詳情 →</button>";
+      }
+    }
+    if(body){
+      body.innerHTML = warns.map(function(w){
+        return "<div style='border-left:3px solid var(--red);background:var(--red-soft);color:var(--red);"
+          + "border-radius:var(--r-sm);padding:9px 12px;margin-bottom:8px;font-size:13px;line-height:1.65;font-weight:600;'>" + w + "</div>";
+      }).join("");
+      if($('healthEmpty')) $('healthEmpty').classList.toggle('hide', warns.length>0);
+    }
   }
 
   /** 獨立載入(登入即跑 + 60 秒輪詢),不依賴使用者切到哪個分頁。 */
@@ -2028,7 +2284,6 @@
   }
 
   function loadGeoUsage(){
-    if(typeof loadStorage==='function') loadStorage();
     api("geoUsage").then(function(res){
       GEO_CACHE_RES = res;
       if(!res.ok){
@@ -2046,7 +2301,7 @@
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
       $('geoCost').textContent = "US$" + cost.toFixed(2);
       /* 健康預警:計算已抽成 computeHealthWarns()(0727),這裡只負責重繪。
-         抽出的原因見 #healthBar 註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
+         抽出的原因見上方健康預警註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       /* ── ETA 來源健康度(0731)──
@@ -2773,7 +3028,16 @@
 
   /* ── 明暗模式 ── */
   function currentTheme(){ var t=document.documentElement.getAttribute('data-theme'); return t || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'); }
-  function updateThemeBtns(){ var lab=currentTheme()==='dark'?'淺色模式':'深色模式'; ['themeBtn','themeBtnLogin'].forEach(function(id){ var b=$(id); if(b) b.textContent=lab; }); }
+  var ICON_SUN = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round'><circle cx='12' cy='12' r='4'/><path d='M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6'/></svg>";
+  var ICON_MOON = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'><path d='M20 13.4A8.2 8.2 0 0 1 10.6 4a8.4 8.4 0 1 0 9.4 9.4Z'/></svg>";
+  /* 圖標語意:目前深色 → 顯示太陽(按了會變亮);目前淺色 → 顯示月亮。側欄那顆保留一個小字,
+     純圖標在側欄容易讓人猜不到用途;登入頁空間小,只放圖標 + aria-label/title。 */
+  function updateThemeBtns(){
+    var dark = currentTheme()==='dark';
+    var icon = dark ? ICON_SUN : ICON_MOON, lab = dark ? '淺色' : '深色';
+    var b1 = $('themeBtn'); if(b1){ b1.innerHTML = icon + "<span style='font-size:12.5px;font-weight:500;'>" + lab + "</span>"; b1.setAttribute('aria-label','切換為'+lab+'模式'); b1.title='切換為'+lab+'模式'; }
+    var b2 = $('themeBtnLogin'); if(b2){ b2.innerHTML = icon; b2.setAttribute('aria-label','切換為'+lab+'模式'); b2.title='切換為'+lab+'模式'; }
+  }
   function toggleTheme(){ var n=currentTheme()==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',n); try{localStorage.setItem('tr_theme',n);}catch(e){} updateThemeBtns(); }
   ['themeBtn','themeBtnLogin'].forEach(function(id){ var b=$(id); if(b) b.addEventListener('click', toggleTheme); });
   updateThemeBtns();
