@@ -364,7 +364,7 @@
       <div class="who" id="whoLine">—</div>
       <!-- 0803:舊 AI待審區.html 撈的 api="aiparse" 在 0731 改版後已不存在(整頁永遠空的)→ 換成重建的兩支子頁。
            獨立成子頁的理由:這兩份資料會【隨時間越長越長】,塞進分頁會把每天要用的控制項擠掉。 -->
-      <a href="待審難單.html">🧩 待審難單 →</a>
+      <a href="難單紀錄.html">🧩 難單紀錄 →</a>
       <a href="AI學習記憶.html">🧠 AI 學習記憶 →</a>
       <button class="themetgl" id="themeBtn" aria-label="切換深色/淺色模式" title="切換深色/淺色模式"></button>
       <button id="logoutBtn">登出</button>
@@ -738,11 +738,11 @@
           <a href="AI學習記憶.html" style="color:var(--teal-ink);font-weight:600;">🧠 AI 學習記憶</a> 子頁,
           這頁只留每天要操作的開關與規則。<br>
           規則抓不到、AI 讀出來的難單在
-          <a href="待審難單.html" style="color:var(--teal-ink);font-weight:600;">🧩 待審難單</a> —— 修好 Parser 那類單就永遠免費。
+          <a href="難單紀錄.html" style="color:var(--teal-ink);font-weight:600;">🧩 難單紀錄</a> —— 看原文形態、蒐語料;多人反覆踩到的才值得動 Parser。
         </div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
           <a class="ghost" href="AI學習記憶.html" style="text-decoration:none;display:inline-block;">🧠 AI 學習記憶 →</a>
-          <a class="ghost" href="待審難單.html" style="text-decoration:none;display:inline-block;">🧩 待審難單 →</a>
+          <a class="ghost" href="難單紀錄.html" style="text-decoration:none;display:inline-block;">🧩 難單紀錄 →</a>
         </div>
       </div>
     </section>
@@ -836,6 +836,13 @@
         </div>
         <div id="healthBody" style="margin-top:10px;"></div>
         <div class="empty hide" id="healthEmpty">✅ 目前一切正常,沒有需要處理的警告。</div>
+      </div>
+
+      <div class="card" id="clsCard">
+        <div class="rowline"><span class="cardtitle">查無歸因 · AI 分類器</span>
+          <span class="muted" style="font-size:12px;">每張新判死的單背景分類死因 · 佔比最大的就是下一個該修的</span>
+        </div>
+        <div id="clsBody" style="margin-top:10px;"></div>
       </div>
 
 <div class="card"><span class="cardtitle">診斷 &amp; 省錢建議</span><div id="geoAdvice" style="margin-top:10px;"></div><div class="empty hide" id="advEmpty">目前沒有需要注意的事。</div></div>
@@ -2238,14 +2245,17 @@
           warns.push("📈 AI 救回率成長曲線:"+line+"(拍板越多、教得越多,這條線就越高)");
         }
       })();
-      /* 🧾 查無歸因分佈(分類器 ai_cls_*):哪類死單在漲 = 下一個該修的地方,自動浮出 */
+      /* 🧾 查無歸因分佈(分類器 ai_cls_*)。0803:完整分佈改用「診斷提醒」頁的獨立卡片呈現
+         (renderClsCard),這裡只在【單一類別佔比過半且量夠】時才示警 —— 那代表有一整類問題在爆,
+         值得中斷你手上的事;平常的分佈變化看卡片就好,不必每天洗一行警告。 */
       var cls={dirty:"髒前綴",city:"城市錯",landmark:"地標未收",broken:"殘缺",ad:"廣告誤抓",other:"其他"};
-      var clsParts=[],clsTotal=0;
+      var clsTotal=0, clsTop=null, clsTopN=0;
       Object.keys(cls).forEach(function(k){
         var t=0; today.forEach(function(r){ if(r.api==="ai_cls_"+k) t+=r.n; });
-        if(t>0){ clsParts.push(cls[k]+" "+t); clsTotal+=t; }
+        clsTotal+=t; if(t>clsTopN){ clsTopN=t; clsTop=cls[k]; }
       });
-      if(clsTotal>0) warns.push("🧾 今日查無歸因("+clsTotal+" 筆):"+clsParts.join("|")+" —— 最大宗就是下一輪該修的");
+      if(clsTotal>=50 && clsTopN/clsTotal>=0.5)
+        warns.push("🧾 今日查無有 <b>"+Math.round(clsTopN*100/clsTotal)+"%</b> 是同一類:<b>"+clsTop+"</b>("+clsTopN+"/"+clsTotal+" 筆)—— 修這一類的通用規則,一次吃掉一大半");
     })();
     return warns;
   }
@@ -2253,6 +2263,46 @@
   /** 同時寫進總覽內的詳細條與固定置頂橫幅;兩個都沒警示就一起隱藏。 */
   /* 健康預警雙軌顯示(0803):頂部橫幅只給【一行摘要 + 跳轉】—— 緊急事項不能只藏在分頁裡;
      完整清單放「診斷提醒」分頁。nav 徽章顯示幾條,讓人不用切分頁就知道有沒有事。 */
+
+  /* 🧾 查無歸因卡(0803):分類器 ai_cls_* 的今日分佈。
+     這是「單為什麼死」的唯一量化來源 —— 佔比最大那類 = 修一條通用規則就能吃掉一大半,
+     而不是一筆一筆疊特例(CLAUDE.md:Root Cause First)。 */
+  var CLS_META = {
+    dirty:    { t:"行首髒前綴 / 時間黏頭", fix:"Parser 規則修得掉", tone:"bad" },
+    city:     { t:"缺城市或城市黏錯",     fix:"Parser 或城市覆蓋表", tone:"bad" },
+    landmark: { t:"地標名未入庫",         fix:"補進位置庫即永久免費", tone:"warn" },
+    broken:   { t:"地址殘缺或本身打錯",   fix:"原文就錯,修不了", tone:"mute" },
+    ad:       { t:"廣告 / 非車單誤抓",    fix:"否決閘可再收緊", tone:"warn" },
+    other:    { t:"其他",                 fix:"—", tone:"mute" }
+  };
+  function renderClsCard(today){
+    var box = $('clsBody'); if(!box) return;
+    var rows = [], total = 0;
+    Object.keys(CLS_META).forEach(function(k){
+      var n = 0; (today||[]).forEach(function(r){ if(r.api === "ai_cls_" + k) n += Number(r.n||0); });
+      if(n > 0){ rows.push({ k:k, n:n }); total += n; }
+    });
+    if(!total){ box.innerHTML = "<div class='muted' style='font-size:13px;'>今天還沒有判死的單 —— 或分類器沒啟用(需設 AI_MODEL_CLASSIFIER)。</div>"; return; }
+    rows.sort(function(a,b){ return b.n - a.n; });
+    box.innerHTML = "<div class='muted' style='font-size:12.5px;margin-bottom:8px;'>今日共 <b>" + total + "</b> 張單查無座標,AI 歸因如下:</div>"
+      + rows.map(function(r){
+        var m = CLS_META[r.k], pct = Math.round(r.n*100/total);
+        var color = m.tone==="bad" ? "var(--red)" : (m.tone==="warn" ? "var(--amber)" : "var(--faint)");
+        return "<div style='padding:7px 0;border-bottom:1px solid var(--line);'>"
+          + "<div style='display:flex;align-items:center;gap:8px;'>"
+            + "<span style='font-size:12.5px;font-weight:650;'>" + m.t + "</span>"
+            + "<span style='font-family:var(--mono);font-size:12px;font-weight:700;color:" + color + ";margin-left:auto;'>" + r.n + " 筆 · " + pct + "%</span>"
+          + "</div>"
+          + "<div style='height:4px;border-radius:2px;background:var(--surface-2);margin-top:5px;overflow:hidden;'>"
+            + "<div style='height:100%;width:" + pct + "%;background:" + color + ";opacity:.65;'></div></div>"
+          + "<div class='muted' style='font-size:11px;margin-top:3px;'>" + m.fix + "</div>"
+        + "</div>";
+      }).join("")
+      + "<div class='muted' style='font-size:11.5px;margin-top:9px;line-height:1.65;'>"
+      + "⚠️ 修的時候要找<b>整類的根因</b>,不是替每一筆加特例 —— 佔比最大那類修一條通用規則,一次吃掉一大半。"
+      + "原文可到 <a href='難單紀錄.html' style='color:var(--teal-ink);font-weight:600;'>🧩 難單紀錄</a> 查看。</div>";
+  }
+
   function renderHealth(warns){
     warns = warns || [];
     var top = $('healthTop'), body = $('healthBody'), bdg = $('navAlertBdg');
@@ -2303,6 +2353,7 @@
       /* 健康預警:計算已抽成 computeHealthWarns()(0727),這裡只負責重繪。
          抽出的原因見上方健康預警註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
+      renderClsCard(today);
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       /* ── ETA 來源健康度(0731)──
          Map8 路徑規劃是主辦、OSRM 是後備。可用度 = map8_route ÷ (map8_route + 後備實際算成的)。

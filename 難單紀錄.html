@@ -3,21 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>待審難單 · TripRadar</title>
+<title>難單紀錄 · TripRadar</title>
 <!--
-  待審難單工作台(0803 重建,取代舊「待審區.html」)
+  難單紀錄(0803)
   ─────────────────────────────────────────────────────────────────
-  ⚠️ 舊待審區為什麼失效:它撈 api="aiparse",而 0731「AI 腦補事故根治」把那層改名成
-     ai_parse / ai_rescue 後,那個字串在 DB 裡一筆都不存在 → 整頁永遠是空的(靜默失效)。
-     這一頁改撈 ai_rescue(規則抓 0 張時才跑的看單救援),資料是活的。
+  用途:【純監控/蒐語料】。規則(DispatchParser)抓不到、AI 看單救援才接手的那些單,
+        原文長什麼樣子 —— 給人看、給人挑,不做任何自動化動作。
 
-  這頁在做什麼:
-     規則(DispatchParser)抓不到、但 AI 讀出地址的單 = Parser 的知識缺口。
-     把它變成 DriverCaseLibrary 的永久案例 + 修好 Parser → 那類單從此免費、不必再問 AI。
+  ⚠️ 這頁刻意【不】提供「一鍵產生測試碼 / 標記已處理」那類工作流:
+     Parser 的每一次改動都必須找【整類的根因】、並通過全案例庫測試才能發版。
+     一筆一筆按鈕加特例正是 CLAUDE.md「Root Cause First(不堆 if/else 特例)」要避免的。
+     看到值得修的整類問題,把原文複製給工程端判斷。
 
-  ⚠️ 網頁【無法直接改 Parser】:DispatchParser.kt 是編進 APK 的 Kotlin,改它要跑 647 個測試 + 出版。
-     所以這頁做的是把 SOP 的①②③自動化:看單 → 一鍵產生可貼進案例庫的測試碼 → 你貼給工程端改。
-     ④人工核對 ⑤改 Parser 仍走正規流程(測試鎖住,不能繞過)。
+  資料源:geo_usage 的 ai_rescue(舊「待審區」撈的 aiparse 在 0731 改版後已不存在,整頁永遠空的)。
 -->
 <script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
@@ -92,7 +90,7 @@
 
   <div id="login" class="login">
     <div style="font-size:38px;">🧩</div>
-    <h1 style="margin:8px 0 4px;">待審難單</h1>
+    <h1 style="margin:8px 0 4px;">難單紀錄</h1>
     <div class="sub">需要後台管理密碼</div>
     <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
     <button id="go">進入</button>
@@ -101,24 +99,19 @@
 
   <div id="app" class="hide">
     <div class="top">
-      <h1>🧩 待審難單</h1>
+      <h1>🧩 難單紀錄</h1>
       <a class="back" href="index.html">← 回後台</a>
     </div>
-    <div class="sub">規則(Parser)抓不到、但 AI 讀出地址的單。<b>把它變成永久案例 + 修好 Parser,那類單從此免費</b> —— 不必每次都花錢問 AI。</div>
+    <div class="sub">規則抓不到、要靠 AI 才讀得出地址的單 —— <b>這裡只呈現原文,給你看清楚它們長什麼樣</b>。蒐集語料、找出反覆出現的形態,再決定值不值得動 Parser。</div>
 
     <div class="how">
-      <b>怎麼用</b>
-      <ol>
-        <li>看下面的原文,確認 AI 讀出來的<b>上車地址</b>對不對</li>
-        <li>對的話按 <b>📋 複製測試碼</b>,把剪貼簿內容貼給工程端(或直接貼給 Claude)</li>
-        <li>工程端把它加進 <code>DriverCaseLibraryTest</code> → 修 Parser → 全庫測試綠燈 → 出新版</li>
-        <li>處理完按 <b>✓ 已處理</b>,它就不再出現在這張清單</li>
-      </ol>
-      ⚠️ <b>Parser 無法在網頁上修改</b> —— 它是編進 App 的程式,每次改動都必須通過全部案例庫測試才能發版(這是防止改一條規則、悄悄弄壞十種單的保護)。
+      <b>怎麼看</b> · 依「幾位司機遇到」排序 —— <b>多人反覆踩到的才值得動 Parser</b>,一個人遇到一次的怪單通常不用理。
+      看到同一種形態重複出現(例如都是行首黏了代號、都是全形括號沒閉合),那就是一整類問題,把原文複製給工程端。
+      <br>⚠️ 修 Parser 要找<b>整類的根因</b>,不是替每一筆加特例 —— 特例疊多了會互相打架,改一條壞十條。
     </div>
 
     <div class="stats">
-      <div class="stat"><div class="n" id="sN">—</div><div class="t">待處理難單</div></div>
+      <div class="stat"><div class="n" id="sN">—</div><div class="t">不重複難單</div></div>
       <div class="stat"><div class="n" id="sHot">—</div><div class="t">最多司機遇到</div></div>
       <div class="stat"><div class="n" id="sDays">—</div><div class="t">統計範圍</div></div>
     </div>
@@ -130,6 +123,7 @@
         <option value="14">近 14 天</option>
       </select>
       <button class="btn" id="reload">↻ 重新整理</button>
+      <button class="btn" id="exportAll">⧉ 複製全部原文</button>
       <span style="font-size:11.5px;color:var(--faint);">依「幾位司機遇到」排序 —— 越多人踩到的越優先修</span>
     </div>
 
@@ -180,19 +174,6 @@ function load(){
 $('reload').addEventListener('click', load);
 $('days').addEventListener('change', load);
 
-/* 產生可貼進 DriverCaseLibraryTest 的測試碼草稿。
-   ⚠️ 斷言【故意留空給人填】—— AI 讀的不一定對,自動塞斷言等於把錯的東西固化進案例庫。 */
-function draft(q){
-  var d = new Date(), id = ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
-  var lit = JSON.stringify(q);   // JSON.stringify 幫我們處理換行/引號跳脫,直接就是合法 Kotlin 字串
-  return 'RealCase("' + id + '-XX(待填:現象描述,例「規則抓 0 張,AI 讀得出上車地」)",\n'
-       + '    ' + lit + ', 1) {\n'
-       + '    // TODO 依實際情況填斷言,例:\n'
-       + '    // assertTrue(it[0].pickupText.contains("填入上車地關鍵段"))\n'
-       + '    // assertEquals("填入下車地", it[0].dropoffText)\n'
-       + '    // assertEquals("HH:MM", it[0].reservedTime)\n'
-       + '},';
-}
 function copyText(t){
   if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
   var a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select();
@@ -201,7 +182,7 @@ function copyText(t){
 }
 
 function render(){
-  if(!ROWS.length){ $('list').innerHTML = "<div class='empty'>目前沒有待處理的難單 👍<br><span style='font-size:12px'>(規則都抓得到,或都已標記處理過)</span></div>"; return; }
+  if(!ROWS.length){ $('list').innerHTML = "<div class='empty'>這段期間沒有難單 👍<br><span style='font-size:12px'>(規則都抓得到)</span></div>"; return; }
   $('list').innerHTML = ROWS.map(function(r, i){
     var cls = r.dn >= 3 ? "hot" : (r.dn === 2 ? "warm" : "cool");
     return "<div class='case' data-i='" + i + "'>"
@@ -212,9 +193,7 @@ function render(){
       + "</div>"
       + "<div class='raw'>" + esc(r.q) + "</div>"
       + "<div class='acts'>"
-        + "<button class='btn primary' data-a='copy' data-i='" + i + "'>📋 複製測試碼</button>"
-        + "<button class='btn' data-a='raw' data-i='" + i + "'>複製原文</button>"
-        + "<button class='btn' data-a='done' data-i='" + i + "'>✓ 已處理</button>"
+        + "<button class='btn primary' data-a='raw' data-i='" + i + "'>📋 複製原文</button>"
       + "</div></div>";
   }).join("");
 }
@@ -222,14 +201,15 @@ function render(){
 $('list').addEventListener('click', function(e){
   var b = e.target.closest('button[data-a]'); if(!b) return;
   var r = ROWS[parseInt(b.getAttribute('data-i'),10)]; if(!r) return;
-  var a = b.getAttribute('data-a');
-  if(a === "copy"){ copyText(draft(r.q)).then(function(){ toast("測試碼已複製 —— 貼給工程端"); }); }
-  else if(a === "raw"){ copyText(r.q).then(function(){ toast("原文已複製"); }); }
-  else if(a === "done"){
-    if(!confirm("標記為已處理?\n\n這則不再出現在待審清單(已寫進案例庫、或判定是噪音時才按)。")) return;
-    api("markHardCase", { q: r.q }).then(function(x){
-      if(x && x.ok){ toast("已標記處理"); load(); } else toast("失敗:" + ((x&&x.error)||"?")); });
-  }
+  if(b.getAttribute('data-a') === "raw") copyText(r.q).then(function(){ toast("原文已複製"); });
+});
+
+/* 匯出全部原文(蒐語料用):一次拿到目前清單的所有原文,可直接貼進語料檔。
+   ⚠️ 語料含真實派單內容 —— 依專案慣例不進 git(.gitignore 已排除 line-trip-corpus/)。 */
+$('exportAll').addEventListener('click', function(){
+  if(!ROWS.length) return toast("目前沒有資料");
+  var txt = ROWS.map(function(r){ return r.q; }).join("\n\n———\n\n");
+  copyText(txt).then(function(){ toast("已複製 " + ROWS.length + " 筆原文"); });
 });
 
 if(PW) enter();
