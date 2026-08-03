@@ -567,7 +567,12 @@
         <div class="muted" style="font-size:11px;margin:6px 0 3px;">🔒 程式硬編開頭(改不到):</div>
         <pre class="promptfix">你是台灣計程車派單解析助手。從派單原文【原封不動地剪下】上車地址那一段。
 規則:</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 可編輯規則(空=用程式內建預設):</div>
+        <div class="muted" style="font-size:11px;margin:8px 0 3px;">📋 內建預設規則(你沒客製時就是用這套;想改就複製下來貼進下方編輯框):</div>
+        <pre class="promptfix">- 行首代號(R/RR/S/D 等字母、70/20 費率、單獨的「.」或「/」)不是地址,不要剪進去
+- 四位數字(如 0750、1930)是預約時間不是門牌號,不要剪進去
+- ⬆️📍標上車;⬇️🔽🔴標下車 —— 只剪【上車】那一段
+- 括號內若是店名/地標可以一起剪;若是指示語(開進來、請…、謝謝)則不剪</pre>
+        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 客製規則(留空 = 用上方內建預設;載入後這裡若空白代表你沒改過):</div>
         <textarea id="aiRules" rows="6" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
           placeholder="載入後顯示目前規則。留空=用程式內建預設。"></textarea>
         <div class="muted" style="font-size:11px;margin:8px 0 3px;">🔒 程式硬編鐵律(永遠最後·改不到·真正的防腦補靠 aiCutFrom 子序列硬閘):</div>
@@ -596,7 +601,14 @@
         <div class="muted" style="font-size:11px;margin:6px 0 3px;">🔒 程式硬編開頭(改不到):</div>
         <pre class="promptfix">你是台灣計程車派單解析助手。從派單原文【原封不動地剪下】上車地址那一段。
 規則:</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 可編輯規則(空=用程式內建預設;⚠️「不是派單→null」「多趟只回第一趟」建議保留,防聊天訊息變假卡):</div>
+        <div class="muted" style="font-size:11px;margin:8px 0 3px;">📋 內建預設規則(你沒客製時就是用這套;想改就複製下來貼進下方編輯框):</div>
+        <pre class="promptfix">- 行首代號(R/RR/S/D 等字母、70/20 費率、單獨的「.」或「/」)不是地址,不要剪進去
+- 四位數字(如 0750、1930)是預約時間不是門牌號,不要剪進去
+- ⬆️📍標上車;⬇️🔽🔴標下車 —— 只剪【上車】那一段
+- 括號內若是店名/地標可以一起剪;若是指示語(開進來、請…、謝謝)則不剪
+- 這則【不是派單】(聊天、群公告、費率表、廣告、司機回報)→ 回 null
+- 一則有多趟 → 只回【第一趟】的上車地址</pre>
+        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 客製規則(留空 = 用上方內建預設;⚠️「不是派單→null」「多趟只回第一趟」建議保留,防聊天訊息變假卡):</div>
         <textarea id="rsRules" rows="7" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
           placeholder="載入後顯示目前規則。留空=用程式內建預設。"></textarea>
         <div class="muted" style="font-size:11px;margin:8px 0 3px;">🔒 程式硬編鐵律(永遠最後·改不到):</div>
