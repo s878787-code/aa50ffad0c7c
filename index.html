@@ -533,6 +533,14 @@
         <div class="chips" id="repTypeChips" style="margin-top:10px;"></div>
         <input id="repSearch" type="search" autocomplete="off" placeholder="🔍 搜尋流水號(如 5207bd18)/ 司機 / 內文 / 派單原文"
                style="width:100%; box-sizing:border-box; margin-top:10px; padding:8px 12px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);">
+        <!-- 批次操作列:未修復卡片左側勾選框勾了才出現。批次只做「標記已修復」(收案) -->
+        <div id="repBatchBar" class="hide" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px; padding:8px 12px; background:var(--teal-soft); border:1px solid var(--teal-line); border-radius:8px;">
+          <span id="repSelCount" style="font-weight:700; color:var(--teal-ink); font-size:13px;">已選 0 筆</span>
+          <button class="linkbtn" id="repSelAllOpen" style="font-size:12px;">全選目前未修復</button>
+          <button class="linkbtn" id="repSelClear" style="font-size:12px;">清除選取</button>
+          <span style="margin-left:auto;"></span>
+          <button id="repBatchResolve" style="background:var(--teal); color:#fff; border:none; padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">✅ 批次標記已修復</button>
+        </div>
         <div id="repList" style="margin-top:6px;"></div>
         <div class="empty hide" id="repEmpty">這個分類目前沒有回報。</div>
       </div>
@@ -954,6 +962,7 @@
   var ROWS = [], REPORTS = [], PLACES = [], FILTER = "all", QUERY = "";
   var ROLE = "admin";          // 伺服器依密碼判定;viewer=唯讀(牆在伺服器,這裡只是藏按鈕)
   var REP_FILTER = "open", REP_TYPE = "全部", REP_QUERY = "";
+  var SELECTED_REPORTS = new Set();   // 批次標記已修復的勾選集合(存 report id)
   var aiEnabled = true;
   var aiRescueEnabled = false;   /* AI 看單救援:預設關(0731 事故功能的重寫版,由使用者自己開) */
   var aiLoaded = false;          /* getStats 成功回來過沒有 —— 沒載入就不准按任何 AI 按鈕(避免拿未載入的頁面變數回寫 DB) */
@@ -1457,6 +1466,39 @@
   };
   $('repRefresh').addEventListener('click', loadReports);
   $('repSearch').addEventListener('input', function(){ REP_QUERY = this.value.trim().toLowerCase(); renderReports(); });
+
+  // ── 批次標記已修復 ──────────────────────────────────────────────
+  function updateRepBatchBar(){
+    var bar = $('repBatchBar'); if(!bar) return;
+    var n = SELECTED_REPORTS.size;
+    bar.classList.toggle('hide', n === 0);
+    $('repSelCount').textContent = "已選 " + n + " 筆";
+  }
+  // 全選【目前畫面上未修復】的卡(套用當前分類/搜尋過濾,不會選到看不到的)
+  $('repSelAllOpen').addEventListener('click', function(){
+    document.querySelectorAll('#repList .repchk').forEach(function(chk){
+      var id = chk.getAttribute('data-rid');   // repchk 只出現在未修復卡
+      if(id){ SELECTED_REPORTS.add(id); chk.checked = true; }
+    });
+    // 搜尋/分類可能把部分未修復卡藏起來 → 補上「資料裡未修復但不在畫面」的?不:全選=畫面上可見的,語義清楚
+    updateRepBatchBar();
+  });
+  $('repSelClear').addEventListener('click', function(){
+    SELECTED_REPORTS.clear();
+    document.querySelectorAll('#repList .repchk').forEach(function(chk){ chk.checked = false; });
+    updateRepBatchBar();
+  });
+  $('repBatchResolve').addEventListener('click', function(){
+    var ids = Array.from(SELECTED_REPORTS);
+    if(!ids.length){ toast("先勾選要標記的回報"); return; }
+    if(!confirm("把勾選的 " + ids.length + " 筆全部標記為【已修復】?")) return;
+    var btn = this; btn.disabled = true; btn.textContent = "處理中…";
+    api("batchSetReportsResolved", { ids: ids }).then(function(res){
+      btn.disabled = false; btn.textContent = "✅ 批次標記已修復";
+      if(res && res.ok){ toast("已標記 " + (res.n||ids.length) + " 筆為已修復"); SELECTED_REPORTS.clear(); loadReports(); }
+      else toast("失敗:" + ((res&&res.error)||"?"));
+    });
+  });
   $('repChips').addEventListener('click', function(e){
     var b=e.target.closest('button'); if(!b) return;
     REP_FILTER = b.getAttribute('data-rf');
@@ -1507,6 +1549,10 @@
     $('navRepBdg').textContent = openN;
     $('navRepBdg').classList.toggle('hide', openN===0);
     $('kOpenRep').textContent = openN;
+    // 清掉已不在未修復清單裡的勾選(被個別標記已修復/刪除的)→ 批次列數字才不會虛高
+    var openIds = new Set(open.map(function(r){ return r.id; }));
+    Array.from(SELECTED_REPORTS).forEach(function(id){ if(!openIds.has(id)) SELECTED_REPORTS.delete(id); });
+    updateRepBatchBar();
   }
   // 相似/重複偵測:純前端 trigram Jaccard,比「派單原文」
   function normTxt(s){ return String(s||"").replace(/\s+/g,"").toLowerCase(); }
@@ -1547,7 +1593,9 @@
     head.className = "rephead";
     var sims = compact ? [] : similarReports(r);
     var ts = TYPE_STYLE[r.report_type] || TYPE_STYLE["其他"];
+    var canBatch = !compact && ROLE !== "viewer" && !r.resolved;
     head.innerHTML =
+      (canBatch ? "<input type='checkbox' class='repchk' data-rid='"+esc(String(r.id))+"' title='勾選以批次標記已修復' style='width:17px;height:17px;margin-right:2px;cursor:pointer;flex-shrink:0;'"+(SELECTED_REPORTS.has(r.id)?" checked":"")+">" : "")+
       (r.resolved ? "<span style='font-size:12px;'>✅</span>" : "")+
       "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
       "<span class='repid' title='流水號(點可複製完整 ID,回報給工程師時用這個對單)' style='font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; font-weight:700; color:var(--muted); background:var(--chip); padding:2px 7px; border-radius:6px; cursor:pointer;'>#"+esc(String(r.id||"").slice(0,8))+"</span>"+
@@ -1682,6 +1730,14 @@
       e.stopPropagation();   // 只複製,不展開/收合卡片
       navigator.clipboard.writeText(String(r.id||"")).then(function(){ toast("已複製流水號 #"+String(r.id||"").slice(0,8)); });
     });
+    var chk = head.querySelector('.repchk');
+    if(chk){
+      chk.addEventListener('click', function(e){ e.stopPropagation(); });   // 勾選不要順便展開卡片
+      chk.addEventListener('change', function(){
+        if(chk.checked) SELECTED_REPORTS.add(r.id); else SELECTED_REPORTS.delete(r.id);
+        updateRepBatchBar();
+      });
+    }
     head.addEventListener('click', function(){ body.style.display = body.style.display==="none" ? "block" : "none"; });
     d.appendChild(head); d.appendChild(body);
     return d;
