@@ -1114,7 +1114,9 @@
     /* 0803 審查 P2:儲存卡從 usage 搬到這裡後沒人載入它 → 三張卡只有它是空的。
        同時把 loadGeoUsage 裡那行順帶呼叫拿掉(那個耦合只因為以前同頁)。 */
     else if(t==="sys"){ loadAbuse(); loadSiteViews(); if(typeof loadStorage==='function') loadStorage(); }
-    else if(t==="flow"){ renderFlow(); }
+    /* 沒有用量資料就先去拿(拿回來會 renderFlow 一次),有了就直接畫。
+       loadGeoUsage 本來就是用量頁在用的同一支,不會額外花錢。 */
+    else if(t==="flow"){ if(!GEO_CACHE_RES){ loadGeoUsage(); } renderFlow(); }
     else if(t==="places"){ loadPlaces(); loadMiss(); loadCands(); }
   }
   $('logoutBtn').addEventListener('click', function(){
@@ -1951,7 +1953,6 @@
   /* ── 🤖 成敗迴路:今天 AI 判讀的實際內容。敗的 = 待修清單 ── */
 
   /* ── 🔀 運作流程圖(靜態說明圖,不打 API)。分三塊:出卡鏈 / 定位瀑布 / 跳轉決策 ── */
-  var FLOW_DONE = false;
   function step(n, t, sub, cls, idx){
     return "<div class='fstep " + (cls||"") + "' style='animation-delay:" + ((idx||0)*70) + "ms'>"
       + "<div class='fn'>" + n + "</div><div class='ft'>" + t + "</div>"
@@ -1960,16 +1961,21 @@
   function chain(steps){ return "<div class='fchain'>" + steps.join("<span class='farrow'>→</span>") + "</div>"; }
   /* 流程圖【吃即時數據】:各層今日命中數直接來自用量頁已載入的 GEO_CACHE_RES,
      所以這張圖不會過期 —— 哪一層在扛、哪一層沒在動,看數字就知道。 */
+  /* 0804 修:原本讀 GEO_CACHE_RES.stats 當陣列跑 forEach —— 但 stats 是物件
+     { today:[], month:[], days:[] },forEach 直接拋 TypeError、被下面的 try/catch 靜靜吞掉,
+     結果九層全部算成 0、整排印成「—」。要的是 stats.today,每列的次數欄位是 n。 */
   function flowHits(){
     var m = {};
     try{
-      var rows = (GEO_CACHE_RES && GEO_CACHE_RES.stats) || [];
-      rows.forEach(function(r){ m[r.api] = (m[r.api]||0) + (r.today||r.n||0); });
+      var rows = (GEO_CACHE_RES && GEO_CACHE_RES.stats && GEO_CACHE_RES.stats.today) || [];
+      rows.forEach(function(r){ m[r.api] = (m[r.api]||0) + Number(r.n||0); });
     }catch(e){}
     return m;
   }
   function renderFlow(){
-    if(FLOW_DONE) return; FLOW_DONE = true;
+    /* 0804:原本用 FLOW_DONE 只畫一次 —— 但這頁的瀑布數字是「今日各層命中」,
+       只畫一次等於永遠停在你第一次進來那一刻;而且第一次若還沒去過用量頁,
+       GEO_CACHE_RES 是空的,就永遠是空的。改成每次進頁重畫(純畫圖,不花錢)。 */
     $('flowStage1').innerHTML = chain([
       step("01","收到通知","記住開群入口、清群名尾綴","",0),
       step("02","規則解析","切塊、否決聊天/費率、判上下車","",1),
@@ -1980,10 +1986,14 @@
     ]);
     var H = flowHits();
     var W = [
-      ["free","① 位置庫","策展地標,最高優先",["place_hit"]],
+      /* 0804 key 對帳:這些名字必須跟 geocode function 實際寫進用量表的字串【一模一樣】,
+         對不上就是永遠 0(畫成「—」),而且不會有任何錯誤提示。
+         已修:① 原寫 place_hit —— 伺服器從來沒這個層名,真名是 community_hit;
+               ④ 原寫 miss_hit —— 真名是 cache_hit_miss。 */
+      ["free","① 位置庫","策展地標,最高優先",["community_hit"]],
       ["free","② 門牌庫","政府開放門牌 298 萬筆",["door_hit"]],
       ["free","③ 錯字修正","門牌庫模糊比對",["door_fuzzy"]],
-      ["free","④ 墓碑/快取","查過的秒回",["cache_hit","cache_hit_road","cache_hit_route","miss_hit"]],
+      ["free","④ 墓碑/快取","查過的秒回",["cache_hit","cache_hit_road","cache_hit_route","cache_hit_miss"]],
       ["free","⑤ 自架 Nominatim","自己的圖資機",["geocode_nominatim"]],
       ["paid","⑥ AI 抓址","地址剪乾淨再查一次",["ai_parse"]],
       ["paid","⑦ Map8","台灣圖霸",["map8","map8_route"]],
@@ -2001,7 +2011,7 @@
         + "<span class='fhit" + (v?"":" zero") + "'>" + (v?v.toLocaleString():"—") + "</span>"
         + "<div class='fbar" + (r[0]==="paid"?" paid":"") + "' style='--w:" + pct + "%;animation-delay:" + (ix*55+120) + "ms'></div>"
         + "</div>";
-    }).join("") + "<div class='muted' style='font-size:11.5px;margin-top:8px;'>數字=<b>今日該層命中次數</b>(即時,切到「用量成本」頁後更準)。上面沒中才往下,越下面越貴。</div>";
+    }).join("") + "<div class='muted' style='font-size:11.5px;margin-top:8px;'>數字=<b>今日該層命中次數</b>(每次進本頁重新讀取)。上面沒中才往下,越下面越貴。</div>";
     $('flowJump').innerHTML = chain([
       step("⓪","已在群?","是 → 免跳轉,0 秒","fast",0),
       step("⓪.5","LINE 開著?","直接點進群,免入口免 BAL","fast fpulse",1),
@@ -2459,6 +2469,9 @@
       renderHealth(computeHealthWarns(res));
       renderClsCard(today);
       renderAiTrend(res);
+      /* 0804:資料抵達時人若正停在「運作流程」頁,把瀑布的今日命中數補畫上去
+         —— 否則要離開再回來才看得到。 */
+      if($('tab-flow') && !$('tab-flow').classList.contains('hide')) renderFlow();
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
       /* ── ETA 來源健康度(0731)──
          Map8 路徑規劃是主辦、OSRM 是後備。可用度 = map8_route ÷ (map8_route + 後備實際算成的)。
