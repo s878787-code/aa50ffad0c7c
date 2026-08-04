@@ -662,7 +662,7 @@
 
     <!-- ═══ AI 大腦 ═══ -->
     <section id="tab-ai" class="hide">
-      <div class="pagehead"><h1>AI 大腦</h1><div class="sub">兩個 AI 各司其職:<b>看單救援</b>在規則抓 0 張時救整張卡,<b>抓址</b>在地址查不到座標時剪地址。這頁管它們的開關、規則、以及它學到的東西。</div></div>
+      <div class="pagehead"><h1>AI 大腦 <span id="aiModelBadge" style="font-size:12px;font-weight:600;color:var(--teal-ink);background:var(--teal-soft);border:1px solid var(--teal-line);padding:2px 10px;border-radius:20px;vertical-align:middle;margin-left:8px;">🤖 模型載入中…</span></h1><div class="sub">兩個 AI 各司其職:<b>看單救援</b>在規則抓 0 張時救整張卡,<b>抓址</b>在地址查不到座標時剪地址。這頁管它們的開關、規則、以及它學到的東西。</div></div>
 
       <div class="card" id="aiFuseCard">
         <div class="rowline"><span class="cardtitle">開關與每日上限</span>
@@ -912,6 +912,17 @@
         </div>
       </div>
 
+      <!-- 🗄️ 資料庫空間(db_storage_stats RPC:pg_class 各表大小)+ 目前 AI 模型 -->
+      <div class="card" id="dbStoreCard">
+        <div class="rowline"><span class="cardtitle">🗄️ 資料庫空間</span>
+          <span class="muted" id="dbAiLine" style="font-size:12px;">🤖 —</span>
+          <button class="linkbtn" id="dbStoreRefresh" style="margin-left:auto;">重新整理</button>
+        </div>
+        <div class="growth-readout"><span class="gv" id="dbTotal">—</span><span class="gd muted" id="dbTotalSub"></span></div>
+        <div id="dbTables" style="margin-top:8px;"><div class="muted" style="font-size:13px;">點「重新整理」載入</div></div>
+        <div class="muted" style="font-size:11.5px;margin-top:8px;line-height:1.6;">派單原文主要存在 <b>geo_usage</b>(付費呼叫+防濫用留的原文),是唯一會持續長大的表;<b>door_plates</b> 是政府門牌庫(298 萬筆靜態資料,不會長);<b>geo_cache</b> 是定位快取。</div>
+      </div>
+
       <!-- 🌐 官網流量(site_views 表;官網 sendBeacon → sitehit 函式計數,零個資) -->
       <div class="card" id="siteViewCard">
         <div class="rowline"><span class="cardtitle">🌐 官網流量</span>
@@ -1134,7 +1145,7 @@
     else if(t==="ai"){ loadGeoUsage(); loadAiBrain(); loadRescue(); }
     /* 0803 審查 P2:儲存卡從 usage 搬到這裡後沒人載入它 → 三張卡只有它是空的。
        同時把 loadGeoUsage 裡那行順帶呼叫拿掉(那個耦合只因為以前同頁)。 */
-    else if(t==="sys"){ loadAbuse(); loadSiteViews(); if(typeof loadStorage==='function') loadStorage(); }
+    else if(t==="sys"){ loadAbuse(); loadSiteViews(); if(typeof loadStorage==='function') loadStorage(); loadDbStorage(); }
     /* 沒有用量資料就先去拿(拿回來會 renderFlow 一次),有了就直接畫。
        loadGeoUsage 本來就是用量頁在用的同一支,不會額外花錢。 */
     else if(t==="flow"){ if(!GEO_CACHE_RES){ loadGeoUsage(); } renderFlow(); }
@@ -2011,6 +2022,11 @@
   }
   function renderAiBrain(res){
     if(!res || !res.ok) return;
+    if(res.ai){   // 目前實際生效的 AI 模型(抓址+救援共用 main;分類器 classifier)
+      $('aiModelBadge').innerHTML = "🤖 " + esc(res.ai.main)
+        + (res.ai.classifier && res.ai.classifier!==res.ai.main ? " · 分類器 "+esc(res.ai.classifier) : "")
+        + (res.ai.provider ? " · "+esc(res.ai.provider) : "");
+    }
     res._which = "extract";
     fillRuleBox('aiRules', 'aiRulesState', res);
     /* 0803:這裡【只留一行摘要】。範例清單原本整串印在這個統計行裡,會隨累積越拉越長,
@@ -2239,6 +2255,36 @@
       if(btn) btn.textContent = oldN>0 ? ("清理 "+oldN+" 個 45 天前的媒體("+fmtBytes(told)+")") : "清理 45 天前的媒體(目前沒有可清的)";
     });
   }
+  // 🗄️ 資料庫空間(各表大小 + 目前 AI 模型)
+  function loadDbStorage(){
+    $('dbTables').innerHTML = "<div class='muted' style='font-size:13px;'>載入中…</div>";
+    api("dbStorage").then(function(res){
+      if(!res || !res.ok){ $('dbTables').innerHTML = "<div class='muted' style='font-size:13px;'>讀取失敗:"+esc((res&&res.error)||"?")+"</div>"; return; }
+      if(res.ai){
+        $('dbAiLine').innerHTML = "🤖 " + esc(res.ai.main)
+          + (res.ai.classifier && res.ai.classifier!==res.ai.main ? " · 分類器 "+esc(res.ai.classifier) : "")
+          + (res.ai.provider ? " · "+esc(res.ai.provider) : "");
+      }
+      var db = res.db || {};
+      $('dbTotal').textContent = fmtBytes(db.db_bytes);
+      var tables = db.tables || [];
+      $('dbTotalSub').textContent = " 資料庫總大小・前 "+tables.length+" 大的表";
+      var top = tables.length ? (Number(tables[0].bytes)||1) : 1;
+      $('dbTables').innerHTML = tables.map(function(t){
+        var b = Number(t.bytes)||0, pct = Math.max(2, Math.round(100*b/top));
+        var rows = Number(t.rows), rowsTxt = (isFinite(rows) && rows>=0) ? rows.toLocaleString()+" 列" : "—";
+        return "<div style='margin:6px 0;'>"
+          + "<div style='display:flex;align-items:center;gap:8px;font-size:12.5px;'>"
+          +   "<span style='font-family:var(--mono);font-weight:700;min-width:150px;'>"+esc(t.name)+"</span>"
+          +   "<span style='font-weight:800;min-width:72px;'>"+fmtBytes(b)+"</span>"
+          +   "<span class='muted' style='font-size:11.5px;'>"+rowsTxt+"</span>"
+          + "</div>"
+          + "<div style='height:5px;border-radius:3px;background:var(--line);margin-top:3px;'><i style='display:block;height:5px;border-radius:3px;background:var(--teal);width:"+pct+"%;'></i></div>"
+          + "</div>";
+      }).join("");
+    });
+  }
+  $('dbStoreRefresh').addEventListener('click', loadDbStorage);
   document.addEventListener('click', function(e){
     var r = e.target.closest && e.target.closest("#storageRefresh"); if(r){ loadStorage(); return; }
     var c = e.target.closest && e.target.closest("[data-a='cleanmedia']"); if(!c) return;
