@@ -207,11 +207,12 @@ $('seg').addEventListener('click', function(e){
 });
 
 /* ① 範例庫 */
-var EX = [];
+var EX = [], EX_TOTAL = 0;   // EX=實際載下來的;EX_TOTAL=資料庫總數(兩者可能不一樣,見 renderEx)
 function loadEx(){
   api("getAiPrompt", { which:"extract" }).then(function(res){
     if(!res || !res.ok){ $('exBody').innerHTML = "<div class='empty'>載入失敗</div>"; return; }
     EX = res.examples_top || [];
+    EX_TOTAL = res.examples_n || EX.length;
     $('exN').textContent = (res.examples_n||0).toLocaleString();
     $('exHot').textContent = EX.length ? ("×" + (EX[0].hits||1)) : "—";
     renderEx();
@@ -222,8 +223,16 @@ function renderEx(){
   var list = q ? EX.filter(function(e){
     return String(e.addr||"").toLowerCase().indexOf(q)>=0 || String(e.raw||"").toLowerCase().indexOf(q)>=0;
   }) : EX;
-  if(!list.length){ $('exBody').innerHTML = "<div class='empty'>" + (q? "找不到符合的範例" : "還沒累積 —— AI 抓址成功一次就會存一筆") + "</div>"; return; }
-  $('exBody').innerHTML = list.map(function(e){
+  /* 0804:上面那個「已學會的範例」是資料庫精確總數,但清單只拿得到伺服器回的那一批。
+     兩個數字不一樣時一定要講出來 —— 否則搜尋沒搜到的人會以為那筆範例不存在,
+     實際上只是沒被載下來(搜尋只在載下來的這批裡找)。 */
+  var cut = EX_TOTAL > EX.length;
+  var head = "<div class='note' style='margin:0 0 8px;'>" + (q
+        ? ("符合 <b>" + list.length + "</b> 筆" + (cut ? "(在已載入的 " + EX.length + " 筆裡找;總共 " + EX_TOTAL + " 筆)" : "(共 " + EX.length + " 筆)"))
+        : (cut ? ("共 <b>" + EX_TOTAL + "</b> 筆,這裡列出最常用的前 <b>" + EX.length + "</b> 筆")
+               : ("全部 <b>" + EX.length + "</b> 筆都在下面"))) + "</div>";
+  if(!list.length){ $('exBody').innerHTML = head + "<div class='empty'>" + (q? "找不到符合的範例" : "還沒累積 —— AI 抓址成功一次就會存一筆") + "</div>"; return; }
+  $('exBody').innerHTML = head + list.map(function(e){
     return "<div class='row'><span class='badge hit'>×" + (e.hits||1) + "</span>"
       + "<div class='body'><div class='nm'>" + esc(e.addr) + "</div>"
       + "<div class='raw'>← " + esc(e.raw) + "</div></div></div>";

@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>後台使用手冊 · TripRadar</title>
+<!--
+  後台使用手冊(0804 獨立子頁)
+  ─────────────────────────────────────────────────────────────────
+  這一份是【產生檔】。要改內容請改 docs/後台使用手冊.html(A4 版),再跑
+  scripts/build_manual_subpage.py 重新產生這一份 —— 兩邊內容必須一致,
+  否則印出來的 PDF 跟線上看到的會不一樣。
+
+  為什麼【沒有登入閘】(跟其他兩個子頁不同,這是刻意的):
+    ① 這頁不抓任何資料,沒有東西需要保護。其他子頁要登入是因為它們會去
+       伺服器拿真實的司機/派單資料。
+    ② 它是【故障排除手冊】。附錄 A 就是「出事了怎麼辦」—— 如果加了要打
+       伺服器驗證的登入閘,後端掛掉時你就【讀不到教你怎麼處理後端掛掉的那一頁】。
+    ③ 純前端的密碼閘擋不住任何人:這個 repo 是公開的 GitHub Pages,原始檔
+       本來就讀得到。加閘只會增加自己人的麻煩,不會增加任何安全性。
+    要改成需要登入的話,照 AI學習記憶.html 的 login 區塊複製即可 —— 但請先
+    想清楚第 ② 點。
+
+  主題沿用 localStorage.tr_theme,深淺色跟後台一致。
+-->
+<script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#EEF3F1;
+    --ink:#131C19; --muted:#54645E; --faint:#65746D;
+    --line:#E4EAE7; --line-2:#D4DCD8;
+    --teal:#0D7A6E; --teal-ink:#0A5A51; --teal-soft:#DBEDE8; --teal-line:#B2DAD1;
+    --red:#AE3823; --red-soft:#F5E1DB; --amber:#8A5D0F; --amber-soft:#F3E9D2;
+    --blue:#2A6299; --blue-soft:#E0E9F2;
+    --side:#0E1A16; --side-tx:#93A8A1; --side-strong:#E9F1EE; --side-accent:#3AD6C2;
+    --r:8px; --r-sm:6px; --r-pill:999px;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font); font-size:14px; line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ── 紙張:螢幕上模擬 A4,列印時就是實際頁面 ── */
+  .sheet{
+    /* 螢幕上模擬 A4,但窄視窗時縮成 100% —— 否則整份文件會橫向捲動 */
+    width:min(210mm, 100%); min-height:297mm; margin:0 auto 8mm; padding:18mm 17mm 16mm;
+    background:var(--surface); position:relative;
+    box-shadow:0 2px 14px rgba(19,28,25,.10);
+  }
+  @media (max-width:230mm){ .sheet{ padding:12mm 9mm 14mm; } }
+  @media print{
+    body{ background:#fff; }
+    .sheet{ width:auto; min-height:auto; margin:0; padding:0; box-shadow:none; page-break-after:always; }
+    .sheet:last-child{ page-break-after:auto; }
+    .noprint{ display:none !important; }
+    h2,h3,h4{ page-break-after:avoid; }
+    /* 小元件整塊不切;長表格【要】能跨頁,只保證單一列不被切成兩半 ——
+       整張 tbl 設 avoid 會讓超過一頁的表格整個被推到下一頁,擠出大片空白。 */
+    .card,.callout,.steps,.mock,.drill-row,.flowfig{ page-break-inside:avoid; }
+    .tbl tr, ul.gotcha li, .anno-list li{ page-break-inside:avoid; }
+    .tbl thead{ display:table-header-group; }   /* 跨頁時表頭自動重印 */
+  }
+  @page{ size:A4; margin:16mm 14mm; }
+
+  /* ── 封面 ── */
+  .cover{ display:flex; flex-direction:column; justify-content:center; min-height:250mm; }
+  .cover .mark{
+    width:64px; height:64px; border-radius:16px; background:var(--side);
+    display:flex; align-items:center; justify-content:center; font-size:32px; margin-bottom:26px;
+  }
+  .cover h1{ font-size:40px; line-height:1.2; margin:0 0 10px; letter-spacing:-.02em; text-wrap:balance; }
+  .cover .lede{ font-size:16px; color:var(--muted); max-width:62ch; margin:0 0 34px; }
+  .cover .meta{ border-top:2px solid var(--ink); padding-top:14px; font-size:13px; color:var(--muted); }
+  .cover .meta b{ color:var(--ink); }
+  .cover .who{ display:flex; gap:10px; flex-wrap:wrap; margin:0 0 30px; }
+  .cover .who span{
+    font-size:12.5px; font-weight:600; padding:5px 13px; border-radius:var(--r-pill);
+    background:var(--teal-soft); color:var(--teal-ink); border:1px solid var(--teal-line);
+  }
+
+  /* ── 標題階層 ── */
+  h2{
+    font-size:25px; margin:0 0 4px; letter-spacing:-.01em; text-wrap:balance;
+    display:flex; align-items:baseline; gap:11px;
+  }
+  h2 .num{
+    font-family:var(--mono); font-size:14px; font-weight:700; color:var(--teal);
+    background:var(--teal-soft); border-radius:var(--r-sm); padding:3px 9px; flex-shrink:0;
+  }
+  h2 + .purpose{ font-size:15px; color:var(--muted); margin:0 0 20px; max-width:70ch; }
+  h3{ font-size:16px; margin:24px 0 8px; letter-spacing:-.005em; }
+  h4{ font-size:14px; margin:16px 0 6px; color:var(--teal-ink); }
+  p{ margin:0 0 11px; max-width:72ch; }
+
+  /* ── 元件 ── */
+  .card{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r);
+    padding:14px 16px; margin:0 0 12px;
+  }
+  .card > h4{ margin-top:0; }
+  .callout{
+    border-left:none; border:1px solid var(--line-2); border-radius:var(--r);
+    padding:13px 16px; margin:14px 0; font-size:13.5px; background:var(--surface-2);
+  }
+  .callout.warn{ background:var(--amber-soft); border-color:#E3D3AC; }
+  .callout.danger{ background:var(--red-soft); border-color:#E9C4B9; }
+  .callout.tip{ background:var(--teal-soft); border-color:var(--teal-line); }
+  /* 只有【第一個】b 是卡片標題(獨立成行);內文裡的 b 必須保持行內,
+     否則句子會被硬拆行、標點掉到下一行開頭。 */
+  .callout > b:first-child{ display:block; margin-bottom:3px; }
+  .callout.warn > b:first-child{ color:var(--amber); }
+  .callout.danger > b:first-child{ color:var(--red); }
+  .callout.tip > b:first-child{ color:var(--teal-ink); }
+
+  table.tbl{ width:100%; border-collapse:collapse; margin:10px 0 16px; font-size:13px; }
+  .tbl th{
+    text-align:left; padding:8px 10px; background:var(--surface-2);
+    border-bottom:2px solid var(--line-2); font-weight:700; font-size:12.5px;
+  }
+  .tbl td{ padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .tbl tr:last-child td{ border-bottom:none; }
+  .tbl code, code{
+    font-family:var(--mono); font-size:12px; background:var(--surface-2);
+    padding:1px 5px; border-radius:4px; color:var(--teal-ink);
+  }
+  .tbl .btn-cell{ white-space:nowrap; font-weight:650; }
+
+  .steps{ counter-reset:s; list-style:none; padding:0; margin:12px 0 16px; }
+  .steps li{
+    counter-increment:s; position:relative; padding:0 0 0 34px; margin-bottom:11px; font-size:13.5px;
+  }
+  .steps li::before{
+    content:counter(s); position:absolute; left:0; top:1px;
+    width:22px; height:22px; border-radius:50%; background:var(--teal); color:var(--on-teal,#fff);
+    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono);
+  }
+
+  .pill{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px;
+    border-radius:var(--r-pill); font-family:var(--mono);
+  }
+  .pill.ok{ background:var(--teal-soft); color:var(--teal-ink); }
+  .pill.bad{ background:var(--red-soft); color:var(--red); }
+  .pill.warn{ background:var(--amber-soft); color:var(--amber); }
+  .pill.info{ background:var(--blue-soft); color:var(--blue); }
+
+  /* ── 後台畫面示意(重繪,不含真實司機資料)── */
+  .mock{
+    border:1px solid var(--line-2); border-radius:var(--r); overflow:hidden;
+    margin:14px 0 8px; font-size:12px; background:var(--surface);
+  }
+  .mock-bar{
+    background:var(--side); color:var(--side-strong); padding:8px 12px;
+    display:flex; align-items:center; gap:10px; font-size:11.5px;
+  }
+  .mock-bar .dot{ width:8px; height:8px; border-radius:50%; background:var(--side-accent); }
+  .mock-bar .tabs{ display:flex; gap:14px; margin-left:6px; color:var(--side-tx); }
+  .mock-bar .tabs .on{ color:var(--side-strong); font-weight:700; }
+  .mock-body{ padding:13px 14px; background:var(--bg); }
+  .mock-card{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+    padding:10px 12px; margin-bottom:8px;
+  }
+  .mock-card:last-child{ margin-bottom:0; }
+  .mock-title{ font-weight:700; font-size:12.5px; margin-bottom:6px; display:flex; align-items:center; gap:7px; }
+  .mock-row{
+    display:flex; align-items:center; gap:8px; padding:5px 0;
+    border-bottom:1px solid var(--line); font-size:11.5px;
+  }
+  .mock-row:last-child{ border-bottom:none; }
+  .mock-row .grow{ flex:1; }
+  .mock-btn{
+    font-size:11px; font-weight:600; padding:3px 10px; border-radius:var(--r-pill);
+    border:1px solid var(--line-2); background:var(--surface); color:var(--muted);
+  }
+  .mock-btn.primary{ background:var(--teal); border-color:var(--teal); color:var(--on-teal,#fff); }
+  .cap{ font-size:11.5px; color:var(--faint); margin:0 0 16px; }
+  .mock-skel{ display:flex; flex-direction:column; gap:4px; }
+  .mock-skel i{ display:block; height:5px; border-radius:3px; background:var(--line); }
+  .mock-skel i:first-child{ background:var(--line-2); }
+  .mock-more{ text-align:center; font-size:11px; color:var(--faint); padding:5px 0 1px; }
+  .mock-title .anno{ width:15px; height:15px; font-size:9.5px; }
+  .muted-dash{ color:var(--line-2); }
+
+  ul.tight{ margin:0; padding-left:17px; }
+  ul.tight li{ margin-bottom:5px; font-size:13px; }
+  ul.tight li:last-child{ margin-bottom:0; }
+
+  ul.gotcha{ list-style:none; padding:0; margin:8px 0 16px; }
+  ul.gotcha li{
+    position:relative; padding:7px 0 7px 26px; font-size:13px;
+    border-bottom:1px solid var(--line);
+  }
+  ul.gotcha li:last-child{ border-bottom:none; }
+  ul.gotcha li::before{
+    content:"!"; position:absolute; left:0; top:9px;
+    width:16px; height:16px; border-radius:4px; background:var(--amber-soft); color:var(--amber);
+    font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono);
+  }
+
+  h3 .anno{ width:20px; height:20px; font-size:12px; margin-right:2px; }
+  h3{ display:flex; align-items:center; gap:7px; }
+
+  /* 系統流程大圖 */
+  .flowfig{ margin:16px 0 6px; }
+  .flowfig svg{ width:100%; height:auto; display:block; }
+
+  /* 三分鐘巡檢 */
+  .drill{ display:flex; flex-direction:column; gap:0; margin:14px 0 18px; }
+  .drill-row{
+    display:grid; grid-template-columns:34px 1fr 1.4fr; gap:12px; align-items:start;
+    padding:12px 0; border-bottom:1px solid var(--line);
+  }
+  .drill-row:last-child{ border-bottom:none; }
+  .drill-t{
+    font-family:var(--mono); font-size:11px; font-weight:700; color:var(--teal);
+    background:var(--teal-soft); border-radius:var(--r-sm); padding:3px 0; text-align:center;
+  }
+  .drill-w{ font-weight:650; font-size:13.5px; }
+  .drill-w small{ display:block; font-weight:400; color:var(--muted); font-size:12px; margin-top:2px; }
+  .drill-a{ font-size:12.5px; color:var(--muted); }
+
+  /* 標號圓點:圖上標 ①②③,下方對照說明 */
+  /* 文字色用 --surface 不寫死 #fff:深色主題下 --ink 會變成近白色,
+     寫死白字就會白底白字整個看不見(徽章變成一顆空心圓)。 */
+  .anno{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:17px; height:17px; border-radius:50%; background:var(--ink); color:var(--surface);
+    font-size:10.5px; font-weight:700; font-family:var(--mono); flex-shrink:0;
+  }
+  .anno-list{ list-style:none; padding:0; margin:0 0 16px; }
+  .anno-list li{ display:flex; gap:9px; padding:5px 0; font-size:13px; align-items:flex-start; }
+  .anno-list li .anno{ margin-top:3px; }
+
+  /* ── 目錄 ── */
+  /* 目錄行距刻意收緊:17 個項目 + 3 個小標題,用 9px 內距時會多出一行、
+     把最後一項擠到第 2 頁變成孤行。6px 讓整份目錄穩定落在單頁。 */
+  .toc{ list-style:none; padding:0; margin:12px 0 0; }
+  .toc li{
+    display:flex; align-items:baseline; gap:10px; padding:6px 0;
+    border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .toc .n{ font-family:var(--mono); font-size:12px; font-weight:700; color:var(--teal); width:26px; flex-shrink:0; }
+  .toc .t{ font-weight:650; }
+  .toc .d{ color:var(--muted); font-size:12.5px; margin-left:auto; text-align:right; max-width:44ch; }
+
+  /* 頁尾 */
+  .foot{
+    position:absolute; left:17mm; right:17mm; bottom:9mm;
+    display:flex; justify-content:space-between; font-size:10.5px; color:var(--faint);
+    border-top:1px solid var(--line); padding-top:5px;
+  }
+  /* 列印時頁尾改成靜態流排 —— 原本的 fixed 會讓 19 個章節的頁尾【全部】疊在每一頁上。
+     頁碼交給瀏覽器列印對話框自己的頁首頁尾功能處理。 */
+  @media print{ .foot{ position:static; margin-top:16px; padding-top:6px; } }
+
+  .hint-print{
+    background:var(--side); color:var(--side-strong); padding:14px 18px; border-radius:var(--r);
+    font-size:13px; margin:0 auto 10mm; max-width:210mm; display:flex; gap:12px; align-items:center;
+  }
+  .hint-print b{ color:var(--side-accent); }
+  @media print{ .hint-print{ display:none; } }
+
+
+/* ══════ 深色 token(沿用後台,兩邊一致)══════ */
+:root[data-theme="dark"]{
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621; --chip:#111A16;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#2DD4BF; --teal-ink:#7DE9DA; --teal-lt:#25A491; --teal-soft:#12302A; --teal-line:#1F4A41; --on-teal:#06231F;
+    --red:#EF8368; --red-soft:#37201A; --amber:#E0B24E; --amber-soft:#2C230F; --amber2:#E0B24E;
+    --blue:#7FB0E0; --blue-soft:#15283A; --purple:#B79BE0; --purple-soft:#241A34; --gray:#8A968F;
+    --type-mark-bg:#1B2740; --type-mark-fg:#9DB4E8; --type-miss-fg:#E0B24E;
+    --side:#0A100E; --side-tx:#8AA099; --side-strong:#E7EFEC; --side-accent:#3AD6C2;
+    --sel-bg:#E6EEEA; --sel-tx:#131C19; --shadow-1:none; --shadow-pop:0 16px 40px -8px rgba(0,0,0,.6);
+  }
+  @media(prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621; --chip:#111A16;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84;
+    --line:#243029; --line-2:#2F3B34;
+    --teal:#2DD4BF; --teal-ink:#7DE9DA; --teal-lt:#25A491; --teal-soft:#12302A; --teal-line:#1F4A41; --on-teal:#06231F;
+    --red:#EF8368; --red-soft:#37201A; --amber:#E0B24E; --amber-soft:#2C230F; --amber2:#E0B24E;
+    --blue:#7FB0E0; --blue-soft:#15283A; --purple:#B79BE0; --purple-soft:#241A34; --gray:#8A968F;
+    --type-mark-bg:#1B2740; --type-mark-fg:#9DB4E8; --type-miss-fg:#E0B24E;
+    --side:#0A100E; --side-tx:#8AA099; --side-strong:#E7EFEC; --side-accent:#3AD6C2;
+    --sel-bg:#E6EEEA; --sel-tx:#131C19; --shadow-1:none; --shadow-pop:0 16px 40px -8px rgba(0,0,0,.6);
+  } }
+
+/* ══════ 子頁外殼:側欄目錄 + 內容欄 ══════
+   手冊的 A4 版在螢幕上是「一張一張紙」,適合線性讀完;
+   子頁是拿來【查】的,所以改成固定目錄 + 捲動高亮。列印時整組外殼隱藏,回到 A4 版面。 */
+/* A4 版的 CSS 沒有 .hide(那是後台/子頁才有的)—— 少這一行,
+   側欄的「找不到符合的章節」會從一開始就常駐顯示。 */
+.hide{ display:none !important; }
+body{ background:var(--bg); }
+.mwrap{ display:grid; grid-template-columns:250px minmax(0,1fr); gap:26px;
+        max-width:1180px; margin:0 auto; padding:0 22px 80px; }
+
+.mtop{ position:sticky; top:0; z-index:30; background:var(--bg);
+       border-bottom:1px solid var(--line); margin-bottom:22px; }
+.mtop-in{ max-width:1180px; margin:0 auto; padding:13px 22px;
+          display:flex; align-items:center; gap:12px; }
+.mtop h1{ font-size:17px; margin:0; letter-spacing:-.01em; display:flex; align-items:center; gap:8px; }
+.mtop .sp{ margin-left:auto; }
+.mbtn{ font:inherit; font-size:12.5px; font-weight:600; padding:7px 13px; border-radius:var(--r-pill);
+       border:1px solid var(--line-2); background:var(--surface); color:var(--muted); cursor:pointer;
+       text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.mbtn:hover{ border-color:var(--teal-line); color:var(--teal-ink); background:var(--surface-2); }
+.mbtn.pri{ background:var(--teal); border-color:var(--teal); color:var(--on-teal,#fff); }
+.mbtn.pri:hover{ filter:brightness(1.06); color:var(--on-teal,#fff); }
+
+.mnav{ position:sticky; top:76px; align-self:start; max-height:calc(100vh - 100px);
+       overflow-y:auto; padding-right:4px; }
+.mnav .msearch{ width:100%; font:inherit; font-size:13px; padding:8px 11px; margin-bottom:10px;
+                border:1px solid var(--line-2); border-radius:var(--r-sm);
+                background:var(--surface); color:var(--ink); }
+.mnav .msearch:focus{ outline:2px solid var(--teal-line); outline-offset:-1px; }
+.mnav a{ display:flex; gap:9px; align-items:baseline; padding:6px 9px; border-radius:var(--r-sm);
+         text-decoration:none; color:var(--muted); font-size:13px; line-height:1.5;
+         border-left:none; }
+.mnav a:hover{ background:var(--surface-2); color:var(--ink); }
+.mnav a.on{ background:var(--teal-soft); color:var(--teal-ink); font-weight:700; }
+.mnav a .n{ font-family:var(--mono); font-size:11px; font-weight:700; color:var(--teal);
+            min-width:19px; flex-shrink:0; }
+.mnav a.on .n{ color:var(--teal-ink); }
+.mnav a.dim{ display:none; }
+.mnav .mgap{ font-size:10.5px; font-weight:800; letter-spacing:.1em; color:var(--faint);
+             padding:14px 9px 5px; text-transform:uppercase; }
+.mnav .mempty{ font-size:12px; color:var(--faint); padding:10px 9px; }
+
+/* 螢幕上不再模擬 A4 紙張,改成連續文件 */
+.sheet{ width:auto; min-height:0; margin:0 0 30px; padding:0;
+        background:transparent; box-shadow:none; }
+.sheet + .sheet{ border-top:1px solid var(--line); padding-top:26px; }
+.sheet:target{ scroll-margin-top:82px; }
+h2{ scroll-margin-top:82px; }
+
+/* 搜尋命中的高亮 */
+mark.mhit{ background:var(--amber-soft); color:inherit; border-radius:3px; padding:0 2px; }
+
+/* 寬內容(表格)在自己的容器裡橫捲 —— 表格不會縮到比最小內容寬度更窄,
+   不包這一層的話窄視窗會把整個頁面撐出橫向捲軸。 */
+.tblwrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:10px 0 16px; }
+.tblwrap > table.tbl{ margin:0; min-width:440px; }
+/* grid/flex 子項預設 min-width:auto,不加這行它們一樣不肯縮 */
+.mwrap > *{ min-width:0; }
+.mock-bar{ flex-wrap:wrap; }
+
+@media (max-width:900px){
+  .mwrap{ grid-template-columns:minmax(0,1fr); gap:0; }
+  .mnav{ position:static; max-height:none; margin-bottom:20px;
+         border-bottom:1px solid var(--line); padding-bottom:14px; }
+}
+@media (max-width:620px){
+  .drill-row{ grid-template-columns:1fr; gap:5px; }
+  .drill-t{ justify-self:start; padding:3px 12px; }
+  .mwrap{ padding:0 14px 60px; }
+  .mtop-in{ padding:11px 14px; }
+  .mtop h1{ font-size:15px; }
+}
+@media print{
+  .mtop, .mnav, .noprint{ display:none !important; }
+  .mwrap{ display:block; max-width:none; padding:0; }
+  .sheet{ page-break-after:always; margin:0; padding:0; border-top:none; }
+  .sheet:last-child{ page-break-after:auto; }
+  mark.mhit{ background:transparent; }
+  /* 列印時把捲動容器打開 —— overflow 容器在紙上會把超出的部分直接裁掉 */
+  .tblwrap{ overflow:visible; margin:10px 0 16px; }
+  .tblwrap > table.tbl{ min-width:0; }
+}
+</style>
+</head>
+<body>
+
+<div class="mtop">
+  <div class="mtop-in">
+    <h1><span>📘</span>後台使用手冊</h1>
+    <span class="sp"></span>
+    <button class="mbtn" id="printBtn">🖨 存成 PDF</button>
+    <button class="mbtn" id="themeBtn" aria-label="切換深色/淺色模式" title="切換深色/淺色模式"
+            style="width:34px;padding:0;justify-content:center;"></button>
+    <a class="mbtn pri" href="index.html">← 回後台</a>
+  </div>
+</div>
+
+<div class="mwrap">
+  <nav class="mnav" aria-label="章節目錄">
+    <input class="msearch" id="q" type="search" placeholder="搜尋章節…" aria-label="搜尋章節">
+    <div id="navList"><div class="mgap">入門</div>
+      <a href="#ch-01" data-t="01 開始之前"><span class="n">01</span><span class="t">開始之前</span></a>
+      <a href="#ch-02" data-t="02 系統在做什麼"><span class="n">02</span><span class="t">系統在做什麼</span></a>
+      <a href="#ch-03" data-t="03 每天要看什麼"><span class="n">03</span><span class="t">每天要看什麼</span></a>
+      <div class="mgap">分頁逐一說明</div>
+      <a href="#ch-04" data-t="04 總覽"><span class="n">04</span><span class="t">總覽</span></a>
+      <a href="#ch-05" data-t="05 司機金鑰"><span class="n">05</span><span class="t">司機金鑰</span></a>
+      <a href="#ch-06" data-t="06 問題回報"><span class="n">06</span><span class="t">問題回報</span></a>
+      <a href="#ch-07" data-t="07 用量成本"><span class="n">07</span><span class="t">用量成本</span></a>
+      <a href="#ch-08" data-t="08 診斷提醒"><span class="n">08</span><span class="t">診斷提醒</span></a>
+      <a href="#ch-09" data-t="09 AI 大腦"><span class="n">09</span><span class="t">AI 大腦</span></a>
+      <a href="#ch-10" data-t="10 位置庫"><span class="n">10</span><span class="t">位置庫</span></a>
+      <a href="#ch-11" data-t="11 系統"><span class="n">11</span><span class="t">系統</span></a>
+      <a href="#ch-12" data-t="12 運作流程"><span class="n">12</span><span class="t">運作流程</span></a>
+      <a href="#ch-13" data-t="13 AI 學習記憶(子頁)"><span class="n">13</span><span class="t">AI 學習記憶(子頁)</span></a>
+      <a href="#ch-14" data-t="14 難單紀錄(子頁)"><span class="n">14</span><span class="t">難單紀錄(子頁)</span></a>
+      <div class="mgap">查表</div>
+      <a href="#ch-A" data-t="A 出事了怎麼辦"><span class="n">A</span><span class="t">出事了怎麼辦</span></a>
+      <a href="#ch-B" data-t="B 名詞對照表"><span class="n">B</span><span class="t">名詞對照表</span></a>
+      <a href="#ch-C" data-t="C 絕對不要做的事"><span class="n">C</span><span class="t">絕對不要做的事</span></a></div>
+    <div class="mempty hide" id="navEmpty">找不到符合的章節</div>
+  </nav>
+
+  <main id="doc">
+<section class="sheet" id="ch-01">
+  <h2><span class="num">01</span>開始之前</h2>
+  <p class="purpose">五分鐘認識後台。看完這一章,你會知道怎麼進去、看到的畫面是什麼、以及九個分頁各管什麼。</p>
+
+  <h3>怎麼進去</h3>
+  <ol class="steps">
+    <li>用電腦的瀏覽器打開 <code>s878787-code.github.io/aa50ffad0c7c/</code>(手機也能開,但表格很寬,建議用電腦)。</li>
+    <li>輸入管理密碼。密碼向管理者索取,<b>不要放在 LINE 群組裡</b>。</li>
+    <li>進去後密碼會記在這台電腦的瀏覽器裡,下次不用再打。公用電腦請用完按左下角登出。</li>
+  </ol>
+
+  <div class="callout warn">
+    <b>兩種密碼,權限不一樣</b>
+    <b>管理員密碼</b>:所有功能都能用。<br>
+    <b>唯讀監控密碼</b>:只能看,所有會改到資料的按鈕都會消失或按不動,標題旁邊會顯示「👁 唯讀監控」。
+    給不需要動資料的人,請發唯讀密碼 —— 這樣不會有人手滑停用司機或刪掉地點。
+  </div>
+
+  <h3>畫面長什麼樣</h3>
+  <div class="mock">
+    <div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b>
+      <span class="tabs"><span class="on">總覽</span><span>金鑰</span><span>回報</span><span>用量</span><span>診斷</span><span>AI</span><span>位置庫</span><span>系統</span><span>流程</span></span>
+    </div>
+    <div class="mock-body">
+      <div style="background:var(--red-soft);border:1px solid #E9C4B9;border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:11px;color:var(--red);display:flex;align-items:center;gap:7px;">
+        <span class="anno" style="background:var(--red);">A</span>⚠ 系統有 N 項需要注意 · …<span style="margin-left:auto;">看詳情 →</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <div class="mock-card" style="flex:1;margin:0;text-align:center;padding:8px 4px;"><div style="font-size:15px;font-weight:800;">15</div><div style="font-size:9.5px;color:var(--faint);">有效司機</div></div>
+        <div class="mock-card" style="flex:1;margin:0;text-align:center;padding:8px 4px;"><div style="font-size:15px;font-weight:800;">128</div><div style="font-size:9.5px;color:var(--faint);">今日接單</div></div>
+        <div class="mock-card" style="flex:1;margin:0;text-align:center;padding:8px 4px;"><div style="font-size:15px;font-weight:800;color:var(--amber);">2</div><div style="font-size:9.5px;color:var(--faint);">7天內到期</div></div>
+        <div class="mock-card" style="flex:1;margin:0;text-align:center;padding:8px 4px;"><div style="font-size:15px;font-weight:800;">0</div><div style="font-size:9.5px;color:var(--faint);">未修復回報</div></div>
+        <div class="mock-card" style="flex:1;margin:0;text-align:center;padding:8px 4px;position:relative;"><span class="anno" style="position:absolute;left:4px;top:4px;">B</span><div style="font-size:15px;font-weight:800;">652</div><div style="font-size:9.5px;color:var(--faint);">Google 呼叫</div></div>
+      </div>
+      <div class="mock-card"><div class="mock-title"><span class="anno">C</span>成長趨勢</div>
+        <div class="mock-skel"><i style="width:90%"></i><i style="width:70%"></i><i style="width:55%"></i></div></div>
+    </div>
+  </div>
+  <ul class="anno-list">
+    <li><span class="anno">A</span><b>紅色警告條</b> —— 平常看不到。一出現就是真的有事,按「看詳情 →」跳到診斷提醒頁。<b>它每一頁都會出現</b>,不是總覽專屬。</li>
+    <li><span class="anno">B</span><b>數字方塊</b> —— 每一格都可以點,點下去會跳到對應的分頁,有些還會自動幫你篩好名單。</li>
+    <li><span class="anno">C</span><b>卡片</b> —— 後台的內容都裝在卡片裡,每張卡右上角通常有自己的「↻ 重新整理」。</li>
+  </ul>
+
+  <h3>九個分頁各管什麼</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:15%">分頁</th><th style="width:38%">管什麼</th><th>多久看一次</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-cell">總覽</td><td>全隊現況、發公告、續約提醒</td><td>每天,開工第一件事</td></tr>
+      <tr><td class="btn-cell">金鑰</td><td>發金鑰、續約、停用、換手機解綁</td><td>有人要開通或續約時</td></tr>
+      <tr><td class="btn-cell">回報</td><td>司機丟上來的問題與照片</td><td>左邊選單有紅點就看</td></tr>
+      <tr><td class="btn-cell">用量</td><td>今天花多少錢、設每日花費上限</td><td>每週一次</td></tr>
+      <tr><td class="btn-cell">診斷</td><td>系統自動體檢報告、省錢建議</td><td>紅色警告條出現時</td></tr>
+      <tr><td class="btn-cell">AI</td><td>兩個 AI 幫手的開關、上限、規則</td><td>AI 出狀況時</td></tr>
+      <tr><td class="btn-cell">位置庫</td><td>補地點座標,讓司機定得到</td><td>每幾天清一次</td></tr>
+      <tr><td class="btn-cell">系統</td><td>有沒有人亂刷、儲存空間、官網流量</td><td>出事才看</td></tr>
+      <tr><td class="btn-cell">流程</td><td>三張圖說明系統怎麼運轉</td><td>帶新人時</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <b>還有兩個獨立子頁</b>
+    「AI 學習記憶」和「難單紀錄」是<b>另外兩個網頁</b>,要各自登入一次。從 AI 大腦頁上的按鈕過去最省事。
+  </div>
+
+  
+</section>
+
+<section class="sheet" id="ch-02">
+  <h2><span class="num">02</span>系統在做什麼</h2>
+  <p class="purpose">後台上的每個數字,都是這條流程上某一步的結果。先看懂這張圖,後面每一頁都會變好懂。</p>
+
+  <h3>一則派單從 LINE 進來,到司機接單</h3>
+  <div class="flowfig">
+  <svg viewBox="0 0 620 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="系統流程圖">
+    <defs>
+      <marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L8,4 L0,8 z" fill="#8A968F"/>
+      </marker>
+      <style>
+        .bx{ fill:#FFFFFF; stroke:#D4DCD8; stroke-width:1; rx:6; }
+        .bx-t{ fill:#DBEDE8; stroke:#B2DAD1; }
+        .bx-p{ fill:#F3E9D2; stroke:#E3D3AC; }
+        .lb{ font:600 11px -apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; fill:#131C19; }
+        .sm{ font:400 9px -apple-system,"PingFang TC","Microsoft JhengHei",sans-serif; fill:#54645E; }
+        .nm{ font:700 9px ui-monospace,monospace; fill:#0D7A6E; }
+        .ln{ stroke:#8A968F; stroke-width:1.2; fill:none; marker-end:url(#ar); }
+        .hd{ font:800 10px -apple-system,"PingFang TC",sans-serif; fill:#54645E; letter-spacing:.08em; }
+      </style>
+    </defs>
+
+    <text x="8" y="16" class="hd">階段一 · 訊息進來 → 出卡</text>
+    <rect x="8"   y="26" width="92" height="42" class="bx"/>
+    <text x="16" y="43" class="nm">01</text><text x="34" y="43" class="lb">收到通知</text>
+    <text x="16" y="57" class="sm">記住開群入口</text>
+    <line x1="102" y1="47" x2="118" y2="47" class="ln"/>
+
+    <rect x="120" y="26" width="92" height="42" class="bx"/>
+    <text x="128" y="43" class="nm">02</text><text x="146" y="43" class="lb">規則解析</text>
+    <text x="128" y="57" class="sm">切塊·判上下車</text>
+    <line x1="214" y1="47" x2="230" y2="47" class="ln"/>
+
+    <rect x="232" y="26" width="92" height="42" class="bx bx-p" stroke-dasharray="3 2"/>
+    <text x="240" y="43" class="nm">03</text><text x="258" y="43" class="lb">AI 看單救援</text>
+    <text x="240" y="57" class="sm">0 張才跑·付費</text>
+    <line x1="326" y1="47" x2="342" y2="47" class="ln"/>
+
+    <rect x="344" y="26" width="80" height="42" class="bx"/>
+    <text x="352" y="43" class="nm">04</text><text x="370" y="43" class="lb">去重</text>
+    <text x="352" y="57" class="sm">同單只留一張</text>
+    <line x1="426" y1="47" x2="442" y2="47" class="ln"/>
+
+    <rect x="444" y="26" width="80" height="42" class="bx bx-t"/>
+    <text x="452" y="43" class="nm">05</text><text x="470" y="43" class="lb">定位</text>
+    <text x="452" y="57" class="sm">↓ 見下方</text>
+    <line x1="526" y1="47" x2="542" y2="47" class="ln"/>
+
+    <rect x="544" y="26" width="68" height="42" class="bx"/>
+    <text x="552" y="43" class="nm">06</text><text x="570" y="43" class="lb">出卡</text>
+    <text x="552" y="57" class="sm">司機看到</text>
+
+    <line x1="484" y1="70" x2="484" y2="86" class="ln"/>
+
+    <text x="8" y="100" class="hd">定位瀑布 · 由上往下試,上面沒中才往下,越下面越貴</text>
+    <rect x="8" y="108" width="604" height="62" rx="6" fill="#F4F7F5" stroke="#E4EAE7"/>
+    <text x="18" y="124" class="sm" style="font-weight:700;fill:#0A5A51;">免費(先跑這五層)</text>
+    <rect x="18"  y="130" width="104" height="30" class="bx bx-t"/><text x="26" y="143" class="lb">① 位置庫</text><text x="26" y="155" class="sm">我們自己補的</text>
+    <rect x="128" y="130" width="104" height="30" class="bx bx-t"/><text x="136" y="143" class="lb">② 門牌庫</text><text x="136" y="155" class="sm">政府 298 萬筆</text>
+    <rect x="238" y="130" width="86" height="30" class="bx bx-t"/><text x="246" y="143" class="lb">③ 錯字修正</text><text x="246" y="155" class="sm">模糊比對</text>
+    <rect x="330" y="130" width="86" height="30" class="bx bx-t"/><text x="338" y="143" class="lb">④ 快取</text><text x="338" y="155" class="sm">查過的秒回</text>
+    <rect x="422" y="130" width="86" height="30" class="bx bx-t"/><text x="430" y="143" class="lb">⑤ 自架圖資</text><text x="430" y="155" class="sm">我們的機器</text>
+    <path d="M514,145 L528,145" class="ln"/>
+    <text x="534" y="141" class="sm" style="fill:#8A5D0F;font-weight:700;">還沒中</text>
+    <text x="534" y="153" class="sm" style="fill:#8A5D0F;font-weight:700;">才往下 ↓</text>
+
+    <rect x="8" y="178" width="604" height="56" rx="6" fill="#FBF6EA" stroke="#E3D3AC"/>
+    <text x="18" y="194" class="sm" style="font-weight:700;fill:#8A5D0F;">付費(前面都沒中才會用到 —— 這裡就是帳單的來源)</text>
+    <rect x="18"  y="200" width="140" height="26" class="bx bx-p"/><text x="26" y="217" class="lb">⑥ AI 抓址</text>
+    <rect x="164" y="200" width="140" height="26" class="bx bx-p"/><text x="172" y="217" class="lb">⑦ Map8(台灣圖霸)</text>
+    <rect x="310" y="200" width="140" height="26" class="bx bx-p"/><text x="318" y="217" class="lb">⑧ Google</text>
+    <rect x="456" y="200" width="156" height="26" class="bx bx-p"/><text x="464" y="217" class="lb">⑨ Places(最後救援)</text>
+
+    <text x="8" y="256" class="hd">階段二 · 司機點接單 → 跳進 LINE 群</text>
+    <rect x="8"   y="264" width="104" height="30" class="bx bx-t"/><text x="16" y="277" class="lb">⓪ 已經在群裡</text><text x="16" y="289" class="sm">0 秒,最快</text>
+    <line x1="114" y1="279" x2="126" y2="279" class="ln"/>
+    <rect x="128" y="264" width="116" height="30" class="bx bx-t"/><text x="136" y="277" class="lb">⓪.5 LINE 開著</text><text x="136" y="289" class="sm">直接點進群</text>
+    <line x1="246" y1="279" x2="258" y2="279" class="ln"/>
+    <rect x="260" y="264" width="104" height="30" class="bx"/><text x="268" y="277" class="lb">① 通知入口</text><text x="268" y="289" class="sm">最多試 2 次</text>
+    <line x1="366" y1="279" x2="378" y2="279" class="ln"/>
+    <rect x="380" y="264" width="104" height="30" class="bx"/><text x="388" y="277" class="lb">③ 開 LINE</text><text x="388" y="289" class="sm">落在聊天列表</text>
+    <line x1="486" y1="279" x2="498" y2="279" class="ln"/>
+    <rect x="500" y="264" width="112" height="30" class="bx" stroke-dasharray="3 2"/><text x="508" y="277" class="lb">④⑤ 自動點進去</text><text x="508" y="289" class="sm">要無障礙權限</text>
+  </svg>
+  </div>
+  <p class="cap">
+    圖:<b>青色</b>=免費或最快 · <b>橘色</b>=要花錢 · <b>虛線框</b>=選配,可以關掉。
+    階段二由左往右是降級順序,<b>任何一步成功就停</b>,不會再往右。
+  </p>
+
+  <div class="callout tip">
+    <b>看懂這張圖,就看懂帳單了</b>
+    錢只花在定位瀑布的第 ⑥～⑨ 層。前五層全部免費 —— 所以<b>「免費命中率」越高、帳單越低</b>。
+    把常查不到的地名補進第 ① 層位置庫,那個地名以後就<b>永遠免費</b>,這是最有效的省錢動作。
+  </div>
+
+  <h3>三個常被搞混的名詞</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:20%">名詞</th><th>其實是什麼</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-cell">抓單</td><td>把 LINE 訊息看懂、變成一張車趟卡片。對應圖上的 <b>02 規則解析</b>。抓不到 = 司機根本看不到這一單。</td></tr>
+      <tr><td class="btn-cell">抓址 / 定位</td><td>把卡片上的地址查成座標,司機才知道要開去哪。對應圖上的<b>定位瀑布</b>。定不到 = 卡片有,但沒有導航。</td></tr>
+      <tr><td class="btn-cell">跳轉</td><td>司機按接單後,自動跳進那個 LINE 群去 @ 派單人。對應<b>階段二</b>。失敗 = 司機得自己找群。</td></tr>
+    </tbody>
+  </table></div>
+
+  
+</section>
+
+<section class="sheet" id="ch-03">
+  <h2><span class="num">03</span>每天要看什麼</h2>
+  <p class="purpose">後台有九頁,但每天只需要看其中三個地方。這一章是給你照著做的巡檢流程。</p>
+
+  <h3>開工三分鐘巡檢</h3>
+  <div class="drill">
+    <div class="drill-row">
+      <span class="drill-t">30秒</span>
+      <span class="drill-w">最上面有沒有紅色警告條?<small>在總覽頁,其實每一頁都看得到</small></span>
+      <span class="drill-a">沒有 → 系統正常,跳下一步。<br>有 → 按「看詳情 →」到<b>診斷提醒</b>頁,照上面寫的建議處理。</span>
+    </div>
+    <div class="drill-row">
+      <span class="drill-t">60秒</span>
+      <span class="drill-w">「未修復回報」是不是 0?<small>總覽頁上排第四格,左邊選單也會有紅點</small></span>
+      <span class="drill-a">0 → 沒事。<br>不是 0 → 到<b>問題回報</b>頁看司機說了什麼。同一類型一天冒好幾筆,通常是新版 App 有問題,要優先處理。</span>
+    </div>
+    <div class="drill-row">
+      <span class="drill-t">60秒</span>
+      <span class="drill-w">「7 天內到期」有沒有人?<small>總覽頁上排第三格,下面有續約提醒表</small></span>
+      <span class="drill-a">有 → 就是有錢要收。先確認收款,到<b>司機金鑰</b>頁把「續約月數」調成正確期數,再回總覽按那一列的〔續約〕。</span>
+    </div>
+    <div class="drill-row">
+      <span class="drill-t">30秒</span>
+      <span class="drill-w">上班時段「現在誰在跑」是不是空的?<small>總覽頁中段</small></span>
+      <span class="drill-a">整排空的很不正常 —— 先看有沒有紅色警告條(伺服器問題),再確認是不是大家真的沒出車。</span>
+    </div>
+  </div>
+
+  <h3>每週一次(挑一天做)</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:22%">看哪裡</th><th style="width:38%">看什麼</th><th>不對勁的話</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-cell">用量成本</td><td>本月預估成本、免費命中率有沒有突然掉一大截</td><td>掉了就到<b>診斷提醒</b>頁看省錢建議</td></tr>
+      <tr><td class="btn-cell">位置庫</td><td>「待補地標」有沒有累積一堆常查不到的地名</td><td>照第 10 章的四種情況分類,只補該補的</td></tr>
+      <tr><td class="btn-cell">AI 大腦</td><td>救回率曲線是往上還是往下</td><td>連兩天下滑就到<b>AI 學習記憶</b>頁查規則改動歷史</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout warn">
+    <b>不用每天看的東西</b>
+    「系統」頁(高風險用量、儲存空間、官網流量)、「運作流程」頁 —— 這兩頁是出事或帶新人才看的,平常不用進去。
+  </div>
+
+  <h3>數字為什麼有時候不動</h3>
+  <p>後台每一頁的更新方式不一樣,以下是常見的誤會:</p>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:30%">情況</th><th>原因</th></tr></thead>
+    <tbody>
+      <tr><td>總覽的「Google 呼叫」「免費命中率」顯示「—」</td><td>這兩格要先進過一次<b>用量成本</b>頁才會有數字。直接點那一格就會幫你載入。</td></tr>
+      <tr><td>總覽的數字自己在跳</td><td>正常。司機相關的每 20 秒自動更新,警告條和回報每 60 秒。瀏覽器切到別的分頁會暫停,切回來立刻更新。</td></tr>
+      <tr><td>位置庫 / 系統頁的數字卡住不動</td><td>這些頁<b>只有第一次切進來會自動載入一次</b>,之後不會自己更新。要按各卡片自己的「↻ 重新整理」。</td></tr>
+    </tbody>
+  </table></div>
+
+  
+</section>
+
+<section class="sheet" id="ch-04">
+<h2><span class="num">04</span>總覽</h2>
+<p class="purpose">每天上班第一眼看的儀表板:全隊現在有幾位司機能用、今天跑了幾單、誰在線上、誰的授權快到期要收錢、有沒有司機回報問題還沒處理。也可以從這裡發全體公告。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>開工第一件事看一次(確認沒人在等續約、沒有新的問題回報);中午和收工前再掃一眼「<b>現在誰在跑</b>」跟最上面的紅色警告條;要通知全體司機(維護、休假、要求更新 App)時來這裡發公告。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="on">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>最上面的紅色警告條</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>七格數字方塊</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>📢 發全體公告</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>成長趨勢</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">5</span>現在誰在跑</div><div class="mock-skel"><i style="width:60%"></i><i style="width:73%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">6</span>快到期/剛過期</div><div class="mock-skel"><i style="width:53%"></i><i style="width:82%"></i><i style="width:56%"></i></div></div><div class="mock-more">…還有 1 張卡</div></div></div><p class="cap">圖:「總覽」的版面。左上是分頁列(目前在 <b>總覽</b>),下面由上到下共 7 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 最上面的紅色警告條</h3>
+<p>系統偵測到異常時才會冒出來的一條紅字,寫「<b>系統有 N 項需要注意</b>」再接第一項警告的前 44 個字。平常完全看不到,看不到就是正常。它其實每一頁都會出現,不是總覽專屬的。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">看不到紅條 = 正常。一出現就是真的有事,數字是待處理的警告項數。常見的一種是「<b>今日 Google 呼叫已達上限的 80%</b>」——再撞下去保險絲會跳,跳了之後全隊只剩免費的定位來源,司機會開始查不到地址。登入的當下算一次,之後每 60 秒自己重算一次,不用手動刷新。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">看詳情 →</td><td>跳到「<b>診斷提醒</b>」分頁,那裡有每一項警告的完整說明。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 七格數字方塊(頁面最上排)</h3>
+<p>由左到右:有效司機、今日接單(全體)、7 天內到期、未修復回報、今日 Google 呼叫、免費命中率、預估月營收。標題「<b>總覽</b>」下面那行小字另外寫「<b>共 N 位司機・M 位有效</b>」(唯讀帳號會多一個「<b>👁 唯讀監控</b>」)。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">有效司機=沒過期也沒被停用的人數,這是實際能開 App 跑車的人數,它跟總人數的差距就是過期+停用的。今日接單=全體司機今天累積的接單數,只算 App 今天有回報上來的,台灣時間過午夜自動歸零。7 天內到期=剩 0～7 天的人數,大於 0 就代表有錢要收。未修復回報=司機丟上來還沒處理的問題數,理想值 0,持續往上代表出了新狀況。今日 Google 呼叫=今天花錢問 Google 的次數,如果衝到當日上限的八成,最上面的紅條就會跳出來警告。免費命中率=有多少定位是用免費資料(快取、門牌庫)解決的,數字越高越省錢,沒有固定及格線,重點是跟前幾天比有沒有突然掉一大截。預估月營收=把每個還沒過期的司機換算成每月金額加總(季繳除以 3、年繳除以 12、測試方案算 0 元)。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">點「有效司機」/「今日接單」/「預估月營收」任一格</td><td>跳到「<b>司機金鑰</b>」分頁看完整名單。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點「7 天內到期」</td><td>跳到「<b>司機金鑰</b>」分頁,而且會自動把名單篩成只剩快到期的人。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點「未修復回報」</td><td>跳到「<b>問題回報</b>」分頁。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點「今日 Google 呼叫」/「免費命中率」</td><td>跳到「<b>用量成本</b>」分頁,而且一進去就會去問伺服器拿最新的用量數字。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 📢 發全體公告</h3>
+<p>一個發公告的區塊,說明寫著會送給全體司機(含過期、被停用的);一般等級=司機首頁跳橫幅,緊急等級=手機系統通知加彈窗。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這張卡不會顯示「<b>目前正在發的是哪一則</b>」——畫面上看不出來現在有沒有公告在跑,只能靠自己記錄。填寫視窗裡寫著標題最多 60 字、內文最多 500 字,那只是提示文字,實際上不會擋你打更多。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">✏️ 發公告</td><td>跳出一個小視窗要你填「<b>標題</b>」「<b>內文</b>」「<b>等級(一般/緊急)</b>」,按「<b>發送</b>」就直接送給全體司機。標題和內文兩個都空白會跳出提示、不送。</td><td><span class="pill bad">小心</span> 沒有二次確認,按下發送就是全隊都收到,收不回來。緊急等級會在每位司機手機跳系統通知加彈窗,深夜或行車中按下去會吵到全隊,非停擺等級的事情請用「<b>一般</b>」。同一則編輯後再發,全體會重新收到一次。</td></tr><tr><td class="btn-cell">停止目前公告</td><td>先跳一個確認框,按確定後目前這則公告就不再送給司機。</td><td><span class="pill bad">小心</span> 只擋住「<b>還沒收到的人</b>」。已經跳在司機畫面上的橫幅不會自己消失,要司機自己關掉。</td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 成長趨勢</h3>
+<p>一張折線圖,可切換看「<b>在營司機</b>」人數或「<b>月營收</b>」的變化。圖上方大字是最新一點的值,旁邊灰字寫「<b>自 X 月起 +N</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">線往上=有在成長,持平或往下=有人到期沒續約。注意這張圖不是每天記錄下來的真實歷史,而是拿現在每個人的開通日和到期日回推畫出來的——被停用的人完全不算,測試方案不算營收,所以刪掉或停用一位老司機,連過去的線都會跟著往下修。每一個點大概是一週,授權歷史超過 28 週會自動把間隔拉大。若看到「<b>資料還不夠畫趨勢</b>」,代表目前未停用的司機少於 2 位、或最早那位開通還不滿一週,不是壞掉。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">在營司機 / 月營收(右上兩顆切換鈕)</td><td>切換圖表要看的內容,只是換畫面重畫,不會去問伺服器。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">把滑鼠移到線上</td><td>跟著出現一條直線和小圓點,並顯示那一點的日期與數字。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">5</span> 現在誰在跑</h3>
+<p>一排司機名牌:綠色🟢=接單中、藍色🔵=等單中,名字後面接他今天的接單數。都沒人時顯示「<b>現在沒有司機在線上。</b>」</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">綠色🟢接單中=45 分鐘內有接過單。藍色🔵等單中=App 開著有在跟伺服器打招呼,但 45 分鐘內沒接到單。超過 20 分鐘沒跟伺服器打招呼的人就直接從這排消失(視為離線),所以這裡「<b>不出現</b>」就等於離線或從來沒上線過。上班時段整排空的很不正常,先確認是不是伺服器出事(看最上面的紅條)。</p></div>
+<h3><span class="anno">6</span> 快到期/剛過期(續約提醒)</h3>
+<p>一張小表格,最多列 5 位:司機名字、方案、剩幾天(或過期幾天)、到期日,右邊一顆「<b>續約</b>」鈕。沒有人符合時顯示「<b>最近沒有要到期的司機</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">列進來的條件有兩種:剩 0～7 天的(黃色),以及已經過期但還沒被停用、且過期在 14 天以內的(紅色「<b>過期 N 天</b>」)。過期超過 14 天的人就不再出現在這裡,要到「<b>司機金鑰</b>」頁找。表格照到期日由近到遠排,最多只顯示 5 位——所以看到滿滿 5 筆時,實際上可能不只 5 位。紅色的「<b>過期 N 天</b>」代表那位司機現在開 App 會被擋住。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">續約</td><td>直接把那位司機的到期日往後延,延幾個月是照「<b>司機金鑰</b>」頁上方那個「<b>續約月數</b>」下拉選單的值(預設 1),延完會跳出提示並自動重抓名單。</td><td><span class="pill bad">小心</span> 沒有確認視窗,按下去立刻生效、直接影響收費。月數不是在這頁選的,按之前先到「<b>司機金鑰</b>」頁確認「<b>續約月數</b>」是你要的數字。按錯只能到「<b>司機金鑰</b>」頁用「<b>加天數</b>」填負數扣回來。唯讀帳號看不到這顆鈕。</td></tr><tr><td class="btn-cell">全部 →</td><td>跳到「<b>司機金鑰</b>」分頁,並自動把名單篩成只剩快到期的人。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">7</span> 最新未修復回報</h3>
+<p>最多 3 張司機丟上來、還沒處理的問題卡片,每張顯示司機名字、流水號前 8 碼、類型標籤、App 版本、時間、手機型號,以及司機自己打的一句話。全部處理完時顯示「<b>目前沒有未修復的回報</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這裡只列最新 3 筆未修復的,實際總數看上面那格「<b>未修復回報</b>」,以及左邊選單「<b>問題回報</b>」旁邊的紅色數字。卡片上如果有「<b>🔔 司機回覆</b>」標籤,代表司機在等你回話。有「<b>🔁 相似×N</b>」要到問題回報頁才看得到(這裡的精簡卡不算相似)。同一位司機短時間丟好幾筆、或多位司機同時丟同一類型,通常代表剛出的新版本有問題。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">點卡片(右邊寫「看詳情 →」)</td><td>跳到「<b>問題回報</b>」分頁。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">全部 →</td><td>跳到「<b>問題回報</b>」分頁。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>剛登入,「<b>今日 Google 呼叫</b>」和「<b>免費命中率</b>」兩格一直顯示「<b>—</b>」</b></td><td>這不是壞掉。這兩個數字要先切去「<b>用量成本</b>」分頁一次(或直接點那兩格),資料才會被抓回來;抓過之後回總覽就看得到了。</td></tr><tr><td><b>「<b>現在誰在跑</b>」寫著沒有司機在線上,但司機說他 App 明明開著</b></td><td>代表伺服器已經超過 20 分鐘沒收到他手機的訊號。先請他確認 App 有沒有被系統關掉、手機有沒有網路,再看「<b>司機金鑰</b>」頁他的授權是不是過期或被停用。如果是整排突然全空,先看最上面有沒有紅色警告條——那是伺服器層級的問題,不是司機的問題。</td></tr><tr><td><b>續約提醒裡有人顯示紅色的「<b>過期 N 天</b>」</b></td><td>那位司機現在開 App 會被擋住,通常代表錢還沒收到或漏掉了。確認收款後,先到「<b>司機金鑰</b>」頁把上方「<b>續約月數</b>」調成正確的期數,再回總覽按他那列的「<b>續約</b>」——按下去沒有確認框,直接生效。</td></tr><tr><td><b>要通知全體司機一件事,不確定該用一般還是緊急</b></td><td>只要不是「<b>現在立刻要做</b>」的事(例如提醒續約、公告休假、說明新功能),一律用「<b>一般</b>」——只在司機首頁跳橫幅,不會發出聲音。只有全隊停擺、必須馬上更新 App 這種情況才用「<b>緊急</b>」,它會在每支手機跳系統通知加彈窗。發錯了立刻按「<b>停止目前公告</b>」,但已經跳在司機畫面上的那則收不回來。</td></tr><tr><td><b>覺得數字好像卡住不動</b></td><td>這一頁沒有重新整理鈕,是自動更新的:司機相關的數字(有效司機、今日接單、到期名單、誰在跑、成長趨勢)每 20 秒更新一次;問題回報和最上面的紅色警告條每 60 秒更新一次。瀏覽器切到別的網頁時會暫停更新,切回來會馬上更新一次。真的想立刻刷新,到「<b>司機金鑰</b>」頁按「<b>↻ 重新整理</b>」,總覽的數字也會一起跟著更新。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>「<b>今日 Google 呼叫</b>」和「<b>免費命中率</b>」登入後是空的(顯示「<b>—</b>」),必須進過一次「<b>用量成本</b>」分頁才會有數字。其他五格登入就有。</li><li>這頁沒有重新整理鈕。司機相關數字每 20 秒自動更新,問題回報和紅色警告條每 60 秒;瀏覽器分頁切到背景時會暫停,切回來立刻更新一次。</li><li>續約提醒那顆「<b>續約</b>」鈕,延幾個月是吃「<b>司機金鑰</b>」頁上方的「<b>續約月數</b>」下拉(預設 1 個月),不是在總覽選的;而且按下去沒有確認視窗,立刻生效。</li><li>「<b>今日接單(全體)</b>」只算 App 今天有回報上來的司機。昨天有跑、今天沒開 App 的人算 0,不會沿用昨天的數字;台灣時間過午夜自動歸零。</li><li>「<b>現在誰在跑</b>」不會列出離線的人。超過 20 分鐘沒跟伺服器打招呼就直接消失,所以「<b>名字不在上面</b>」不代表他被停用,只代表沒訊號。</li><li>成長趨勢是用現有每個人的開通日/到期日回推畫的,不是逐日記錄的真實歷史。停用或刪掉一位老司機,連過去的線都會跟著往下改;測試方案不計營收。</li><li>續約提醒最多只列 5 筆、最新回報最多只列 3 筆,不是全部。要看全部得按「<b>全部 →</b>」或點上面的數字方塊。</li><li>點最新回報那張卡,只會跳到「<b>問題回報</b>」分頁,不會自動幫你展開剛剛點的那一筆,要在那邊自己找(可用流水號前 8 碼搜尋)。</li><li>發公告是送給【全體】司機,包含已過期和被停用的人,而且按下「<b>發送</b>」沒有二次確認。</li><li>畫面上看不到「<b>目前正在發的公告是哪一則</b>」,這張卡不會顯示現有公告內容。</li><li>最上面的紅色警告條其實每一個分頁都會出現,不是總覽專有的;它只顯示第一項警告的開頭一小段,完整清單要按「<b>看詳情 →</b>」到「<b>診斷提醒</b>」看。</li><li>唯讀帳號(標題旁會寫「<b>👁 唯讀監控</b>」)看不到「<b>續約</b>」鈕;公告的兩顆鈕畫面上還在,但真正的權限檢查在伺服器,唯讀帳號按了也不會成功。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-05">
+<h2><span class="num">05</span>司機金鑰</h2>
+<p class="purpose">這一頁管的是「<b>誰可以用這個 App</b>」。發一把新金鑰給司機、幫到期的人續約、司機換手機時解綁、沒繳錢的停掉,同時可以看到每位司機現在在不在線上、今天跑了幾單,以及全部有效司機加起來大概每個月收多少錢。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>有新司機要開通、有人要試用、有人到期要續約、司機換手機說進不去、司機沒繳錢要停權、要查某個人的金鑰或到期日、要看這個月大概的收入,或想確認某位司機現在有沒有開著 App。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="on">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>上方四個數字方塊</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>發一把新金鑰</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>司機清單上方的工具列</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>司機清單表格</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">5</span>營收統計</div><div class="mock-skel"><i style="width:60%"></i><i style="width:73%"></i><i style="width:45%"></i></div></div></div></div><p class="cap">圖:「司機金鑰」的版面。左上是分頁列(目前在 <b>金鑰</b>),下面由上到下共 5 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 上方四個數字方塊(全部 / 有效 / 7 天內到期 / 已過期停用)</h3>
+<p>全部司機金鑰的分類統計,同時也是下面那張清單的篩選開關。點哪一塊,下面的清單就只留那一群人。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">「<b>全部</b>」=系統裡所有金鑰的筆數。「<b>有效</b>」=沒被停用、也還沒過到期日的人(把快到期的也算進去)。「<b>7 天內到期</b>」=剩餘天數在 0 到 7 天之間,這一群【已經包含在「<b>有效</b>」裡面】,不是另外加上去的。「<b>已過期/停用</b>」=過了到期日,或是被手動按停用的。正常情況下:全部 = 有效 + 已過期停用,而「<b>7 天內到期</b>」通常是個位數。不對勁的訊號:「<b>7 天內到期</b>」一次跳到十幾位,代表當初同一批開通的人要一起續約,要提早一週開始打電話;「<b>有效</b>」突然掉一大截,通常是有人被誤停用,或整批過期沒人發現。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">全部</td><td>下面的清單不做任何篩選,全部列出來。只影響畫面顯示,不會改到任何資料。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">有效</td><td>清單只留還能用的人(含 7 天內快到期的)。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">7 天內到期</td><td>清單只留剩 0 到 7 天就到期的人,適合拿來當每週的續約催收名單。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">已過期/停用</td><td>清單只留過期或被停用的人。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 發一把新金鑰</h3>
+<p>開通新司機的地方:填名字、選方案(月繳/季繳/年繳/測試)、填每期收費、選開幾個月;或是改填「<b>體驗天數</b>」發一把免費試用鑰。按下去之後,新金鑰會顯示在這張卡片下方。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">選方案時月數會自動跳到對應值(月繳=1、季繳=3、年繳=12);選「<b>測試</b>」時收費欄會變灰、不能填。收費欄會自動帶出你上次同一個方案填過的金額(這是記在你這台電腦的瀏覽器裡,換一台電腦要重填一次)。「<b>體驗天數</b>」只要填了大於 0 的數字,上面的方案和收費就整個不算,一律發免費試用鑰、方案登記成「<b>測試</b>」、也不會進營收統計,天數可填 1 到 365。金鑰的長相固定是 TR- 開頭加兩組四碼。成功的樣子:下方跳出一塊淺色區,寫著司機名字、方案(或體驗幾天)、到期日,還有那串金鑰。失敗的樣子:畫面下方跳一條寫著「<b>失敗:…</b>」的小黑條,而且下面沒有出現新金鑰 —— 這代表沒發成功,可以再按一次。沒填名字就按,游標會自己跳到名字欄、什麼都不會發生;付費方案沒填收費,會提示「<b>先填每期收費</b>」。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">產生金鑰</td><td>去伺服器開一把全新的金鑰,馬上顯示在下面,並且把下方的司機清單重新拉一次最新的。名字欄會自動清空(發試用鑰時體驗天數欄也一起清空),方便接著發下一把。</td><td><span class="pill bad">小心</span> 按一次就真的多一把金鑰,沒有「<b>取消</b>」也沒有二次確認。手滑多按了,要自己到下面的清單把多出來的那把刪掉。</td></tr><tr><td class="btn-cell">複製名字＋金鑰</td><td>把「<b>司機名字 加一個空格 加金鑰</b>」複製到剪貼簿,方便貼進你自己的名冊或試算表。只對剛剛這一次產生的那把金鑰有效。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">複製給司機的訊息</td><td>複製一段寫好的中文訊息,內容是金鑰、「<b>打開 App 輸入一次即可啟用(會綁定這支手機)</b>」和效期到哪一天,直接貼進 LINE 傳給司機就好。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 司機清單上方的工具列(搜尋 / 續約月數 / 重新整理)</h3>
+<p>找人、設定續約一次加幾個月、手動去伺服器抓最新資料。右邊有一行小字說明這張表每 20 秒會自己更新一次。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">搜尋是邊打字邊篩,同時比對司機名字、金鑰、手機號,大小寫不分。找不到人時表格下面會出現「<b>沒有符合的司機</b>」。「<b>續約月數</b>」預設是 1,它是【給右邊每一列那顆「<b>續約</b>」按鈕用的設定值】,自己不會做任何事。頁面每 20 秒會自動去要一次新資料(只在你正看著這個視窗的時候才要,切到別的分頁就暫停;切回來會馬上補更新一次),所以在線狀態和今日單數基本上不用手動刷。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">搜尋司機 / 金鑰 / 手機號(輸入框)</td><td>打字就即時過濾下面的清單,清空就恢復。只影響畫面,不會改資料。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">續約月數(下拉選單:1/2/3/6/12)</td><td>設定「<b>續約</b>」按鈕一次要往後加幾個月。按續約之前先把這個調成收到的錢對應的月數。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">↻ 重新整理</td><td>馬上去問伺服器拿最新的司機名單,四個數字方塊、清單、營收統計會一起重畫。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 司機清單表格(每一列一位司機,右邊是動作按鈕)</h3>
+<p>每位司機的名字/手機、金鑰、方案與收費、到期日與剩餘天數、現在在不在線上、授權狀態,以及右邊一排操作按鈕。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">表格分成兩組:「<b>正式會員</b>」(月繳/季繳/年繳)排上面,「<b>測試 / 體驗</b>」排下面;正式會員那條灰色標題列右邊會順便顯示這一組的月營收小計。同一組裡面,到期日最近的排最前面。到期狀態色塊:綠色=有效、黃色=剩 7 天以內、紅色=已過期、灰色=已被停用。「<b>狀態/最後上線</b>」欄:20 分鐘內有跟伺服器報到過才算在線;在線而且 45 分鐘內有接過單顯示綠色「<b>接單中</b>」,在線但沒接單顯示藍色「<b>等單中</b>」;超過 20 分鐘沒報到就不顯示在線標籤,只留上次上線時間(今天幾點幾分 / 昨天 / 幾天前)。再下面那行 v 開頭的數字,是他手機上的 App 版本。名字底下的「<b>今日 N 單</b>」只認台灣時間的今天,跨到隔天自動歸零;完全沒有這個小標籤,代表他今天一次都沒回報過(沒開 App,或 App 版本太舊)。名字底下若寫「<b>尚未綁定手機</b>」,代表這把金鑰發出去以後【從來沒有人輸入啟用過】。正常的樣子:上班時段大部分人到期色塊是綠的,線上的人有一定比例。不對勁的訊號:白天尖峰時間整排都沒有在線標籤,那多半是伺服器或 App 出事,不會剛好所有人一起休息;某位司機方案還有效但最後上線停在好幾天前,直接打電話問他 App 是不是掛了。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">點金鑰那串 TR- 開頭的字</td><td>把「<b>司機名字 加空格 加金鑰</b>」複製到剪貼簿,畫面下方會跳一條「<b>已複製:…</b>」。查舊金鑰、補寄給司機都用這個。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點方案那個色塊(例如「月繳 $1,299」)</td><td>跳出小視窗改方案和每期收費。改成「<b>測試</b>」時價格欄會自動清空並鎖住;付費方案填 0 或空白會被擋下並提示「<b>價格要大於 0</b>」。存檔後那位司機的方案價格就換了,營收統計會立刻跟著變。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">改名</td><td>跳出小視窗改這位司機在後台顯示的名字。存了以後清單和總覽都用新名字,但他以前送過來的問題回報上留的舊名字不會跟著改。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">基本 / ⭐進階</td><td>先跳一個確認框,按確定就把這位司機切成進階版(開放高速喊單功能)或切回基本版。司機的 App 下次連上伺服器時生效,不用重裝。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">續約</td><td>把到期日往後推,推幾個月看上面「<b>續約月數</b>」選的值。還沒過期的人是從他原本的到期日往後加;已經過期的人是從今天算起,不會續到還在過去的日期。</td><td><span class="pill bad">小心</span> 這顆【沒有二次確認】,按下去立刻生效。按錯月數只能用旁邊的「<b>+天</b>」填負數把天數扣回來。</td></tr><tr><td class="btn-cell">+天</td><td>跳出小視窗填天數,正數是多送幾天,負數是扣回來(用來修正按錯的續約),範圍正負 365 天。填 0 或空白會被擋下並提示「<b>天數要非 0 的整數</b>」。跟續約一樣,沒過期的從原到期日算,過期的從今天算。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">停用 / 啟用</td><td>按「<b>停用</b>」會先跳確認框,按確定後那位司機的 App 下次向伺服器報到時就進不去了。已停用的人這顆會變成「<b>啟用</b>」,按了不會問、直接恢復。</td><td><span class="pill bad">小心</span> 停用等於直接讓司機沒辦法工作。按之前務必確認真的是欠費或離職,不要對著錯的人按。</td></tr><tr><td class="btn-cell">換機</td><td>先跳確認框,按確定後清掉這把金鑰記住的那支手機。之後司機拿同一把金鑰在新手機上輸入一次,就會重新綁到新手機。</td><td><span class="pill bad">小心</span> 解綁之後這把金鑰變成「<b>誰先輸入誰綁走</b>」。如果金鑰曾經外流,可能被別人搶先綁去。解完就請司機立刻去綁。</td></tr><tr><td class="btn-cell">刪除</td><td>先跳確認框,按確定後把這位司機整筆從伺服器移除,清單上不再出現。</td><td><span class="pill bad">小心</span> 不可復原。名字、到期日、綁定紀錄全部消失,以後想查也查不到。除非是誤發的測試資料,否則一律改用「<b>停用</b>」保留紀錄。</td></tr></tbody></table></div>
+<h3><span class="anno">5</span> 營收統計</h3>
+<p>依照現在有效的授權,推算的預估月營業額、預估年營業額,以及按方案(月繳/季繳/年繳/測試)拆開的人數、每期收費加總、換算成每月是多少。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">計算方式:只算「<b>有效</b>」的人(過期或被停用的當下就從這裡消失),把同一個方案的每期收費加總後除以該方案的月數 —— 月繳除以 1、季繳除以 3、年繳除以 12 —— 四捨五入成整數再全部相加,就是預估月營業額。預估年營業額就是月營業額乘以 12,不是真的今年收到多少。「<b>測試</b>」那一列人數照算,金額欄永遠顯示「<b>—</b>」和「<b>不計費</b>」,免費體驗鑰也算在這一列。最重要的一點:這是用【系統裡登記的方案價格】推算的預估值,不是實際入帳金額 —— 誰欠款沒繳、誰有打折,這張表看不出來。不對勁的訊號:月營業額無緣無故掉一大塊,通常是有一批人同時過期沒續約,或某人的方案被誤改成「<b>測試</b>」。</p></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>新司機談成了,要開通給他用</b></td><td>在「<b>發一把新金鑰</b>」填名字、選方案(例如月繳)、填每期收費、確認月數,按「<b>產生金鑰</b>」,再按「<b>複製給司機的訊息</b>」直接貼給他。提醒他金鑰在 App 輸入一次就會綁住那支手機。</td></tr><tr><td><b>司機想先試用幾天再決定</b></td><td>一樣填名字,但改填下面那格「<b>體驗天數</b>」(例如 7),然後按「<b>產生金鑰</b>」。這樣會發一把免費試用鑰,上面選的方案和收費全部不算,也不會進營收統計,到期會自己停。</td></tr><tr><td><b>每週要催續約,想知道誰快到期</b></td><td>點上面「<b>7 天內到期</b>」那塊,清單就只剩這群人,由到期日最近的排在最前面,照著打電話。收到錢以後先把工具列的「<b>續約月數</b>」調成對應月數,再按那一列的「<b>續約</b>」。</td></tr><tr><td><b>司機換了新手機,說金鑰輸入後啟用不了</b></td><td>搜尋他的名字或手機號找到那一列,按「<b>換機</b>」,確認框按確定清掉舊手機綁定,然後請他馬上用原本那把金鑰在新手機輸入一次。</td></tr><tr><td><b>司機這個月沒繳錢,要先停權</b></td><td>找到那一列按「<b>停用</b>」並確認,他的 App 下次連上伺服器就進不去。補繳之後同一顆按鈕會變成「<b>啟用</b>」,按下去立刻恢復。不要按「<b>刪除</b>」,紀錄要留著。</td></tr><tr><td><b>續約按錯了,月數選錯或多送了天數</b></td><td>用同一列的「<b>+天</b>」填負數把多出來的天數扣回去(例如多加了一個月就填 -30),範圍正負 365 天。</td></tr><tr><td><b>司機說 App 沒在抓單,不確定是他沒開還是系統壞了</b></td><td>看他那一列的「<b>狀態/最後上線</b>」。有藍色「<b>等單中</b>」代表 App 有在跑;只顯示「<b>幾天前</b>」代表他根本沒開 App;如果整張表所有人在上班時段都沒有在線標籤,那就是系統面的問題,不是個別司機。</td></tr><tr><td><b>司機加價升級要用高速喊單</b></td><td>先點他那一列的方案色塊把方案/收費改成新價格,再按「<b>基本</b>」那顆把他切成「<b>⭐進階</b>」,他的 App 下次連上伺服器就開通。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>四個數字方塊不是相加關係:「<b>7 天內到期</b>」已經包含在「<b>有效</b>」裡面,不要重複計算。全部 = 有效 + 已過期停用。</li><li>「<b>續約</b>」按鈕沒有二次確認,點下去立刻改到期日。務必先確認工具列的「<b>續約月數</b>」再按。</li><li>「<b>續約月數</b>」是共用設定,總覽頁「<b>快到期/剛過期</b>」那張卡上的續約按鈕也是吃這個值;而且它不會被記住,頁面重新整理就回到 1。</li><li>營收統計是用目前登記的方案價格推算的【預估值】,不是實收帳。有人欠款、有人打折,這裡完全看不出來。</li><li>免費體驗鑰一律不進營收,人數會算在「<b>測試</b>」那一列,金額顯示「<b>不計費</b>」。</li><li>「<b>體驗天數</b>」欄只要填了大於 0 的數字,上面選的方案和收費就整個被忽略,發出去的是免費試用鑰 —— 要發付費鑰記得把這格清空。</li><li>剛產生的那塊金鑰顯示區只留最後一把,再發一把就被蓋掉,重新整理頁面也會消失。要找回舊金鑰,到下面清單點那串 TR- 開頭的字就會複製「<b>名字+金鑰</b>」。</li><li>改方案時填的價格會被你這台電腦的瀏覽器記住,下次選同一個方案自動帶出來。換電腦或換瀏覽器就要重填,不是伺服器上的設定。</li><li>「<b>刪除</b>」不可復原,正常情況一律用「<b>停用</b>」。</li><li>「<b>換機</b>」清掉綁定之後,那把金鑰變成誰先輸入誰綁走,解完要請司機立刻去綁。</li><li>名字底下寫「<b>尚未綁定手機</b>」代表這把金鑰發出去後從來沒被啟用過,不是他手機有問題。</li><li>「<b>今日 N 單</b>」只認台灣時間的今天,過午夜自動歸零;沒有這個標籤不代表他今天真的 0 單,可能只是沒開 App 或 App 版本太舊沒回報。</li><li>用唯讀帳號登入時,「<b>發一把新金鑰</b>」整張卡片會不見,每一列的動作欄只會顯示「<b>唯讀</b>」兩個字 —— 這是權限限制,不是頁面壞了。</li><li>清單每 20 秒會自己去拿一次最新資料(你切到別的視窗時會暫停,切回來馬上補一次),所以在線狀態不用一直手動按重新整理;自動更新不會清掉你打在搜尋框裡的字。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-06">
+<h2><span class="num">06</span>問題回報</h2>
+<p class="purpose">司機在 App 的偵錯頁按「<b>回報問題</b>」送過來的問題,全部集中在這一頁。你在這裡看得到司機說了什麼、當下 App 把那張派單抓成什麼樣子、原始派單長怎樣,還可以直接跟司機一來一往對話,問題處理完就把它標成「<b>已修復</b>」。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>每天上班先看一次,確認有沒有新回報或司機的新回覆。另外三個時機一定要進來:左邊選單「<b>問題回報</b>」旁邊出現紅色數字時(那就是還沒修好的筆數)、總覽頁「<b>未修復回報</b>」那格不是 0 時、以及司機在群組說「<b>App 又抓錯了</b>」要你查是哪一單的時候。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="on">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>狀態篩選列</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>類型標籤列</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>搜尋框</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>回報卡片</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">5</span>展開後的證據區</div><div class="mock-skel"><i style="width:60%"></i><i style="width:73%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">6</span>對話區</div><div class="mock-skel"><i style="width:53%"></i><i style="width:82%"></i><i style="width:56%"></i></div></div><div class="mock-more">…還有 1 張卡</div></div></div><p class="cap">圖:「問題回報」的版面。左上是分頁列(目前在 <b>回報</b>),下面由上到下共 7 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 狀態篩選列(未修復 / 已修復 / 全部 + 重新整理)</h3>
+<p>三顆按鈕,每顆後面括號是筆數:「<b>🔧 未修復</b>」是還沒標記修好的、「<b>✅ 已修復</b>」是已經標記修好的、「<b>全部</b>」兩種都算。右邊一顆「<b>↻ 重新整理</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">括號裡的數字算的是「<b>這頁目前抓回來的全部回報</b>」,不會因為你在搜尋或選了類型而變動。這頁一次只跟伺服器要最新的 100 筆,所以兩個數字加起來最多就是 100;真的到 100 就代表更舊的回報這頁看不到了。未修復 0 筆是正常狀態,左邊選單「<b>問題回報</b>」旁的紅色數字也會跟著消失(那個紅色數字就是未修復的筆數)。一天內同一類型連續冒出好幾筆未修復,通常代表剛發出去的新版 App 有問題,要優先看。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">🔧 未修復</td><td>下面只列還沒標記修好的回報。一進這頁預設就停在這裡。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">✅ 已修復</td><td>下面只列已經標記修好的回報,卡片會呈現變淡的樣子。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">全部</td><td>修好的、沒修好的一起列出來。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器要一次最新的回報清單,拿到後整頁重畫。重畫會把已經展開的卡片收合起來,打到一半還沒送出的回覆文字也會不見。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 類型標籤列</h3>
+<p>依照現有回報自動長出來的一排類型鈕,常見的有 抓錯單、漏抓、標記失敗、距離錯、其他,每個後面括號是筆數;最左邊固定是「<b>全部類型</b>」。這排是照實際資料生出來的,沒有那個類型的回報就不會有那顆鈕。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">括號的數字是「<b>所有抓回來的回報</b>」裡這一類有幾筆,已經修好的也算在內;所以它常常跟下面實際列出來的筆數對不起來(下面同時還被上面那排未修復/已修復擋著),這是正常的不是壞掉。哪一類特別多就代表哪一塊最痛:抓錯單、漏抓多=看單那段有問題;標記失敗多=群組裡自動標記那段出事;距離錯多=定位在出包。如果你選中的那個類型後來一筆都不剩(被刪掉或改掉),畫面會自動退回「<b>全部類型</b>」,不會卡在空白。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">全部類型</td><td>不分類型,全部列出來。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">各個類型鈕(抓錯單 / 漏抓 / 標記失敗 / 距離錯 / 其他…)</td><td>下面只留這一個類型的回報。這只是畫面上的過濾,不會去動伺服器的資料。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 搜尋框</h3>
+<p>一行搜尋框,可以打流水號(卡片上 # 後面那 8 碼,例如 5207bd18)、司機名字、司機的金鑰、司機自己打的那句描述、派單原文、類型名稱。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">打字就立刻過濾,不用按 Enter,也不會再去問伺服器 —— 它只在目前抓回來的那 100 筆裡找。搜不到有兩種可能:一是真的沒有,二是那筆太舊已經不在這 100 筆裡。要注意它不會去搜「<b>完整偵錯</b>」那一大段技術內容,只搜上面列的那幾項。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">在搜尋框打字</td><td>下面的清單即時縮到符合的那幾筆。司機在群組報流水號時,把 8 碼貼進來最快找到那一筆。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">清空搜尋框</td><td>清掉字就恢復完整清單(仍受上面兩排篩選影響)。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 回報卡片(收合時的那一行)</h3>
+<p>每一筆回報收合起來是一行摘要,由左到右:司機名字、#流水號前 8 碼、類型標籤、🔁 相似×幾、🔔 司機回覆、App 版本號與回報的日期時間、📱手機型號、🖼️(有附圖才出現)、司機自己打的那句話(橘色引號),最右邊寫「<b>點一下展開</b>」。已經標記修好的卡片整張會變淡,前面多一個 ✅。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">🔔 司機回覆=這串對話最後一句是司機講的,球在你這邊,要優先處理。🔁 相似×幾=系統發現另外幾筆的派單原文長得很像(要像到 45% 以上才算,最多列 3 筆),很可能是同一個毛病重複被回報。版本號很有用:同一個版本號一直冒出同類型的回報,就是那一版出問題;反過來如果回報的版本號都是舊的,先請司機更新到最新版再說。有 🖼️ 代表司機有附圖,展開就看得到。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">點卡片那一行(展開 / 收合)</td><td>展開下面完整的證據內容與對話區;再點一下收起來。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點 #流水號那顆小標籤</td><td>把完整的流水號複製到剪貼簿(不會順便展開卡片),右下角會跳「<b>已複製流水號</b>」。要跟工程師對是哪一筆時就用這個。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">5</span> 展開後的證據區</h3>
+<p>由上往下:司機附的圖片、🔁 疑似相似的提醒框、✏️ 司機修正(App 抓的 → 司機說的正確值)、🔎 App 當下解析、📩 派單原文、🐞 完整偵錯。哪一項沒資料就整塊不出現。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">最快看懂錯在哪的是「<b>✏️ 司機修正</b>」:箭頭左邊是 App 當下抓到的、右邊是司機說的正確答案;左邊出現「<b>-</b>」代表 App 當下根本沒抓到那個欄位(上車、下車或時間)。「<b>🔁 疑似相似</b>」那框裡如果有標 ✅ 的,代表同一個毛病以前修過,先去看那筆怎麼處理,不用重開一次案。「<b>📩 派單原文</b>」是自動附上司機最近接的那張單,如果這塊空白或明顯不是出問題的那張,就沒東西可比對,要請司機補、再用「<b>編輯內容</b>」貼進去。「<b>🐞 完整偵錯</b>」是給工程師看的,不用自己讀懂。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">點圖片</td><td>另開一個瀏覽器分頁看原尺寸大圖。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">6</span> 對話區(跟司機一來一往)</h3>
+<p>管理者(左邊紫色框)跟司機(右邊灰色框)交錯的對話紀錄,下面四顆快速範本鈕:「<b>要原文/影片</b>」「<b>處理中</b>」「<b>操作說明</b>」「<b>已修復</b>」,再下面是打字框跟「<b>送出回覆</b>」;曾經留過言才會多一顆「<b>收回留言</b>」。唯讀帳號完全看不到這一區。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">對話的最後一句如果是司機講的,卡片上面就會掛 🔔 司機回覆。你送出的內容,司機在 App 的「<b>我的回報</b>」看得到,而且他下次開 App 時會收到通知。留言最多存 1000 字,超過的部分會被截掉。司機那邊只看得到自己最近的 30 筆回報。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">要原文/影片(範本)</td><td>把「<b>請把出問題那張派單原文整段貼給我,或錄一小段畫面</b>」這段話填進打字框,你可以再改。只是填字,不會直接送出。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">處理中(範本)</td><td>把「<b>已收到會馬上修,修好第一時間通知你</b>」填進打字框。只是填字,不會直接送出。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">操作說明(範本)</td><td>把「<b>這個其實可以這樣操作:____</b>」填進打字框,底線那邊要自己補上。只是填字,不會直接送出。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">已修復(範本)</td><td>把「<b>問題已經修好,更新到最新版就正常了</b>」填進打字框。只是填字,不會直接送出。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">送出回覆</td><td>把打字框的內容送去伺服器存起來,接進對話串,然後整頁重新拿一次資料。司機下次開 App 會看到這句話並收到通知。打字框空白時按下去只會提醒你「<b>先打字或點一個範本</b>」,不會送出。</td><td><span class="pill bad">小心</span> 通知一旦送到司機那邊就收不回來,送出前先確認內容。</td></tr><tr><td class="btn-cell">收回留言</td><td>先跳確認框,按確定後把目前這則留言清掉,司機那邊不再有「<b>有新回覆</b>」的通知。</td><td><span class="pill bad">小心</span> 確認框寫「<b>司機就看不到了</b>」,但實際上這句話已經進到對話串裡,司機在 App 的對話還是看得到 —— 不要把它當成真的收回訊息用。</td></tr></tbody></table></div>
+<h3><span class="anno">7</span> 卡片底部動作列</h3>
+<p>展開後最下面一排按鈕:標記已修復(或移回未修復)、編輯內容、複製報告、刪除。唯讀帳號只看得到「<b>複製報告</b>」一顆。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這排是對「<b>這一筆回報</b>」動作,按下去都會馬上送到伺服器並重新整理整頁清單。按完右下角會跳一句提示告訴你成功了沒有;跳「<b>失敗</b>」就是伺服器那邊沒接受,通常再按一次或反映給工程師。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">✅ 標記已修復</td><td>告訴伺服器這筆修好了:卡片變淡並移到「<b>已修復</b>」那區,左邊選單的紅色數字少一個。司機下次開 App 會收到「<b>已修復</b>」的通知。</td><td><span class="pill bad">小心</span> 通知會直接發給那位司機而且收不回來,還沒真的修好之前先別按。</td></tr><tr><td class="btn-cell">↩️ 移回未修復</td><td>已修復的卡片上,同一顆按鈕會變成這個。按了退回未修復區,左邊紅色數字加一個。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">✏️ 編輯內容</td><td>跳出小視窗,可以改兩欄:司機描述(補字、改錯字)跟派單原文(把正確那張貼進來)。按儲存就存回伺服器。其他欄位(偵錯內容、時間、版本)不能改。</td><td><span class="pill bad">小心</span> 存下去會直接蓋掉原本的字,舊內容沒有留底也沒有復原。派單原文那欄你沒動就不會被覆寫。</td></tr><tr><td class="btn-cell">複製報告</td><td>把「<b>🐞 完整偵錯</b>」那一整段複製到剪貼簿,可以直接貼給工程師。唯讀帳號也能按。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">刪除</td><td>先跳確認框,按確定就把這筆回報從資料庫刪掉,清單上不再出現。</td><td><span class="pill bad">小心</span> 永久刪除,救不回來。司機描述、派單原文、整段偵錯內容全部一起沒了,而且司機在 App 的「<b>我的回報</b>」也會少這一筆。想留紀錄請改用「<b>標記已修復</b>」。</td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>左邊選單「<b>問題回報</b>」旁邊出現紅色數字,或總覽頁「<b>未修復回報</b>」不是 0</b></td><td>點進這一頁,停在預設的「<b>🔧 未修復</b>」,由上往下看(最新的在最上面)。展開卡片先看「<b>✏️ 司機修正</b>」和「<b>📩 派單原文</b>」判斷是哪一類問題;要轉給工程師就按「<b>複製報告</b>」把完整偵錯貼給他,順手點 #流水號複製完整編號一起附上。</td></tr><tr><td><b>卡片上掛著 🔔 司機回覆</b></td><td>代表司機回了話在等你,優先處理。展開看對話區最後一句,用四顆範本其中一顆或自己打字,按「<b>送出回覆</b>」。真的還在查、一時給不出答案,就先送「<b>處理中</b>」讓司機知道有人在看。</td></tr><tr><td><b>司機只寫「<b>又抓錯了</b>」,沒有派單原文也沒圖,查不下去</b></td><td>用「<b>要原文/影片</b>」範本回他,請他把整張派單原文貼過來或錄一小段畫面。拿到之後按「<b>✏️ 編輯內容</b>」,把正確那張貼進「<b>派單原文</b>」欄存起來,之後才比對得出哪裡錯。</td></tr><tr><td><b>卡片上有 🔁 相似×2、🔁 相似×3</b></td><td>先展開看那個紫色提醒框裡列的相似清單。如果裡面有標 ✅ 的,表示同一個毛病以前修過,照那筆的處理方式回司機就好,不用重開一次案;如果全都是 🔧 沒修的,代表同一個問題在重複發生,值得優先排。</td></tr><tr><td><b>工程師說某個問題已經修好、新版 App 也發出去了</b></td><td>用司機名字或流水號搜尋找出相關的那幾筆,先用「<b>已修復</b>」範本按「<b>送出回覆</b>」通知司機更新,再按「<b>✅ 標記已修復</b>」。順序這樣做比較好,因為標記那一下也會發一次通知,司機不會只收到一句沒頭沒尾的訊息。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>這一頁一次只跟伺服器要最新的 100 筆回報。搜尋和篩選都只在這 100 筆裡面找,更舊的回報在這頁看不到,也搜不出來。</li><li>只要後台開著而且你正在看它,畫面每 60 秒會自己去拿一次最新資料。重畫的時候,已經展開的卡片會收合、打到一半還沒送出的回覆文字會不見 —— 要打長一點的回覆,建議先在別的地方打好再貼進來,或打完馬上送出。</li><li>類型鈕括號裡的數字是「<b>含已修復</b>」的總數,跟下面實際列出來的筆數常常對不起來,這不是壞掉:下面同時還被上面那排「<b>未修復/已修復</b>」擋著。</li><li>司機如果傳了多張圖或一段影片,這一頁只顯示第一張圖,第二張以後和影片在這頁看不到,得請司機直接傳給你或找工程師撈。</li><li>圖片影片檔在「<b>系統</b>」那頁有「<b>清理 45 天前的媒體</b>」的動作。清過之後,舊回報裡的圖會變成破圖打不開,但文字紀錄都還在。</li><li>「<b>收回留言</b>」只是把它從「<b>有新回覆</b>」的通知來源拿掉;那句話已經在對話串裡,司機在 App 還是看得到。真的講錯話請直接再回一句更正。</li><li>搜尋框不會搜「<b>🐞 完整偵錯</b>」那一大段內容,只搜流水號、司機、金鑰、司機描述、派單原文、類型。</li><li>唯讀帳號(左上角顯示「<b>👁 唯讀監控</b>」)在這頁只有「<b>複製報告</b>」一顆按鈕,看不到對話區,也不能標記、編輯或刪除,司機金鑰還會被遮起來 —— 不是權限壞掉,是本來就這樣設計的。</li><li>「<b>標記已修復</b>」和「<b>送出回覆</b>」兩個動作都會讓那位司機收到通知,而通知送出去就收不回來。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-07">
+<h2><span class="num">07</span>用量成本</h2>
+<p class="purpose">看全隊今天查地址、算距離用掉多少次數、其中有多少是免費撿到的、這個月大概會被收多少錢;並且在這裡設定「<b>一天最多能用幾次</b>」的安全上限,免得程式出錯狂打把帳單燒爆。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>1) 每天或每週例行看一眼,確認沒有在花冤枉錢;2) 收到帳單覺得變貴,想知道錢是花在哪一項;3) 司機回報「<b>卡片上的距離/預估時間怪怪的</b>」,想確認是不是圖資廠商今天出事;4) 要調整每日花費上限的時候(例如試用期要到了、或量變大想放寬)。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="on">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>頂端數字區</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>每日用量趨勢</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>保險絲</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>今日查詢組成</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">5</span>明細</div><div class="mock-skel"><i style="width:60%"></i><i style="width:73%"></i><i style="width:45%"></i></div></div></div></div><p class="cap">圖:「用量成本」的版面。左上是分頁列(目前在 <b>用量</b>),下面由上到下共 5 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 頂端數字區(今日 Google 呼叫 / 免費命中率 / 本月預估成本 / AI 抓址層 / 距離+預估時間來源)</h3>
+<p>五格即時數字:今天打了幾次要付錢的 Google 查詢、今天有幾成查詢是免費撿到的、這個月到目前為止推估的費用(美金)、「<b>AI 抓址層</b>」現在是開還是關、以及今天司機看到的距離與預估時間有多少比例是由主力廠商 Map8 算的。最後一格下面還會寫出 Map8 算了幾張、後備算了幾張、失敗幾次、超上限幾次。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">『本月預估成本』US$0.00 就是這個月完全沒花到 Google 的錢,是最理想狀態;開始出現金額就要往下看明細找原因。『免費命中率』85% 以上算成熟很省;低於 50% 通常是剛上線或剛清過資料的冷啟動,會自己爬回 85–95%,不用急著處理。『今日 Google 呼叫』要跟保險絲的上限一起看,一旦達到上限的八成,系統就會在警報那邊亮黃燈。『距離+預估時間來源』的顏色是程式自動判的:90% 以上是綠色(正常)、60%–89% 黃色(Map8 開始不穩)、低於 60% 紅色(Map8 大量算不出來,司機看到的時間全退回後備演算法的口徑);今天還沒有任何資料時顯示「<b>—</b>」。『AI 抓址層』綠字=開啟、紅字=關閉,這格只能看,開關做在「<b>AI 大腦</b>」那一頁。</p></div>
+<h3><span class="anno">2</span> 每日用量趨勢</h3>
+<p>一條折線圖,每一個點是一天,可以切換六種數字來看:Google 呼叫、Map8 呼叫、快取命中、AI 抓址、看單救援、命中率。圖上方的大字是最新一天的數值,旁邊小字寫近幾天的合計(命中率則是近幾天的平均)。滑鼠移到圖上會出現該天的日期與數值。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">看的是「<b>走勢</b>」不是單日絕對值。Google 呼叫如果一路往上,代表免費那幾層越來越接不住,錢會跟著漲;突然掉到接近零反而更可疑,可能是服務中斷。命中率這條的刻度固定 0–100%,越高越省,持續往下掉就是快取或免費資料源出問題,通常會伴隨 Google 呼叫同時往上。AI 抓址與看單救援這兩條畫的是「<b>實際打出去的發數</b>」,也就是離它們每日上限還有多遠的那個數字(上限設在「<b>AI 大腦</b>」頁,兩層額度各自獨立)。Map8 這條算的是會被計費的次數(命中 + 被我們自己的把關擋下的),試用期免費但量照記。資料不足兩天時圖畫不出來,會顯示「<b>每日資料累積中</b>」。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">Google 呼叫 / Map8 呼叫 / 快取命中 / AI 抓址 / 看單救援 / 命中率(六顆切換鈕)</td><td>只換下面那張折線圖要畫哪一種數字,用的是已經抓回來的資料立刻重畫,不會再去問伺服器,所以按幾次都不會增加負擔。預設停在「<b>Google 呼叫</b>」。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 保險絲</h3>
+<p>三排每日上限設定:Google 每日上限、Map8 每日上限、Places 個人上限與全隊上限。每排都是一個數字輸入框加一顆「<b>設定</b>」鈕,右邊有一行灰字說明。右上角有「<b>↻ 重新整理</b>」。輸入框裡會自動填入目前伺服器上的現值(你正在打字的那一格不會被蓋掉)。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這是防呆用的斷路器:當天用超過就停止再打要付錢的那一家,卡片照樣會出、只是少了距離。Google 那格填 0 或留空 = 完全不限;三種付費查詢(查座標、就近補救、算距離)共用這一個額度,超過只停 Google,前面的免費層與 Map8 照常跑。Map8 那格同樣 0 = 不限,但它的灰字會變成「<b>⚠️ 目前不限 · 08-07 試用到期前記得調回</b>」提醒你;程式裡寫的正常用量約 2,500 次/日,建議填 50000(日常等於沒限制,但攔得住失控)。Places 兩格意義相反:留空或填 0 不是不限,而是「<b>清除、回內建預設</b>」,個人 80、全隊 2000;個人上限是防單一司機的手機失控狂打,全隊上限是整體預算閘。已經設好上限的話,當天用到八成系統就會開始示警。唯讀帳號登入時,Google 那格會變灰不能按,Map8 與 Places 兩排整排看不到。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器拿最新的用量資料,拿回來後整頁一起重畫:上面五格數字、趨勢圖、這裡三排上限的現值、下面的長條圖與兩張明細表全部更新。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">Google 每日上限「設定」</td><td>把左邊輸入框的數字存成全隊每天的 Google 使用上限,存好後畫面下方會跳一行提示(有填數字=「<b>每日上限已設為 N</b>」;填 0 或留空=「<b>已取消上限</b>」),接著自動重讀一次資料。</td><td><span class="pill bad">小心</span> 會影響全隊。設太低,當天額度用完後查不到的地址就只剩免費層接手,司機卡片會開始少距離;設 0 等於拆掉保險絲,萬一程式出錯狂打就是直接反映在帳單上。</td></tr><tr><td class="btn-cell">Map8 每日上限「設定」</td><td>把數字存成 Map8 每天的使用上限(地址定位與路徑規劃共用同一份額度),成功後跳提示並自動重讀資料。如果你填的是 0,會先跳一個確認視窗問你是不是真的要完全不限,按取消就不會送出。</td><td><span class="pill bad">小心</span> 會影響全隊。Map8 現在同時負責司機看到的距離與預估時間,額度用完當天就會全部退回後備演算法。填 0 在試用期內不花錢,但試用一結束,同一個失控狀況就是真金白銀。</td></tr><tr><td class="btn-cell">Places 個人「設定」</td><td>存成「<b>單一司機一天最多幾次</b>」的就近補救上限,成功後跳提示(填 0 或留空會顯示「<b>已清除(回內建預設 80)</b>」)並自動重讀資料。</td><td><span class="pill bad">小心</span> 會影響全隊每一位司機。設太低,司機一天打滿之後,只有店名地標名沒有門牌號的那種地址就失去最後一層救援、開始查無。改完最多要等 60 秒才真的生效。</td></tr><tr><td class="btn-cell">Places 全隊「設定」</td><td>存成「<b>全隊一天合計最多幾次</b>」的就近補救上限,成功後跳提示(填 0 或留空會顯示「<b>已清除(回內建預設 2000)</b>」)並自動重讀資料。</td><td><span class="pill bad">小心</span> 會影響全隊,而且是共用的一個池子 —— 打滿之後全隊一起失去地標名的救援層。設得太高則失去預算控制的意義。改完最多要等 60 秒才真的生效。</td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 今日查詢組成(免費 vs 付費)</h3>
+<p>今天用到的每一種查詢管道,由多到少排成一排長條,右邊標次數。深色長條=要付錢的,淺色=免費的(快取、自架服務、官方免費來源)。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">健康的樣子是「<b>淺色的又長又多、深色的短短幾條</b>」。最長的那條就是 100% 的基準,其他條按比例縮。如果深色條爬到前幾名,尤其是查座標或就近補救那兩條,代表免費層沒接住,錢就是從這裡開始漏的。今天還沒有任何查詢時會顯示「<b>今天還沒有任何查詢。</b>」——上班時間看到這句話反而要警覺,可能是整套服務停了。</p></div>
+<h3><span class="anno">5</span> 明細</h3>
+<p>上面一張表逐項列出每種查詢管道的「<b>今日次數、本月次數、本月免費額、超額單價</b>」;下面一張表列今天用量最高的前 20 位司機與各自次數,測試用的機器會標上 🧪測試機。最底下一行灰字寫目前地址快取累積了幾筆,以及免費額的說明。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">上表只會列出今日或本月有數字的項目,沒出現的那幾行不是壞掉,是今天真的沒用到。免費額那欄寫「<b>—</b>」、單價寫「<b>免費</b>」的就是完全不花錢的管道。真正會產生費用的是:查座標、就近補救、算距離這三項,每項每個月各有 1 萬次免費,超過的部分每千次約 US$5;AI 判讀類每千次約 US$0.11;判死單的歸因標籤每千次約 US$0.05。所以看「<b>本月</b>」那欄有沒有逼近 10,000 就知道這個月會不會開始被收錢。下表如果有一位司機的次數遠遠高過其他人(程式裡的示警條件是超過 200 次、且是第二名的三倍以上),而且沒有 🧪測試機 標籤,通常代表他那邊一直查不到在反覆重打,值得去看他的單。帶測試機標籤的天生量就大,可以直接忽略。</p></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>「<b>本月預估成本</b>」不再是 US$0.00,開始出現金額</b></td><td>到最下面的明細表,看哪幾項的「<b>本月</b>」次數已經超過「<b>本月免費額</b>」(通常是查座標或就近補救)。再回頭看「<b>今日查詢組成</b>」,確認是不是有深色長條衝到前面。長期解法是把常查不到的地標補進位置庫那一頁,進了位置庫就永久免費;短期可以在保險絲那裡把 Google 每日上限往下調一點。</td></tr><tr><td><b>「<b>距離+預估時間來源</b>」那格變成黃色或紅色</b></td><td>先按保險絲卡右上角的「<b>↻ 重新整理</b>」,確認不是看到舊資料。還是黃/紅的話,看它下面那行寫的「<b>後備 N 張</b>」與「<b>失敗 N 次</b>」——這代表圖資廠商 Map8 今天不穩,司機看到的距離與時間退回後備演算法算的,數字會跟平常口徑不一樣。這頁沒有可以修的按鈕,請通知工程師;如果同時看到「<b>🔴超上限</b>」,那是額度用完,可以在保險絲那裡把 Map8 每日上限調高。</td></tr><tr><td><b>Map8 那排的灰字變成「<b>⚠️ 目前不限 · 08-07 試用到期前記得調回</b>」</b></td><td>代表上限被設成 0(完全不限)。試用免費期間不會花錢,但保險絲同時也是防程式失控用的,而且試用一結束就是真的開銷。在輸入框填一個大數字(程式裡建議 50000,正常用量約 2,500/日)再按「<b>設定</b>」。</td></tr><tr><td><b>趨勢圖切到「<b>命中率</b>」看到一路往下掉</b></td><td>再切到「<b>Google 呼叫</b>」對照,如果同時往上,就是免費那幾層沒接住、查詢被推去付費管道。看「<b>今日查詢組成</b>」哪一條深色的變長,並到明細表最下面確認地址快取的筆數有沒有異常變少。這通常需要工程師確認自架服務有沒有掛,這頁能做的是先把 Google 每日上限守住。</td></tr><tr><td><b>「<b>今日各司機</b>」表裡有一位次數遠高於所有人,而且沒有 🧪測試機 標籤</b></td><td>記下他的名字,通常是他那邊有地址一直查不到、App 在反覆重打。去看他最近的單,把那個查不到的地標補進位置庫;在補好之前,可以先用 Places 個人上限把單機失控擋住(但要留意調低會讓所有司機一起受影響)。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>這一頁的數字不會自己更新。切進來的時候載入一次,之後要按保險絲卡右上角的「<b>↻ 重新整理</b>」才會拿到新的。背景每 60 秒只會更新警報用的健康訊號,不會重畫這頁的數字。</li><li>輸入框留空按「<b>設定</b>」,三種上限的意思不一樣:Google 和 Map8 的空白/0 = 完全不限(等於拆掉保險絲);Places 的空白/0 = 清除設定回內建預設(個人 80、全隊 2000),不是不限。這兩者方向相反,別按錯。</li><li>Places 的個人與全隊上限改完後,最多要等 60 秒才真的生效,按完別急著判斷沒作用。</li><li>上面那格「<b>免費命中率</b>」跟趨勢圖裡的「<b>命中率</b>」算法不完全一樣(上面那格多算了路段快取、路線距離快取與自架服務的命中),所以兩個數字不會一致,不用去對。</li><li>Map8 目前是試用免費,所以它的用量【不會】被算進「<b>本月預估成本</b>」,但次數照樣記錄在趨勢圖與明細表裡。試用結束後成本數字會跳上來,不要以為是突然爆量。</li><li>免費額度與單價是 2025 年新制的參考值,這頁的成本只能看趨勢,真正要付多少以 Google Cloud 的帳單為準。</li><li>「<b>AI 抓址層</b>」那格只是顯示現在是開還是關,在這頁點不動;AI 兩層的開關與每日上限都在「<b>AI 大腦</b>」那一頁。</li><li>明細表沒出現某一行,只代表今天和這個月都沒用到那個管道,不代表它壞了。</li><li>唯讀帳號登入時,Google 上限那格會變灰不能改,Map8 與 Places 兩排整排不會顯示 —— 不是畫面壞掉,是權限。</li><li>司機排行榜裡帶 🧪測試機 標籤的量天生就大(掛在最忙的群),看到它排第一是正常的,不要當成異常去追。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-08">
+<h2><span class="num">08</span>診斷提醒</h2>
+<p class="purpose">這一頁是系統的自動體檢報告。它每分鐘自己檢查一次「有沒有哪裡壞了、有沒有在亂花錢、司機查不到地址的原因是什麼」,只有超過標準的項目才會列出來。平常不用天天看,沒有紅字就代表一切正常。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>兩種時機:一是左側選單「<b>診斷提醒</b>」四個字旁邊冒出數字、或任何一頁最上面出現紅色橫幅時(那條橫幅每一頁都看得見,按上面的「<b>看詳情 →</b>」就會跳到這一頁);二是想知道這個月定位花了多少錢、哪裡還能省的時候。司機反映「<b>一直查不到地點</b>」時也先來這頁看是全隊性的問題還是個案。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="on">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>系統健康</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>查無歸因 · AI 分類器</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>診斷 &amp; 省錢建議</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div></div></div><p class="cap">圖:「診斷提醒」的版面。左上是分頁列(目前在 <b>診斷</b>),下面由上到下共 3 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 系統健康</h3>
+<p>目前所有超過標準的警告,一條一條列出來,每條都寫清楚是哪個項目、現在的數字、以及建議怎麼處理。完全沒有問題時只顯示一行「<b>✅ 目前一切正常,沒有需要處理的警告</b>」。同一份結果也會寫到左側選單旁邊的數字(代表有幾條)和每頁最上方的紅色橫幅。系統每 60 秒自己重算一次。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>先看每條開頭的符號,不要看框的顏色 —— 這張卡所有內容一律用紅框呈現,但裡面混了三種東西:🔴 是現在就在壞、要馬上處理;🟠🟡 是偏高或曾經發生過、先觀察;🗺️(Map8)和 🤖(AI 抓址)這兩條只要今天有用到就會固定出現,它們是每日狀況報告不是故障。</li><li>各項目的實際標準:</li><li>・司機看得到的定位失敗率:當天請求滿 200 次才會判定。「<b>真實體感</b>」達 25% 亮橘燈、達 40% 亮紅燈(紅燈等於新客戶會退訂的程度)。另一個數字「<b>含重試事件</b>」達 40% 只亮黃燈,那代表板上死單多、系統忙,司機其實沒感覺。</li><li>・全隊查無率:超過 85% 才報。這系統正常就有五到六成查無,66% 以內都算正常,不要看到一半查無就以為壞了。</li><li>・今日定位量異常下降:只在台灣時間晚上 8 點以後才判(早上量天生少,不然天天誤報),而且要近 7 天中位數有 100 次以上;今天不到中位數的四成就報紅,代表疑似整隊停擺。</li><li>・自架定位(Nominatim)連線逾時:今天累積 30 次以上就報紅,那台掛著的期間每一筆都在花 Google 的錢。</li><li>・今日 Google 呼叫達到你設的每日上限 80% 就先提醒(觸發後全隊只剩快取和免費來源可用)。</li><li>・資料庫超過 6 GB 提醒(可用上限 8 GB)。</li><li>・用量流水帳超過 100 萬列報紅(正常應該低於 50 萬),代表清理排程可能掛了,要找工程師。</li><li>・Places(用店名地標找座標的救援層):全隊今天用掉上限的六成、或有任何一台司機頂滿個人上限,就會出現橘字;而且它算的是「<b>真司機</b>」用量,測試機的量另外標示、不佔配額。上限被打滿時會分兩種寫法 —— 寫「<b>現在正在擋</b>」(最近一小時內)是真的正在出事,寫「<b>今天曾觸發、但近 1 小時已無</b>」是已經止血、可以忽略。</li><li>・AI 被限流:正常應該永遠是 0,只要出現就報橘字,達到 20 次以上升成紅字。</li><li>・AI 救回率退步:只有連續兩天下滑、而且總共掉了 15 個百分點以上、最新一天還要有 20 筆以上,才會叫你一聲。單日的高高低低不報。</li><li>・查無死因集中:今天判死的單滿 50 張、而且有超過一半集中在同一類時,會單獨提醒你 —— 那代表修一條通用規則就能吃掉一大半。</li></ul></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新檢查</td><td>馬上去問伺服器拿最新的數字,重新算一次警告,並同步更新這張卡、頁面最上方的紅色橫幅、以及左側選單旁邊的數字。純粹是重看一次,不會改到任何設定。注意它只更新這一張卡,下面兩張卡不會跟著更新。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 查無歸因 · AI 分類器</h3>
+<p>今天總共有幾張單查不到座標,以及 AI 幫每張單判斷的死因分類。六種死因各自顯示筆數、佔全體的百分比、一條長度對應比例的橫條,還有一行「<b>這類修不修得掉</b>」的說明。由多到少排序。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>最上面那一類就是下一個該修的東西。六類的意思與可修性:</li><li>・行首髒前綴 / 時間黏頭 —— 訊息開頭黏了雜訊或時間,改看單規則修得掉(紅字)。</li><li>・缺城市或城市黏錯 —— 沒寫城市或城市黏在一起,改看單規則或城市對照表修得掉(紅字)。</li><li>・地標名未入庫 —— 這個地點名字系統沒收過,補進位置庫就永久免費、以後都查得到(黃字)。</li><li>・地址殘缺或本身打錯 —— 派單原文就寫錯了,這類修不了,佔比高不代表系統壞(灰字)。</li><li>・廣告 / 非車單誤抓 —— 抓到不是車單的東西,可以把過濾再收緊(黃字)。</li><li>・其他 —— 分不出來的(灰字)。</li><li>如果卡片寫「<b>今天還沒有判死的單 —— 或分類器沒啟用</b>」,這兩種情況長得一模一樣,不要直接當成今天很平安;要跟上面系統健康卡的失敗率對著看,失敗率不低卻這裡沒數字,就是分類器沒開。</li><li>重點是找「<b>整類的共同原因</b>」,不是替每一筆單加特例。</li></ul></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">🧩 難單紀錄(卡片最下方的連結)</td><td>離開後台,打開另一個「<b>難單紀錄</b>」頁面,可以看到這些查不到座標的單原文長什麼樣子。要用瀏覽器的上一頁回來,回來時這頁會整個重新載入。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 診斷 &amp; 省錢建議</h3>
+<p>系統自動產生的花錢與省錢提示,紅色(最急)排最上面、橘色次之、灰色是純提醒、綠色是「<b>這塊很好、不用管</b>」。完全沒事時顯示「<b>目前沒有需要注意的事</b>」。這張卡只能看,沒有按鈕。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>綠色代表健康、不需要動作,不用因為看到很多綠框就緊張。實際標準:</li><li>・本月費用低於約 US$0.005 就直接顯示綠色的「<b>本月 US$0</b>」,代表全部走自架和快取,沒花到 Google 的錢;有花錢時會標出錢主要花在哪一項。</li><li>・月底推估:照今天的量往後推,如果會比現在多花 1 美元以上就提醒你一聲。</li><li>・今日查座標:還有超過三成走付費 Google 就亮黃燈(自架的機器正常運作時這裡應該趨近 0);低於三成則顯示綠色的自架佔比。</li><li>・距離來源:Geoapify 今天超過 3000 次(免費額度)就報,超出的部分只能退回直線距離、不準;已經切到自架 OSRM 且 Geoapify 幾乎歸零時顯示綠色。</li><li>・Places:本月超過 10,000 次(免費額度)報紅;只要今天有用到就給一條黃字提醒。最有效的解法是把常漏查的地名補進位置庫,補進去就永久免費。</li><li>・免費命中率:低於 50% 只是冷啟動,屬正常,不用管;達到 85% 以上代表已經很成熟,大量查詢都是白撿的。</li><li>・沒設每日上限時會建議設一個(建議值 8000),萬一程式出錯狂打也不會爆帳單。</li><li>・今天有單被每日上限擋掉時會提醒:量正常就去調高上限,不正常要先查是哪個司機在狂打。</li><li>・單一司機用量異常:今天超過 200 次、而且是第二名的 3 倍以上才報(測試機不算在內,不然天天狼來了)。</li><li>・新舊版對照:拿新版上線日前 7 天和上線後比失敗率,兩邊都要滿 200 次才給結論;新版樣本不到 200 次時只會說「<b>累積中,過一兩天再看</b>」。</li></ul></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>左側選單「<b>診斷提醒</b>」旁邊出現數字,或每頁最上方冒出紅色橫幅</b></td><td>切到這一頁,從「<b>系統健康</b>」卡由上往下看。先處理 🔴 開頭的,🟠🟡 先觀察,🗺️ 和 🤖 開頭的那兩條是每日狀況報告不用處理。左側那個數字把狀況報告也算進去了,所以有數字不一定等於出事。</td></tr><tr><td><b>看到「<b>Places 上限【現在正在擋】(近 1 小時 N 次)</b>」</b></td><td>這是現在進行式,補錯城市或只有路名的單失去最後一層救援、會直接查無。到「<b>用量成本</b>」頁把上限拉高。如果那條寫的是「<b>今天曾觸發、但近 1 小時已無</b>」,代表已經止血,整天掛著是正常的,不用理它。</td></tr><tr><td><b>司機回報一直查不到地點,或「<b>司機可見定位失敗率</b>」亮橘燈(25%)或紅燈(40%)</b></td><td>別急著看失敗率本身,往下看「<b>查無歸因</b>」卡是哪一類佔比最高,修那一類的共同原因。注意要看「<b>真實體感</b>」那個數字;「<b>含重試事件</b>」偏高只代表板上死單多、系統在忙,司機不一定有感覺。</td></tr><tr><td><b>「<b>查無歸因</b>」卡裡「<b>地標名未入庫</b>」佔比最高</b></td><td>這類最好處理:到「<b>位置庫</b>」頁把那些地名補進去,補一次就永久免費也不再花錢查。原文可以按卡片下方的「<b>🧩 難單紀錄</b>」去看。反之如果最高的是「<b>地址殘缺或本身打錯</b>」,那是派單原文就錯了,系統這邊修不了,不用花時間。</td></tr><tr><td><b>晚上 8 點後看到「<b>今日定位量只有近 7 日中位數的四成以下</b>」,或「<b>自架定位連線逾時 30 次以上</b>」</b></td><td>這兩條都是可能整隊停擺或自架機器掛掉的訊號,而且掛著的期間每一筆都在燒 Google 的錢。先確認司機端是不是收不到單,再找工程師看伺服器,不要放著過夜。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>「<b>↻ 重新檢查</b>」只更新最上面那張「<b>系統健康</b>」卡。下面兩張(查無歸因、診斷 &amp; 省錢建議)按了不會動 —— 要更新它們得整頁重新整理(F5),或到「<b>用量成本</b>」頁按那邊的「<b>↻ 重新整理</b>」,那顆會連帶把這兩張一起刷新。</li><li>這張卡的每一條都長成紅框,但紅框不等於壞掉。要看開頭的符號:🔴 才是現在就在壞;🗺️ Map8 和 🤖 AI 抓址那兩條只要今天有用到就固定出現,是狀況報告。左側選單旁邊那個數字也把它們算進去了。</li><li>所有數字都是「<b>台灣時間今天</b>」的累計。早上看的比例天生不準(分母還很小),不要拿早上的數字下結論。系統自己也知道這件事,所以「<b>今日定位量偏低</b>」那條刻意等到晚上 8 點以後才判。</li><li>查無率高是這套系統的常態,五到六成查無屬正常,只有超過 85% 才代表所有定位來源一起出事。看到「<b>一半的單查無</b>」不要以為壞了。</li><li>「<b>今天曾觸發過</b>」那類警告會整天掛著不消失,那是刻意的設計(讓你知道今天發生過),不代表現在還在壞。判斷「<b>現在是不是還在壞</b>」要看有沒有寫「<b>近 1 小時</b>」。</li><li>省錢建議裡提到「<b>上方欄位填數字按設定</b>」的那些欄位不在這一頁,在「<b>用量成本</b>」頁,要切過去才調得到。</li><li>「<b>查無歸因</b>」卡如果寫「<b>今天還沒有判死的單 —— 或分類器沒啟用</b>」,這兩件完全不同的事顯示是一樣的。要對照系統健康卡的失敗率:失敗率不低卻這裡沒數字,就是分類器沒開,不是今天很平安。</li><li>把瀏覽器分頁切走或視窗縮到背景時,自動檢查會暫停;切回來也不會馬上更新,得等下一次 60 秒到、或自己按「<b>↻ 重新檢查</b>」。剛調完設定想確認有沒有生效,記得按一下。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-09">
+<h2><span class="num">09</span>AI 大腦</h2>
+<p class="purpose">這頁管兩個「<b>AI 幫手</b>」:一個在地址查不到座標時幫忙把地址那一段剪出來(抓址),另一個在規則一張單都抓不到時幫忙看整則原文(看單救援)。你在這裡開關它們、限制它們每天最多幫幾次、看它們最近做得準不準,以及改它們的判讀規則。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>1) 司機回報卡片地址怪怪的、跟派單原文對不起來,要立刻把 AI 關掉的時候。2) 想知道 AI 最近有沒有越做越好(看救回率曲線)。3) 想教它「<b>這種寫法不要剪進去</b>」而改規則的時候。4) 想控制 AI 每天最多幫幾次的時候。日常抓單、定位正不正常請看「<b>用量成本</b>」與「<b>診斷提醒</b>」頁,不在這裡。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="on">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>開關與每日上限</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>AI 抓址救回率 · 逐日</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>🤖 AI 抓址規則</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>🔍 AI 看單救援規則</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">5</span>想看它學到什麼?</div><div class="mock-skel"><i style="width:60%"></i><i style="width:73%"></i><i style="width:45%"></i></div></div></div></div><p class="cap">圖:「AI 大腦」的版面。左上是分頁列(目前在 <b>AI</b>),下面由上到下共 5 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 開關與每日上限</h3>
+<p>兩排控制:上面一排是「<b>🤖 AI 抓址層</b>」、下面一排是「<b>🔍 AI 看單救援</b>」。每排都有一顆開關按鈕、一個每日上限輸入框、一顆「<b>設定</b>」。右上角有「<b>↻ 重新整理</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">開關按鈕上的字就是目前狀態:綠色「<b>✅ 開啟中(點擊關閉)</b>」= 現在是開的;紅色「<b>⛔ 已關閉(點擊開啟)</b>」= 現在是關的。剛切進這頁還沒讀完資料時會顯示一個「<b>—</b>」,這時按按鈕只會跳「<b>設定還沒載入,請稍候</b>」,等一下再按就好。上限欄填 0(或留空)= 完全不限次數;從來沒設定過的話,抓址層是每天 500 次、看單救援是每天 5000 次,欄位空白不代表沒有限制。兩層的額度完全分開算,一層用完不會拖累另一層。額度用完當天就只停用那一層,卡片照樣會出、不影響抓單。唯讀帳號看不到這兩排控制(整排會藏起來)。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器拿最新的用量與 AI 設定,重畫這兩排的開關狀態與上限數字,同時重畫下面的救回率曲線。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">🤖 AI 抓址層(那顆會顯示開/關的按鈕)</td><td>按一下就切換開或關,不會跳確認視窗,存好後全隊立刻生效,並自動重新讀一次資料。這一層只影響「<b>地址查不到座標時要不要讓 AI 幫忙剪出地址</b>」,不會改動卡片上顯示的任何文字。</td><td><span class="pill bad">小心</span> 影響全隊所有司機。關掉之後,原本靠它救回來的那些單會變成查不到座標。</td></tr><tr><td class="btn-cell">設定(抓址層那一排)</td><td>把左邊欄位的數字存成抓址層的每日上限,只改上限、不會順手動到開關。存好後會重新讀一次資料。</td><td><span class="pill bad">小心</span> 欄位留空就按下去 = 存成 0 = 取消上限,不是「<b>維持原本的設定</b>」。想保留現值,先按「<b>↻ 重新整理</b>」確認欄位有帶回目前的數字再改。最大只能設到 100000,填更大會被自動壓回 100000。</td></tr><tr><td class="btn-cell">🔍 AI 看單救援(那顆會顯示開/關的按鈕)</td><td>按一下切換開或關。要「<b>開啟</b>」時會先跳一個確認視窗說明它會做什麼,按確定才會真的開;要「<b>關閉</b>」則不會問,按了就關,全隊立刻生效。</td><td><span class="pill bad">小心</span> 這一層比抓址層風險高一級,因為它碰得到「<b>會不會出卡</b>」這條路。開啟後,規則一張都抓不到時 AI 會參與判讀,那種卡片會標上「<b>🤖 AI 確認中</b>」提醒司機自己核對地址。有任何異常隨時回來關掉,全隊立即生效。</td></tr><tr><td class="btn-cell">設定(看單救援那一排)</td><td>把左邊欄位的數字存成看單救援的每日上限,只改上限、不動開關。</td><td><span class="pill bad">小心</span> 同抓址層:留空按下去等於取消上限;最大 100000。</td></tr></tbody></table></div>
+<h3><span class="anno">2</span> AI 抓址救回率 · 逐日</h3>
+<p>一條逐日折線圖,畫的是「<b>AI 抓址出手的單裡,最後真的查到座標的比例</b>」。右上角是最新一天的百分比,圖下方有一行文字說明區間、總判讀次數,以及是進步還是退步。滑鼠移到線上會顯示那一天的日期與百分比。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">至少要有兩天的資料才畫得出線,不夠時會直接寫「<b>資料還不夠畫線(需要至少兩天)</b>」,右上角顯示「<b>—</b>」——這不是故障。右上角百分比的顏色就是判斷:今天的數字大於等於區間第一天 = 青綠色(正常/在進步),低於第一天 = 琥珀色(退步)。下方文字上升時會標「<b>↑ 學習中</b>」,下降時會標「<b>↓ 退步,檢查規則或難單型態</b>」。重點是看趨勢不是看絕對值:很多派單原文本來就沒有地址,AI 正確地回答「<b>沒有</b>」也算沒救回,所以百分比天生就不會很高。真正需要你動作的退步,系統會另外在「<b>診斷提醒</b>」頁跳警告,條件是連續兩天下滑、且從三天前到今天掉了 15 個百分點以上、且今天判讀量至少 20 次——三個條件同時成立才叫你,單日跳動不會吵你。</p></div>
+<h3><span class="anno">3</span> 🤖 AI 抓址規則(可編輯)</h3>
+<p>由上到下四段:①灰底「<b>程式硬編開頭</b>」(改不到)②灰底「<b>內建預設規則</b>」(你沒客製時就是用這套)③白底可打字的「<b>客製規則</b>」編輯框 ④灰底「<b>程式硬編鐵律</b>」(改不到)。編輯框下面有「<b>改動理由</b>」欄與「<b>儲存並套用</b>」,再下面是範例庫統計、最近改動紀錄,最底下是「<b>清空範例庫</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">編輯框載入後如果是空白,代表你從來沒客製過,現在跑的就是上方那段「<b>內建預設規則</b>」。要客製就把預設那段複製下來貼進編輯框再改。灰底那兩段是程式寫死的,永遠會自動接在你的規則前後,複製貼進編輯框沒有意義。範例庫那一行:有累積時顯示「<b>已學會 N 個成功範例</b>」,N 會隨著它每次抓對而增加;顯示「<b>還沒累積範例</b>」代表目前是 0 筆,剛清空或剛上線都會這樣。改動紀錄這裡只列最近 3 筆(時間 · 改的人 · 理由),更早的要去「<b>AI 學習記憶</b>」子頁看。理由沒填的那筆會顯示「<b>(未寫理由)</b>」。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 載入</td><td>去問伺服器拿目前的抓址規則、範例數與最近改動紀錄,填回這張卡。你正在編輯框裡打字時不會蓋掉你打的內容。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">儲存並套用</td><td>把編輯框裡的內容存成正式規則,同時記下一筆改動紀錄(時間、你的身分、你寫的理由),然後自動重新載入這張卡。全隊最多 60 秒內生效。</td><td><span class="pill bad">小心</span> 影響全隊。編輯框留空存下去 = 退回內建預設規則。理由欄強烈建議寫——出事時那是唯一查得到「<b>當初為什麼改</b>」的線索。規則就算寫壞,最壞也只是地址剪得差(變成查不到座標),不會憑空生出原文沒有的地址,那道防線是程式寫死的。</td></tr><tr><td class="btn-cell">回滾(每筆改動紀錄右邊)</td><td>跳出確認視窗顯示那筆的理由,按確定後把那個舊版本的內容填回編輯框,並自動在理由欄寫上「<b>回滾至 某月某日某時</b>」。</td><td><span class="pill bad">小心</span> 按完還沒生效!它只是幫你填好字,一定要再按「<b>儲存並套用</b>」才算數。</td></tr><tr><td class="btn-cell">清空範例庫</td><td>跳出確認視窗,按確定後把 AI 累積的成功範例全部刪掉,讓它從零重新累積,規則本身不受影響,然後自動重新載入這張卡。</td><td><span class="pill bad">小心</span> 刪掉就救不回來,沒有復原按鈕。只有在懷疑它「<b>學歪了</b>」(同一類單一直剪錯)時才用。</td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 🔍 AI 看單救援規則(可編輯)</h3>
+<p>版面跟上面那張抓址規則卡幾乎一樣:硬編開頭、內建預設規則、可打字的客製規則編輯框、硬編鐵律、改動理由、儲存並套用、最近改動紀錄。差別是這張沒有範例庫、也沒有清空按鈕。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">編輯框空白 = 沒客製過,跑的是上方那段內建預設。這一套的預設多了兩條抓址規則沒有的:「這則不是派單(聊天、群公告、費率表、廣告、司機回報)就不要產生卡片」和「<b>一則有多趟只回第一趟</b>」——這兩條是防止群組閒聊被做成假卡片的關鍵,自己客製時建議照抄保留。改動紀錄這裡列最近 5 筆。卡片最下面那句灰字是提醒:真正擋 AI 亂剪的主力是輸入端的兩道篩選(只送規則願意採信的段落、送出前遮掉下車標記那幾行),不在這段規則文字裡,所以規則怎麼寫都不會把那兩道防線關掉。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 載入</td><td>去問伺服器拿目前的看單救援規則與最近改動紀錄,填回這張卡;你正在打字時不會蓋掉。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">儲存並套用</td><td>把編輯框內容存成正式規則並記一筆改動紀錄,全隊最多 60 秒內生效。</td><td><span class="pill bad">小心</span> 影響全隊,而且這一層碰得到「<b>會不會出卡</b>」。留空存下去 = 退回內建預設。理由欄務必寫。</td></tr><tr><td class="btn-cell">回滾(每筆改動紀錄右邊)</td><td>確認後把那個舊版本填回編輯框並自動填上回滾理由。</td><td><span class="pill bad">小心</span> 只是填字,沒按「<b>儲存並套用</b>」之前完全沒有生效。</td></tr></tbody></table></div>
+<h3><span class="anno">5</span> 想看它學到什麼?</h3>
+<p>一張純文字說明卡,附兩個連結按鈕:「<b>🧠 AI 學習記憶 →</b>」和「<b>🧩 難單紀錄 →</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這張卡沒有數字。它在告訴你:會越積越長的東西(完整範例清單、今天每一筆的成敗、所有規則改動歷史)都搬到「<b>AI 學習記憶</b>」子頁了,這頁只留每天要按的開關與規則;而規則抓不到、需要 AI 讀的那些難單原文在「<b>難單紀錄</b>」子頁,拿來看原文長相、蒐集案例用——同一種寫法被很多人反覆踩到,才值得回頭改規則。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">🧠 AI 學習記憶 →</td><td>開啟「<b>AI 學習記憶</b>」子頁,看完整的範例清單、今日成敗與完整的規則改動歷史(那頁是唯讀的,不能在那邊改規則)。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">🧩 難單紀錄 →</td><td>開啟「<b>難單紀錄</b>」子頁,看規則抓不到、由 AI 讀出來的那些單的原文形態。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>司機回報卡片上的地址跟派單原文對不起來、像是被自己補出來的</b></td><td>第一時間到「<b>開關與每日上限</b>」把 🔍 AI 看單救援按成「<b>⛔ 已關閉</b>」(不會跳確認,按了立刻對全隊生效)。止血後再看「<b>AI 看單救援規則</b>」的最近改動紀錄,是不是剛剛有人改過規則;有的話按那一筆之前的版本「<b>回滾</b>」再按「<b>儲存並套用</b>」。注意抓址層是另一顆獨立開關,關救援不會連帶關它。</td></tr><tr><td><b>救回率右上角的數字變成琥珀色,下方寫「<b>↓ 退步,檢查規則或難單型態</b>」</b></td><td>先看「<b>AI 抓址規則</b>」卡的最近改動紀錄——如果最近有人改過,先回滾試試(回滾後記得按儲存並套用)。沒有人改過的話,多半是最近的派單寫法變了,到「<b>難單紀錄</b>」子頁看那些單長什麼樣子,再決定要不要在規則裡補一條。單日往下掉一點不用理,看的是連續幾天的走勢。</td></tr><tr><td><b>曲線那格寫「<b>資料還不夠畫線(需要至少兩天)</b>」,右上角是「<b>—</b>」</b></td><td>不用處理,這是正常的。它要跨過兩個日子才畫得出線,剛上線或剛換伺服器都會這樣,隔天再來看。</td></tr><tr><td><b>同一類單 AI 一直剪錯,但規則看起來沒問題</b></td><td>按「<b>清空範例庫</b>」讓它從零重新累積(規則完全不動)。這是不可逆的,按之前先確定問題真的出在它「<b>學到壞範例</b>」,而不是規則本身寫錯。清完之後範例數會歸零並顯示「<b>還沒累積範例</b>」,接下來它每抓對一次就重新存一筆。</td></tr><tr><td><b>想控制花費或限制 AI 每天最多幫幾次</b></td><td>在對應那一層的上限欄填數字後按「<b>設定</b>」。兩層額度各自獨立,不會互相排擠。填之前先按「<b>↻ 重新整理</b>」讓欄位帶回目前的值,避免留空按下去把上限改成 0(=完全不限)。額度用完當天只停用那一層,卡片照出、抓單不受影響,隔天自動恢復。</td></tr><tr><td><b>剛按了「<b>儲存並套用</b>」,但感覺規則沒有生效</b></td><td>先等滿 60 秒(規則最多要一分鐘才會傳到全隊)。時間到了還是不對,按「<b>↻ 載入</b>」看編輯框裡是不是你存的那份、最近改動紀錄有沒有多一筆你剛剛寫的理由;沒多那一筆就代表沒存成功(唯讀帳號按儲存會失敗,畫面下方會跳失敗訊息)。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>兩顆 AI 開關是完全獨立的兩件事:關掉「<b>AI 抓址層</b>」不會連帶關掉「<b>AI 看單救援</b>」,反過來也一樣。要全停就兩顆都要按。</li><li>每日上限欄位留空後按「<b>設定</b>」,存進去的是 0,也就是「<b>完全不限</b>」,不是「<b>維持原本設定</b>」。改上限前先按「<b>↻ 重新整理</b>」讓欄位帶回目前的數字。</li><li>上限最大只能到 100000,填再大也會被壓回 100000。</li><li>從來沒設過上限時,欄位是空的,但實際上仍有預設:抓址層每天 500 次、看單救援每天 5000 次。空白不等於不限。</li><li>按「<b>回滾</b>」只是把舊版本的文字填回編輯框,還沒有生效——一定要再按「<b>儲存並套用</b>」才算數。中途離開這頁等於沒改。</li><li>規則編輯框留空代表「<b>用畫面上那段內建預設規則</b>」,不是「<b>沒有規則</b>」。想真的清乾淨是做不到的,程式一定會給它一套規則。</li><li>灰底那幾段(硬編開頭、硬編鐵律)是程式寫死的,看得到但改不到,也不需要複製貼進編輯框——它們本來就會自動接在你的規則前後。</li><li>救回率百分比低不一定代表壞掉:很多派單原文本來就沒寫地址,AI 正確回答「<b>沒有地址</b>」也被算成沒救回。要看趨勢,不要拿絕對值當成績。</li><li>「<b>清空範例庫</b>」是不可逆的,而且只清抓址層的範例;看單救援那一套本來就沒有範例庫,所以它那張卡沒有這顆按鈕。</li><li>改動理由留空也存得下去,但紀錄上會顯示「<b>(未寫理由)</b>」。之後出事回頭查,那一筆就完全查不出當初為什麼改。</li><li>唯讀帳號看不到兩排開關與上限(整排會藏起來),但兩張規則編輯卡仍看得到——在上面打字、按儲存會被伺服器擋下並跳失敗訊息,不會真的改到。</li><li>開關剛切進這頁時會顯示「<b>—</b>」,那是還沒讀完資料。這時按按鈕只會跳「<b>設定還沒載入,請稍候</b>」,不是壞掉,等一兩秒再按。</li><li>這頁的改動紀錄是刻意只留最近幾筆的(抓址 3 筆、救援 5 筆),不是紀錄不見了。要翻更早的去「<b>AI 學習記憶</b>」子頁。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-10">
+<h2><span class="num">10</span>位置庫</h2>
+<p class="purpose">這一頁是替全隊司機的 App「<b>補地點座標</b>」用的。派單訊息常常只寫「<b>XX社區</b>」「<b>YY大樓</b>」「<b>ZZ門市</b>」,Google 查不出來,司機就不知道要開去哪。在這頁把「<b>名字 → 座標</b>」補上一筆,全隊的 App 就定得到,而且以後每次查這個名字都不用再花錢。頁面由上到下是四張卡:機器自動收集的候選、司機查不到的清單、一次貼一整份名單的批量工具,最下面是位置庫本體(可搜尋、新增、改、刪)。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>1) 司機回報某個社區/大樓/店名 App 定不到位置的時候。2) 每隔幾天想清一清「<b>大家一直查不到、還一直在花錢</b>」的地名的時候。3) 拿到一整份社區或門市名單要一次建檔的時候。4) 有人回報位置庫某一筆把司機導到錯地方,要改或要刪的時候。切進這一頁時,三張清單會自動去伺服器抓一次資料,之後就不會自己更新了。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="on">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>🤖 自動回填候選</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>待補地標</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>📥 批量匯入</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">4</span>地點清單</div><div class="mock-skel"><i style="width:67%"></i><i style="width:64%"></i><i style="width:78%"></i></div></div></div></div><p class="cap">圖:「位置庫」的版面。左上是分頁列(目前在 <b>位置庫</b>),下面由上到下共 4 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 🤖 自動回填候選</h3>
+<p>App 幫司機定位時,便宜的方法全都查不到、最後靠 Google 就近搜尋(要花錢那層)才救回來的地標名字。系統會把「<b>名字 + 當時查到的座標</b>」記成一張候選清單,並累加查過幾次、幾位司機查過。標題旁邊會顯示「<b>・N 筆待處理</b>」。這張清單本身完全不影響 App 定位,在你按下〔採用〕之前對司機沒有任何作用。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">次數=這個名字總共讓我們付了幾次錢,越高越值得補。司機=幾位不同司機都查到它,只有 1 位很可能是某人打錯字,3 位以上通常是真的常用地點(名字下面會列出前 3 位,更多會顯示「<b>…</b>」)。離散=歷次查到的座標最遠差幾公尺,這欄最重要:只查過 1 次會直接寫「<b>只查過 1 次</b>」;80 公尺以內顯示綠色=每次都指同一個點,可信;81 到 300 公尺顯示橘色=有點漂,要留意;超過 300 公尺顯示紅色加驚嘆號=每次查到的地方差很遠,絕對不能直接採用,一定要自己開地圖查證。清單一次最多列 300 筆,已經收進位置庫的名字會自動消失。如果這張卡一直是空的、而且下方出現灰字提示,那代表系統這部分還沒裝好(要請工程的人做一次設定),不是真的沒候選。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">採用</td><td>打開「<b>新增地點</b>」視窗,名稱和座標已經幫你填好。名稱、別名、縣市、座標、完整地址都可以改,按下視窗裡的「<b>新增</b>」才會真的寫進位置庫;寫成功後這筆候選會自動從清單上消失。</td><td><span class="pill bad">小心</span> 視窗裡的「<b>已驗證</b>」預設是【沒有打勾】的,不打勾等於白補,App 不會採用。而且位置庫的優先權高過 Google,座標寫錯一筆等於全隊永久被導到錯的地方 —— 存檔前務必把座標點開地圖用眼睛核對過。</td></tr><tr><td class="btn-cell">忽略</td><td>跳出確認框,按確定之後這個名字永遠不再出現在候選清單上(它的次數在背後仍會繼續累加)。用來清掉路名殘句、雜訊那種根本不是地標的東西。</td><td><span class="pill bad">小心</span> 後台沒有復原按鈕,想反悔只能請工程的人進資料庫改回來。</td></tr><tr><td class="btn-cell">🚫 忽略勾選的</td><td>先勾第一欄的勾選框(表頭那個勾=全選),再按這顆,跳確認框後一次把勾選的全部忽略,完成後會顯示「<b>已忽略 N/M 筆</b>」。候選一天冒出幾十筆時用它比較快。</td><td><span class="pill bad">小心</span> 同樣沒有復原按鈕,而且是一次多筆,按之前先確認勾對了。</td></tr><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器要最新的候選清單並重畫。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">收合 ▴ / 展開 ▾</td><td>把整張卡的內容收起來或打開,方便捲動頁面。收合狀態記在你這台電腦的瀏覽器裡,下次進來維持一樣。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 待補地標</h3>
+<p>全隊司機實際查過、但系統查不到座標的地名清單(已經補好或後來查得到的會自動消失)。上方有一行小結:🏞 地標 N(建議補)・🏠 地址 N(交給程式,免補)・🧩 殘段 N(缺路名)。每一列顯示地名、原字(司機實際打的其他寫法)、📩 原文(那張單的整段訊息,點一下展開/收合)、來源司機與最後出現時間,右邊是「<b>N 位司機共 M 次</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">排序是先看幾位不同司機查過,再看總次數,所以排最上面的最值得補。左邊的標籤決定你要不要動手:綠色「<b>地標</b>」=該補的;黃色「<b>地址</b>」=完整門牌,程式自己會處理,不用補;灰色「<b>殘段</b>」=只有巷弄號碼沒路名,通常是雜訊,想確認是哪條路就點開 📩 原文。清單一次最多列 40 筆,預設只列看起來像地標的,勾「<b>顯示全部</b>」才會把完整門牌那類一起列出來;上方那組小結數字不管勾不勾都是同一組(算全部的分佈),不會跳動。只有 1 位司機、一兩次的先別急著補,很可能只是打錯字。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">補這個</td><td>打開「<b>新增地點</b>」視窗,名稱已經填好,司機打過的其他寫法會自動放進別名欄。座標要自己貼,或用視窗裡的「<b>🔍 查座標</b>」。</td><td><span class="pill bad">小心</span> 「<b>已驗證</b>」預設沒打勾,不勾 App 不會用;座標一定要開地圖核對過再存,寫錯是全隊永久錯。</td></tr><tr><td class="btn-cell">噪音</td><td>跳確認框,按確定後這個地名(連同它所有的原字寫法)永久不再出現在待補清單。用來清掉費率、情境短語那種根本不是地址的東西。</td><td><span class="pill bad">小心</span> 永久性的,後台沒有復原按鈕,要救回來得請工程的人處理。</td></tr><tr><td class="btn-cell">顯示全部(含完整地址)</td><td>打勾後重新去問伺服器,把完整門牌地址那一類也一起列出來;取消打勾就回到只看地標。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器重算一次待補清單(會掃一段時間內全隊查無座標的紀錄,按下去會先出現「<b>整理中…</b>」)。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">收合 ▴ / 展開 ▾</td><td>把整張卡收起來或打開,狀態記在你這台電腦的瀏覽器裡。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 📥 批量匯入(貼清單 → 自動查座標 → 勾選寫入)</h3>
+<p>一次貼一整份名單,系統逐筆去查座標,查完列成表格給你逐筆核對打勾,再一次寫進位置庫。這張卡預設是收起來的(偶爾才用的工具),要先按「<b>展開 ▾</b>」。表格欄位:勾選、名稱、查到的地方、座標(可點開地圖)、狀態。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">輸入格式:一行一筆,兩種寫法 —— 只寫名稱(例:三峽區鴛鴦谷烤肉區),或「<b>名稱 | 地址</b>」(直線或 Tab 分隔,例:青城桔市社區 | 土城區中央路三段239巷),有地址的會用地址查、用名稱存檔。一次最多 200 筆,超過會被擋下叫你分批。每筆之間會等大約 1.1 秒才查下一筆,所以 100 筆大約 2 分鐘、200 筆大約 4 分鐘,查的時候進度會顯示「<b>查詢中 3 / 50:某某社區</b>」,跑完變成「<b>查完:N / M 筆有座標</b>」。狀態欄的意思:待查、查詢中…、OSM(免費)或 Google(表示查到了、以及是從哪裡查到的)、查無、已寫入、已有同名/別名、寫入失敗。查無的那幾筆沒有勾選框,不會被寫入,要自己另外用「<b>新增地點</b>」補。有座標的預設全部打勾,「<b>查到的地方</b>」那欄是查到的完整地址,拿它跟你名單上的地名比對是不是同一家;不對的就把勾拿掉。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">🔍 開始查座標</td><td>讀取上面貼的清單,逐筆去問伺服器座標,查詢期間這顆按鈕會變灰不能按。它會自動跳過分隔線和說明行,也會把行尾「<b>← N 次</b>」那種註記剝掉,所以整份現成的清單可以直接貼。唯讀帳號按下去只會跳「<b>唯讀帳號不能匯入</b>」。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">表頭的勾選框</td><td>一次把所有查到座標的列全勾或全取消(已寫入的那幾筆不受影響)。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">隱藏已處理</td><td>打勾後把「<b>已寫入</b>」和「<b>已有同名/別名</b>」的列從表格上收掉,只留下還要核對的,清單很長時比較好看。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">✍️ 寫入勾選的 N 筆到位置庫</td><td>有勾選時才會出現,按鈕上直接寫著要寫幾筆。按下跳確認框(上面寫「<b>寫入即標為已驗證、App 立刻採用</b>」),確定後逐筆寫入,跑完顯示「<b>寫入完成:N 成功、M 筆已有同名(跳過)、K 失敗</b>」,下面的位置庫清單也會跟著更新。</td><td><span class="pill bad">小心</span> 這是本頁唯一一個「<b>寫進去就直接生效</b>」的動作 —— 批量寫入的每一筆都自動標成已驗證,App 立刻採用,不像手動新增還可以先不打驗證的勾。座標沒有逐筆點開地圖核對過就不要按;位置庫優先權高過 Google,錯的座標會讓全隊永久導到錯地方。</td></tr><tr><td class="btn-cell">展開 ▾ / 收合 ▴</td><td>打開或收起整張批量匯入卡,狀態記在你這台電腦的瀏覽器裡。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">4</span> 地點清單(位置庫本體:搜尋 / 新增 / 驗證 / 編輯 / 刪除)</h3>
+<p>位置庫裡目前所有的地點。每一列:名稱(下面小字是別名)、縣市、座標(點下去會開 Google 地圖)、命中次數、狀態(已驗證/未驗證)、動作按鈕。上方有搜尋框、總筆數、重新整理、＋新增地點。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">筆數顯示「<b>共 N 筆</b>」,有在搜尋時會多顯示「<b>・符合 M 筆</b>」;搜尋會同時比對名稱、別名和縣市。清單依「<b>命中</b>」由高到低排,一次最多顯示 1000 筆。命中=這一筆被 App 用到幾次,剛補的通常是 0,但如果過了好幾天還是 0、而這個地名又一直出現在待補清單上,就代表你存的名字跟司機實際打的字不一樣,要去編輯把司機的寫法加進別名。狀態欄是最容易出事的地方:綠色「<b>已驗證</b>」才會被 App 採用,灰色「<b>未驗證</b>」等於補了也沒用。批量匯入寫進來的一律是已驗證。唯讀帳號在這裡看不到「<b>＋ 新增地點</b>」,每一列的動作欄只會顯示「<b>唯讀</b>」兩個字。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">＋ 新增地點</td><td>打開填寫視窗:名稱、別名(逗號分隔,可空)、縣市、座標、完整地址(可空,給人看的)、驗證勾選框。座標貼「<b>25.033, 121.565</b>」這種格式,全形逗號也吃得下。視窗裡還有一顆「<b>🔍 查座標</b>」,會拿你填的名稱(有填縣市會一起帶上去消歧,例如台北老爺酒店)去問伺服器,查到就自動填進座標欄並跳出查到的地址,查不到會提示你自己去 Google 地圖右鍵複製座標。</td><td><span class="pill bad">小心</span> 名稱沒填、座標格式不對都會被擋下來。座標超出台灣範圍會跳「<b>失敗:bad_coords</b>」(通常是經緯度貼反或貼到國外);名稱或別名跟現有某一筆撞到會跳「<b>失敗:dup_alias</b>」,代表位置庫已經有同名的了 —— 請用搜尋框找出那一筆去改它,不要硬塞第二筆。「<b>查座標</b>」查到的東西不保證是對的,一定要點開地圖確認再存。</td></tr><tr><td class="btn-cell">✔驗證 / 取消驗證</td><td>立刻切換這一筆給不給 App 用,不會跳確認框,按下去就生效。已驗證的按鈕會變成「<b>取消驗證</b>」。</td><td><span class="pill bad">小心</span> 「<b>取消驗證</b>」等於全隊立刻不再使用這筆座標,司機馬上就會定不到這個地方,確定是這筆有問題再按。</td></tr><tr><td class="btn-cell">編輯</td><td>打開和新增一樣的視窗,欄位帶入這筆現有的內容,改完按「<b>儲存修改</b>」。座標錯、別名要補、縣市要改都走這裡。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">刪除</td><td>跳出「<b>刪除「某某</b>」?」確認框,按確定整筆從位置庫消失,清單重新載入。</td><td><span class="pill bad">小心</span> 刪掉救不回來,而且全隊立刻失去這個地點的座標。如果只是座標填錯,請改用「<b>編輯</b>」而不是刪掉重建。</td></tr><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器要最新的位置庫清單並重畫。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">搜尋框</td><td>邊打字邊即時篩選畫面上的清單(比對名稱、別名、縣市)。它只篩已經載入的資料,不會再去問伺服器,所以很快。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>司機回報「<b>XX社區 App 定不到,只好打電話問客人</b>」</b></td><td>先在最下面的搜尋框查一下這個名字,確認位置庫真的沒有。沒有的話到「<b>待補地標</b>」找那一筆按〔補這個〕(或直接按〔＋ 新增地點〕自己打名稱),用「<b>🔍 查座標</b>」或到 Google 地圖右鍵複製座標貼上,把司機打的其他寫法放進別名,【務必勾「<b>已驗證</b>」】再存。存完回下面清單確認那一列是綠色「<b>已驗證</b>」。</td></tr><tr><td><b>候選清單裡某一筆的「<b>離散</b>」是紅色、幾百公尺以上</b></td><td>不要直接採用。那代表系統每次查到的都是不同地方(常常是配到司機旁邊的同名店家)。先自己去地圖搜那個名字確認正確位置,再按〔採用〕,把視窗裡預填的座標換成你查到的正確座標,勾已驗證後才存。</td></tr><tr><td><b>候選或待補清單被一堆路名殘句、費率短語灌爆,看不到真正該補的</b></td><td>候選那張卡勾起第一欄再按「<b>🚫 忽略勾選的</b>」(表頭的勾可以全選);待補地標那張卡則是逐筆按〔噪音〕。清掉之後它們永遠不會再出現,剩下的才是真的該補的地標。兩個動作都沒有復原按鈕,勾之前看清楚。</td></tr><tr><td><b>拿到一份幾十上百筆的社區/門市名單,要一次建進位置庫</b></td><td>展開「<b>📥 批量匯入</b>」,一行一筆貼上(只有名稱、或「<b>名稱 | 地址</b>」都可以,一次最多 200 筆),按〔🔍 開始查座標〕後等它跑完(每筆約 1.1 秒,期間不要關頁面)。跑完逐筆點座標開地圖核對「<b>查到的地方</b>」是不是同一家,不對的取消勾選,最後按〔✍️ 寫入勾選的 N 筆〕。查無的那幾筆要另外手動補。</td></tr><tr><td><b>明明補了地點,司機說還是定不到</b></td><td>先看那一列的狀態:是灰色「<b>未驗證</b>」就按〔✔驗證〕(這是最常見的原因)。已經是已驗證但「<b>命中</b>」一直掛 0,代表司機打的字跟你存的名字對不上 —— 到「<b>待補地標</b>」看那一筆的「<b>原字</b>」是什麼寫法,把那些寫法用〔編輯〕加進別名欄。</td></tr><tr><td><b>有人回報位置庫某一筆把司機導到錯的地方</b></td><td>用最下面的搜尋框把它找出來,點座標開地圖確認確實錯了,然後按〔編輯〕改成正確座標存檔。急著止血可以先按〔取消驗證〕讓 App 立刻不再用它。不要直接刪除 —— 刪了別名和累積的資料都沒了。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>「<b>已驗證</b>」沒打勾等於白補。手動新增、以及從候選按〔採用〕開出來的視窗,驗證的勾都是【預設沒勾】的,App 只認打了勾的那些。批量匯入剛好相反,寫進去就直接是已驗證、立刻生效。</li><li>位置庫的優先權比 Google 還高,寫錯一筆是全隊、永久的錯,而且系統不會自己修正。每一筆座標都要點開地圖用眼睛核對過再存,這一步不能省。</li><li>「<b>忽略候選</b>」「<b>標噪音</b>」「<b>刪除地點</b>」這三個動作,後台都沒有復原按鈕,要救回來得請工程的人進資料庫處理。按之前先想清楚。</li><li>切進這一頁時三張清單只會自動抓一次資料,之後畫面上的數字不會自己更新。要看最新狀況,請按各卡右上角的「<b>↻ 重新整理</b>」。</li><li>「<b>查座標</b>」查到的、以及批量匯入「<b>查到的地方</b>」那一欄,都不代表就是對的。免費圖資在台灣的店名、社區資料很稀疏,查不到時常常會配到附近隨便一個點,一定要點開地圖確認。</li><li>批量匯入在查座標的過程中不要關掉或重整頁面,查到一半的結果不會保留,得整份重貼重來。</li><li>待補地標卡上的說明寫「<b>近 14 天</b>」,但實際上伺服器撈的是近 30 天的紀錄,所以你會看到比 14 天更舊的東西,這不是壞掉。</li><li>三張卡的收合/展開狀態記在你自己這台電腦的瀏覽器裡,同事看到的畫面可能跟你不一樣;跟人對畫面時記得先確認卡片有沒有被收起來。</li><li>唯讀帳號在這頁只能看:「<b>＋ 新增地點</b>」會整個消失、每一列的動作欄變成「<b>唯讀</b>」、候選和待補的動作按鈕也不會出現,批量匯入的按鈕還在但按下去只會跳「<b>唯讀帳號不能匯入</b>」。</li><li>新增時如果跳「<b>失敗:dup_alias</b>」,意思是名稱或某個別名已經被現有的另一筆佔走了,不是系統壞掉。請去搜尋那個名字、改既有那一筆,硬要建第二筆會讓 App 不知道該用哪個座標。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-11">
+<h2><span class="num">11</span>系統</h2>
+<p class="purpose">這頁是「<b>出事才要看</b>」的守門頁:看有沒有人拿序號亂刷地址在燒錢、司機回報的圖片影片佔了多少空間該不該清、以及兩個官網有多少人來看。平常三張卡都綠的就不用管它。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>① 懷疑有人拿序號自己開群、狂貼假地址把查地址的錢燒掉時;② 儲存空間快滿、或想在撞到容量上限前先清一次舊圖舊影片時;③ 想知道兩個官網最近有多少人來看(今天/近 7 日/近 30 日)時。其餘時間不用主動進來。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="on">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>高風險用量</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>回報圖片/影片 儲存空間</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>🌐 官網流量</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div></div></div><p class="cap">圖:「系統」的版面。左上是分頁列(目前在 <b>系統</b>),下面由上到下共 3 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 高風險用量</h3>
+<p>近 24 小時(以台灣時間的今天+昨天合計)每位司機的用量排行:司機名、風險標籤、24h 查詢總次數、其中查地址座標(geocode 欄)的次數、查無率、今日接單數。只列出有查詢量或有風險分的,最多 15 位。卡片右上角有一顆總結標籤(正常 / ⚠ N 位需注意),最下面一行會寫出目前每位司機每日的查詢上限。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>風險分怎麼算:拿近 24 小時查地址座標的次數(以 3000 次當滿分封頂)乘上(50% + 50%×查無率),而且要滿 500 次才開始計分,不到 500 次一律 0 分。所以「<b>正常</b>」不代表零查詢,只代表量小到不值得看。</li><li>標籤顏色:分數 ≥ 50 是紅色「<b>高風險</b>」;1~49 是橘色「<b>觀察</b>」;0 是綠色「<b>正常</b>」;白名單裡的測試機固定顯示灰色「<b>測試機</b>」,永遠不計分。</li><li>右上角總結:只要有任何一位「<b>不是測試機</b>」且分數大於 0,就會變紅字「<b>⚠ N 位需注意</b>」;沒有就是綠色「<b>正常</b>」。</li><li>最可疑的長相:查地址次數很高 + 查無率很高(假地址查不到)+ 今日接單 0 單,三個同時出現。查無率只有個位數到二三十%、而且有在接單,通常是真的很忙的司機,不是亂刷。</li><li>上限:每位司機每天最多查 5000 次(卡片底下那行會寫出來),正常司機一天最多大約 1800 次;超過 5000 那一組當天就會被停止查詢,只影響他自己,不會拖到全隊。</li><li>完全沒有值得注意的量時會顯示「<b>近 24 小時沒有值得注意的流量。</b>」;若顯示「<b>載入失敗:…</b>」表示這次沒拿到資料(用唯讀監控密碼登入時就會這樣,這張卡只給管理員看)。</li></ul></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器拿最新的近 24 小時用量排行,重畫整張表和右上角那顆狀態標籤。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">點表格裡的司機名字</td><td>把那一組序號自動填進搜尋框,並跳到「<b>金鑰</b>」頁只顯示那一位,方便你核對身分、需要時在那頁停用他。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3><span class="anno">2</span> 回報圖片/影片 儲存空間</h3>
+<p>司機回報時附的圖片和影片目前佔用多少空間:最上面一行是合計、以及其中有多少是可以清掉的;下面分「<b>影片</b>」和「<b>圖片</b>」兩類,各寫出佔用大小、檔案數量,若有超過 45 天的舊檔會用橘字標出幾個、多少容量。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>沒有橘字 = 目前沒有超過 45 天的舊檔可以清,清理按鈕上會直接寫「<b>(目前沒有可清的)</b>」。</li><li>有橘字 = 那些是 45 天前的舊回報所附的檔案,可以安全清掉,按鈕上會直接寫出「<b>清理 N 個 45 天前的媒體(xx MB)</b>」。</li><li>數字本身沒有固定紅線,判斷方式是:快撞到方案容量時清一次就好,平常不用主動清。</li><li>若顯示「<b>讀取失敗:…</b>」就是這次沒拿到資料(用唯讀監控密碼登入時會這樣,這張卡只給管理員看)。</li><li>第一次切進「<b>系統</b>」頁會自動載入一次,所以看到「<b>點『重新整理』載入用量</b>」那行通常只是還在載。</li></ul></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">重新整理</td><td>去問伺服器拿最新的空間用量,重新算合計、各類佔用、以及有多少舊檔可清。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">清理 45 天前的媒體(保留回報文字)</td><td>先跳出一個確認視窗,你按確定後,系統會把 45 天前那些回報所附的圖片和影片檔刪掉,並把回報紀錄上的圖片/影片連結清空;回報的文字內容完整保留。做完會跳出「<b>已清 N 個檔(M 筆回報的媒體參照)</b>」並自動重新整理這張卡。</td><td><span class="pill bad">小心</span> 不可逆,而且是全隊所有司機 45 天前的回報媒體一起刪 —— 刪掉的照片、影片救不回來,之後要回頭看某筆舊回報的畫面就沒有了。唯讀監控帳號看不到這顆按鈕。</td></tr></tbody></table></div>
+<h3><span class="anno">3</span> 🌐 官網流量</h3>
+<p>兩個官網(琥珀主站、雷達青站)各自的今日、近 7 日、近 30 日瀏覽人次,以及開站至今的累積人次;下面一張近 30 天的折線趨勢圖(兩站加總,一天一個點),滑鼠移到圖上會顯示那一天的日期和人次。</p>
+<div class="card"><h4>怎麼看</h4><ul class="tight"><li>日期一律用台北時間切日,所以「<b>今日</b>」是台灣的今天。</li><li>人次的算法:同一個瀏覽器分頁的一次造訪算一次 —— 重新整理、在站內換頁都不會重複計。不跑網頁程式的爬蟲、以及封鎖瀏覽器儲存的訪客不會被算到,所以這個數字是略為低估的,跟其他流量工具對不起來很正常。</li><li>最後一欄「<b>累積</b>」是資料庫全部加總,不受表格只讀近 60 天的限制,所以它比「<b>近 30 日</b>」大很多是正常的。</li><li>趨勢圖只從「<b>有資料的第一天</b>」畫到今天,中間沒訪客的日子會補成 0(所以圖上看得到真實的空窗,不會把零星幾天的訪客畫成連續穩定的流量)。資料還不滿兩天畫不出線,會顯示「<b>每日資料累積中(跨兩天以上才畫趨勢)。</b>」</li><li>如果表格位置出現「<b>admin 函式還沒更新</b>」或「<b>site_views 表還沒建</b>」這類訊息,那不是沒人來看,是後端還沒接好,要找工程處理。</li></ul></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器拿最新的每日人次和累積數字,重畫上面的表格和下面的趨勢圖。</td><td><span class="muted-dash">—</span></td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>「<b>高風險用量</b>」右上角出現紅字「<b>⚠ N 位需注意</b>」</b></td><td>看那幾列的查無率和今日接單:查地址次數高、查無率高、今日接單 0 單 = 最可疑。點他的名字跳到金鑰頁核對是誰、什麼時候買的序號,確認是亂刷再在金鑰頁停用。若是熟面孔的忙司機、而且有在接單,通常只是量大,先觀察不用動。</td></tr><tr><td><b>有司機的 geocode 次數逼近或超過 5000</b></td><td>超過 5000 系統當天就會自動停止幫那一組查地址(不影響其他司機、不會燒到全隊的錢)。你要做的是判斷這是真忙還是灌單:正常司機一天最多約 1800,飆到 5000 且查無率高的先點名字跳去金鑰頁查身分。標「<b>測試機</b>」的那幾組不用理。</td></tr><tr><td><b>被通知儲存空間快滿、或想固定清一次舊檔</b></td><td>在「<b>回報圖片/影片 儲存空間</b>」按重新整理,看合計和橘字寫的可清容量;確定值得清再按清理鈕(會先跳確認)。清完文字回報都還在,只有 45 天前的照片影片會消失,所以動手前先確認沒有還在追的舊案子要看圖。</td></tr><tr><td><b>官網剛改版或剛做完宣傳,想知道有沒有人來</b></td><td>看「<b>🌐 官網流量</b>」的「<b>今日</b>」欄,再按一次重新整理拿最新的;想看是不是真的有變化就看下面的趨勢圖,滑鼠移過去可以讀出每一天的人次。記得這是低估值,實際人數只會更多不會更少。</td></tr><tr><td><b>數字看起來停在舊的、跟剛剛看的一樣</b></td><td>這頁只有「<b>第一次切進來</b>」會自動抓一次資料,之後停在這頁不會自己更新。三張卡各有自己的重新整理鈕,想更新哪張就按哪張的。</td></tr><tr><td><b>用唯讀監控密碼登入,高風險用量顯示「<b>載入失敗</b>」、儲存空間顯示「<b>讀取失敗</b>」</b></td><td>不是壞掉 —— 這兩張卡只開放給管理員密碼,唯讀帳號看不到,清理按鈕也不會出現。要看請改用管理員密碼登入。官網流量那張卡唯讀帳號可以正常看。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>這頁只有第一次切進來時會自動抓一次資料。之後就算一直停在這頁,數字也不會自己跳動,要按各卡片自己的「<b>重新整理</b>」。</li><li>三顆「<b>重新整理</b>」各管各的一張卡,按官網流量那顆不會順便更新高風險用量或儲存空間。</li><li>「<b>風險分</b>」只是算出來的嫌疑分數,不是證據。分數高只代表值得看一眼,判斷還是要靠查無率、接單數和你認不認識這個人。</li><li>分數 0 /顯示「<b>正常</b>」不等於沒在查 —— 未滿 500 次一律不計分。要看真實用量請看「<b>geocode</b>」那一欄的數字。</li><li>表格裡「<b>24h 查詢</b>」是所有查詢的總次數,「<b>geocode</b>」才是查地址座標的次數;風險分只看 geocode 那一欄,兩個數字差很多是正常的。</li><li>標「<b>測試機</b>」的那幾組是白名單內的自家測試手機,永遠不計分也不會變紅 —— 不是系統漏抓。</li><li>表格最多只列 15 位,而且只列有量的人;看不到某位司機通常代表他沒什麼量。</li><li>點司機名字只是幫你跳到金鑰頁並搜尋出他,不會停用任何人。要停用得自己在金鑰頁按。</li><li>清理媒體是全隊一起、而且救不回來。確認視窗是最後一道關卡,按下去之前先想清楚有沒有還在追的舊回報需要看圖。</li><li>官網人次是刻意低估的算法(擋掉爬蟲、同一次造訪只算一次),跟別的流量工具數字對不起來屬正常,不要拿來互相校正。</li><li>官網流量欄位如果出現「<b>admin 函式還沒更新</b>」「<b>site_views 表還沒建</b>」這類字樣,是後端還沒接好,不是官網沒人來 —— 別當成流量掛零去回報。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-12">
+<h2><span class="num">12</span>運作流程</h2>
+<p class="purpose">用三張圖說明「一則 LINE 派單訊息進到系統,一直到司機手機跳進群送出 @」中間,系統照什麼順序做了哪些事、哪幾步是免費的、哪幾步要花錢。這是一頁純看的說明圖,整頁沒有任何按鈕,看不壞也改不到任何設定。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>帶新同事或協作者認識系統時,照三張圖從左到右講一遍;有人問「<b>為什麼會有 Google 的費用</b>」「<b>為什麼這步要動用 AI</b>」時,指著中間那張圖解釋;司機回報「<b>定位不準</b>」或「<b>按了接單卻卡在聊天列表</b>」,你想先搞清楚系統是照什麼順序在試、下一步該去哪一頁查的時候。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="on">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>階段一 · 訊息進來 → 出卡</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>定位瀑布 · 便宜的先跑</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>階段二 · 點接單 → 進群</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div></div></div><p class="cap">圖:「運作流程」的版面。左上是分頁列(目前在 <b>流程</b>),下面由上到下共 3 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 階段一 · 訊息進來 → 出卡</h3>
+<p>六個方塊由左往右用箭頭串起來,代表一則訊息進來後依序做的六件事:01 收到通知(記住開群入口、清掉群名尾綴)→ 02 規則解析(切塊、否決聊天與費率訊息、判斷上下車)→ 03 AI 看單救援(規則一張都沒抓到才跑)→ 04 去重(主群優先於免費群、免費群優先於聯播群;同一群重貼會讓舊卡回春)→ 05 定位(詳細內容就是下面那張瀑布圖)→ 06 出卡(排序、分類、依範圍篩選)。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這是固定的說明圖,永遠長一樣,不含任何即時數字,所以「<b>沒有數字</b>」是正常的,不代表沒資料。要看的是顏色:灰白＝一般步驟;橘色＝這一步會花錢;虛線外框＝這一步是選配、可以關掉;青色＋右上角有個會閃的小圓點＝系統認定的最快路徑。這張圖裡第 03 格「<b>AI 看單救援</b>」是橘色又是虛線,意思是它會花錢而且平常不跑,只有在規則解析一張單都抓不到的時候才啟動;它在系統裡預設是關著的,開關不在這頁,在「<b>AI</b>」那一頁。第 05 格「<b>定位</b>」是青色＋閃點,代表它是整條鏈裡最關鍵、也最需要跑快的一段。如果有人跟你說某個流程順序跟這張圖不一樣,以實際系統為準——這張圖是寫死在後台網頁裡的說明,不是從伺服器即時讀來的。</p></div>
+<h3><span class="anno">2</span> 定位瀑布 · 便宜的先跑</h3>
+<p>九層由上往下排,每一層一橫列:左邊是「<b>免費</b>」(青色標籤)或「<b>付費</b>」(橘色標籤),中間是名稱與一句說明,右邊是「<b>今日該層命中次數</b>」,底下一條長度不一的細線。順序固定為:① 位置庫(我們自己整理的地標,優先權最高)② 門牌庫(政府開放門牌 298 萬筆)③ 錯字修正(拿門牌庫做模糊比對)④ 墓碑／快取(查過的秒回)⑤ 自架 Nominatim(我們自己的圖資機)以上五層免費;⑥ AI 抓址(把地址剪乾淨再查一次)⑦ Map8(台灣圖霸)⑧ Google(長尾退路)⑨ Places(只剩店名時的最後救援)以上四層付費。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">讀法是「<b>由上往下試,上面沒中才往下,越下面越貴</b>」。健康的形狀是:前五層免費層數字大,後四層付費層數字小。底下那條細線是相對長度,當天命中最多的那一層畫滿,其餘按比例縮短;有命中的那一層名稱會變成青色。⚠️ 但目前這一欄的數字數字每次進本頁都會重新讀取,看到的就是當下的今日累計。某一層顯示「<b>—</b>」代表<b>今天這一層還沒被用到</b> —— 付費層(第 6~9 層)是「<b>—</b>」反而是好事,代表前面免費的層全接住了。要看更完整的用量與金額,到「<b>用量成本</b>」頁。</p></div>
+<h3><span class="anno">3</span> 階段二 · 點接單 → 進群</h3>
+<p>六個方塊由左往右串起來的跳轉決策順序:⓪ 已在群？(是的話免跳轉,0 秒)→ ⓪.5 LINE 開著？(直接點進群,免入口、免受 Android 背景跳轉限制,畫面上寫成「<b>免入口免 BAL</b>」)→ ① 通知入口(依 ①→①b→②→②b 的順序試,去重後最多送 2 次)→ ③ 開 LINE 主體(會落在聊天列表)→ ④⑤ 無障礙接管(自動掃聊天列表、點進目標群)→ ✓ Mention 狀態機(@ 派單人然後送出)。下方另有一行小字:由左往右降級,任一步成功就停;⓪.5 是繞開 Android 15/16 跳轉限制的主力,需要開「<b>跳轉補救</b>」開關。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">由左往右是「<b>降級順序</b>」:越左邊越快越省事,任何一步成功就停住,不會再往右。⓪ 與 ⓪.5 是青色＝最快路徑;⓪.5 右上角有閃點,代表它是目前對付 Android 15／16 新限制的主要手段,但司機要自己在 App 裡把「<b>跳轉補救</b>」開關打開才會走這條,預設是關的。④⑤「<b>無障礙接管</b>」是虛線＝選配,要司機授權無障礙權限才有,沒授權就直接跳過那一步。這張圖跟第一張一樣是固定說明,沒有即時數字、也不會因為某位司機跳轉失敗而變色,所以「<b>圖看起來都正常</b>」不能拿來當「<b>今天跳轉都沒問題</b>」的證據。</p></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>司機回報「<b>按了接單,結果卡在 LINE 聊天列表,沒進到群裡</b>」</b></td><td>開這頁看第三張圖,從左往右一格一格對:先問他是不是本來就在群裡(⓪)、有沒有把 App 裡的「<b>跳轉補救</b>」開關打開讓 ⓪.5 生效、有沒有授權無障礙權限讓 ④⑤ 能接管。這頁只告訴你系統會照什麼順序試,不會顯示這位司機個別的失敗紀錄;要看他本人的狀況得去「<b>回報</b>」那一頁。</td></tr><tr><td><b>老闆或協作者問「<b>為什麼查一個地址還會產生 Google 的費用？</b>」</b></td><td>指中間那張瀑布圖解釋:前五層全部免費,只有前五層通通沒查到,才會掉到第 6～9 層的付費層,Google 排第 8、只是長尾退路。要拿出實際掉下去幾次的數字,去「<b>用量成本</b>」頁抓,不要用這頁的「<b>—</b>」。</td></tr><tr><td><b>新同事或新協作者剛接手,要先弄懂系統在幹嘛</b></td><td>直接把這頁當教材,三張圖照順序講:訊息怎麼變成卡片、地址怎麼一層一層查、司機按下去之後怎麼進群。整頁沒有按鈕、不會送出任何指令、也改不到任何設定,可以放心讓新人自己點進來看。</td></tr><tr><td><b>看到瀑布九層全部是「<b>—</b>」,以為系統掛了</b></td><td>不是掛了。那一欄目前有整排全「<b>—</b>」通常是資料還沒載進來 —— 按 F5 重新整理再進來一次就會有數字。要判斷系統死活,還是以總覽頁上方那條健康預警(每 60 秒自動更新,平常隱形、超標才現身)為準。</td></tr><tr><td><b>某個地名一直定位到錯的地方,想知道該從哪裡下手改</b></td><td>看瀑布的第一層:位置庫優先權最高,會蓋過後面所有來源。所以先確認位置庫裡是不是被寫錯了一筆——實際修改要去「<b>位置庫</b>」那一頁做,這頁只負責告訴你「<b>誰蓋過誰</b>」。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>整頁沒有任何按鈕,也沒有「<b>重新整理</b>」鈕。所有內容都是畫給人看的說明,按不壞、也不會去改任何設定或花任何錢。</li><li>三張圖裡只有中間的定位瀑布有數字欄,而那一欄目前顯示今日各層命中次數。單一層是「<b>—</b>」就是今天真的沒用到那一層,不用擔心;<b>整排九層全是「—」才不正常</b>,那通常代表資料沒載進來,重新整理頁面(F5)再進來一次。</li><li>數字是「<b>每次進本頁時</b>」重新讀取的,所以離開再回來就會更新。但<b>停在這一頁不會自己跳動</b> —— 想看最新的,切去別頁再切回來即可。</li><li>依現在的程式碼,先去用量成本頁再回來,這頁不會重畫,看到的還是進來那一刻的畫面。</li><li>三張圖的步驟名稱與順序是寫死在後台網頁裡的,不是跟伺服器對過的即時狀態。如果 App 或伺服器那邊改了流程而沒有同步改這頁,圖就會過期,而且不會有任何提示。請把它當「<b>說明文件</b>」,不要當「<b>現況監控</b>」。</li><li>顏色有固定含意:青色＝最快或免費、橘色＝要花錢、虛線外框＝選配可關、右上角閃點＝關鍵路徑。橘色不等於故障,別看到橘色就以為出事了。</li><li>圖上畫著「<b>AI 看單救援</b>」(第一張第 03 格)不代表它現在是開著的;它預設關閉,而且只有在規則一張單都沒抓到時才會跑。開關在「<b>AI</b>」那一頁,不在這裡。</li><li>第三張圖裡寫的「<b>免入口免 BAL</b>」是原字面,BAL 指的是 Android 對「<b>App 在背景時把畫面拉到前景</b>」的限制。看到這幾個字不用緊張,它是在說這條路徑不受那個限制影響。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-13">
+<h2><span class="num">13</span>AI 學習記憶(子頁)</h2>
+<p class="purpose">這是「<b>AI 大腦</b>」頁按〔想看它學到什麼 →〕開出來的獨立子頁。它把今天 AI 抓址的每一次出手攤開給你看:哪些剪對了、查到座標(救回),哪些剪了還是查不到(待修),以及兩套規則被誰在什麼時候改過。這頁只給你看,不能在這裡改任何東西。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>① 想知道 AI 到底在做什麼、做得好不好的時候;② 要找出「<b>該補進位置庫的地名</b>」的時候 —— 待修清單就是最好的來源;③ 規則被改壞了想查是誰改的、什麼時候改的。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>❌ 待修 — AI 剪了、還是查不到</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">2</span>✅ 救回 — AI 剪對、查到座標</div><div class="mock-skel"><i style="width:81%"></i><i style="width:73%"></i><i style="width:56%"></i></div></div><div class="mock-card"><div class="mock-title"><span class="anno">3</span>🤖 AI 抓址規則 · 改動歷史 / 🔍 AI 看單救援規則</div><div class="mock-skel"><i style="width:74%"></i><i style="width:82%"></i><i style="width:67%"></i></div></div></div></div><p class="cap">圖:「AI 學習記憶(子頁)」的版面。左上是分頁列(目前在 <b>流程</b>),下面由上到下共 3 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> ❌ 待修 — AI 剪了、還是查不到</h3>
+<p>AI 有出手把地址剪出來、但剪出來的字串最後還是查不到座標的清單。每一筆顯示地名原字、後面接「<b>×N</b>」代表今天出現幾次,右邊一顆〔補位置庫 →〕。清單依次數由多到少排。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">取樣範圍是最近 400 筆,所以這是抽樣不是全部。次數多【只代表這個地名常出現】,不代表它就該補進位置庫 —— 這是最容易做錯的判斷。卡片上方有一塊「<b>⚠️ 不是每一筆都該補位置庫</b>」的指引,四種情況要分開處理:(1)店名/地標/社區名 → 補位置庫,補完永久免費;(2)完整門牌卻查不到(例「<b>五股區民義路128號</b>」)→ 是門牌庫缺這一筆,補位置庫只治標;(3)有錯字(例「<b>誒太順街</b>」)→ 原文就打錯了,補進去等於把錯的固化;(4)行首黏了代號/時間、或城市寫錯 → 是抓單規則要修,補位置庫沒用。看到清單很長不用緊張,一半以上通常屬於第 2~4 種。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">補位置庫 →</td><td>帶著這個地名跳回後台的「<b>位置庫</b>」頁,自動打開「<b>新增地點</b>」視窗、名稱欄已經填好。你只要補座標(視窗裡有「<b>🔍 查座標</b>」)、勾「<b>已驗證</b>」再存。</td><td><span class="pill bad">小心</span> 它只幫你少打字,不會自動寫入。座標一定要自己開地圖核對 —— 位置庫優先權比 Google 高,寫錯一筆是全隊永久錯。而且新增視窗的「<b>已驗證</b>」預設沒打勾,沒勾等於白補。</td></tr></tbody></table></div>
+<h3><span class="anno">2</span> ✅ 救回 — AI 剪對、查到座標</h3>
+<p>AI 出手後成功查到座標的清單,同樣是地名原字加「<b>×N</b>」。這一欄代表 AI 今天真正產生價值的部分。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這欄越長越好,代表 AI 有在幫上忙。跟左邊的待修欄一起看:救回多、待修少 = AI 狀態正常;救回突然掉到接近 0,而待修爆增,通常是規則剛被改壞,或供應商當天出問題 —— 這時去「<b>AI 大腦</b>」頁看救回率曲線確認是不是連續下滑。</p></div>
+<h3><span class="anno">3</span> 🤖 AI 抓址規則 · 改動歷史 / 🔍 AI 看單救援規則 · 改動歷史</h3>
+<p>兩套規則被改過的紀錄,各自一份。每筆顯示改動時間、改的人,以及當時填的「<b>改動理由</b>」。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">這是規則出事時唯一的線索來源。判斷方式:先在「<b>AI 大腦</b>」頁看救回率是哪一天開始掉,再回這裡找那一天前後有沒有人動過規則。如果改動理由那欄是空的或寫得很含糊,就查不出原因了 —— 所以改規則時務必把理由寫清楚。沒有人改過時這裡是空的,那代表目前跑的是內建預設規則。</p></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>想找「<b>該補進位置庫的地名</b>」,不知道從哪裡找起</b></td><td>就從這頁的待修清單找。但要先照卡片上的四種情況篩一遍:只有「<b>店名/地標/社區名</b>」那一類才值得補。完整門牌、有錯字、行首黏代號的那些補了沒用,直接跳過。</td></tr><tr><td><b>同一個地名在待修清單出現很多次(例如 ×7)</b></td><td>次數高只代表常出現,先看它屬於哪一類。如果是店名或社區名,按〔補位置庫 →〕處理掉,補完之後這一筆就會從清單消失、而且以後查它永遠免費。如果是門牌或錯字,把原文複製起來給工程端 —— 那是抓單規則或門牌庫要處理的。</td></tr><tr><td><b>AI 的救回欄突然變得很短</b></td><td>先來這頁看兩份改動歷史,確認最近有沒有人動過規則。有的話看改動理由、必要時請對方改回去。都沒人改的話,到「<b>AI 大腦</b>」頁確認開關有沒有被關掉、每日上限有沒有用完,再看「<b>診斷提醒</b>」頁有沒有供應商限流的警告。</td></tr><tr><td><b>整頁都是空的</b></td><td>代表今天 AI 抓址這一層還沒出手過。這通常是好事(前面免費的層都查到了),不是壞掉。要確認 AI 有沒有被關,到「<b>AI 大腦</b>」頁看開關。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>這一頁只能看,不能改。唯一會動到資料的是〔補位置庫 →〕,而它也只是幫你跳頁+預填名稱,實際要不要寫入還是你在位置庫頁決定。</li><li>清單是「<b>最近 400 筆取樣</b>」,不是今天的全部。所以數字拿來排優先順序可以,拿來當統計報表不行。</li><li>待修清單裡有超過一半的項目【不該】補位置庫。看到清單就無腦補是最常見的錯誤 —— 一定要先照卡片上的四種情況分類。</li><li>「<b>次數多</b>」不等於「<b>該補</b>」。一個打錯字的地名也可能被貼很多次,補進位置庫只是把錯字永久化。</li><li>這頁跟後台主頁是兩個獨立網頁,要各自登入一次。從「<b>AI 大腦</b>」頁按〔想看它學到什麼 →〕過來最省事。</li><li>改動歷史是空的不代表沒人改過,也可能是規則從來沒被自訂過(跑的是內建預設)。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-14">
+<h2><span class="num">14</span>難單紀錄(子頁)</h2>
+<p class="purpose">把系統抓不到、或抓得不對的派單原文原封不動列出來,給人看、給人挑。它不做任何自動處理 —— 目的是讓你看清楚「<b>難單到底長什麼樣</b>」,從裡面找出反覆出現的形態,再拿去給工程端修抓單規則。</p>
+<div class="callout tip"><b>什麼時候該來看這一頁</b>① 司機反映「<b>這種單老是抓不到</b>」,你想確認是不是普遍現象;② 要蒐集語料交給工程端改抓單規則的時候;③ 想知道系統目前的盲區在哪。平常不用天天看。</div>
+<div class="mock"><div class="mock-bar"><span class="dot"></span><b>TripRadar 後台</b><span class="tabs"><span class="">總覽</span><span class="">金鑰</span><span class="">回報</span><span class="">用量</span><span class="">診斷</span><span class="">AI</span><span class="">位置庫</span><span class="">系統</span><span class="">流程</span></span></div><div class="mock-body"><div class="mock-card"><div class="mock-title"><span class="anno">1</span>難單原文清單</div><div class="mock-skel"><i style="width:88%"></i><i style="width:64%"></i><i style="width:45%"></i></div></div></div></div><p class="cap">圖:「難單紀錄(子頁)」的版面。左上是分頁列(目前在 <b>流程</b>),下面由上到下共 1 張卡,編號對應後面的說明。</p><h3><span class="anno">1</span> 難單原文清單</h3>
+<p>一筆一列的派單原文,完整呈現不做任何整理。上方有〔↻ 重新整理〕和〔⧉ 複製全部原文〕,每一列右邊有〔📋 複製原文〕。</p>
+<div class="card"><h4>怎麼看</h4><p style="margin:0;">判斷原則寫在頁面上方:【多人反覆踩到的才值得動抓單規則】。一個人遇到一次的怪單通常不用理 —— 為了單一怪單去改規則,反而會把原本正常的單改壞。真正值得處理的長相是「<b>同一種形態重複出現</b>」,例如都是行首黏了代號、都是全形括號沒閉合、都是時間和地址黏在一起。看的時候不要一筆一筆看,要橫著看找共同點。</p></div>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:24%">按鈕</th><th>按下去會怎樣</th><th style="width:30%">注意</th></tr></thead><tbody><tr><td class="btn-cell">↻ 重新整理</td><td>去問伺服器拿最新的難單清單並重畫。</td><td><span class="muted-dash">—</span></td></tr><tr><td class="btn-cell">⧉ 複製全部原文</td><td>一次把目前清單的所有原文複製到剪貼簿,可以直接貼進語料檔給工程端。複製完會顯示「<b>已複製 N 筆原文</b>」。</td><td><span class="pill bad">小心</span> 派單原文可能含有客人姓名、電話、住址。貼給工程端之前請確認對方是內部人員,不要貼進公開的地方或外部服務。</td></tr><tr><td class="btn-cell">📋 複製原文</td><td>只複製這一筆的原文,適合單獨拿去問工程端「<b>這種要怎麼處理</b>」。</td><td><span class="pill bad">小心</span> 同上,原文可能含客人個資。</td></tr></tbody></table></div>
+<h3>遇到這些狀況怎麼辦</h3>
+<div class="tblwrap"><table class="tbl"><thead><tr><th style="width:34%">狀況</th><th>怎麼處理</th></tr></thead><tbody><tr><td><b>司機說「<b>XX 這種單都抓不到</b>」</b></td><td>先來這頁確認清單裡是不是真的有同樣形態的多筆。只有一兩筆,而且只有他一個人遇到,通常先不動規則(改了容易把別的單弄壞)。有好幾位司機、好幾筆同樣形態,才值得按〔📋 複製原文〕拿去給工程端。</td></tr><tr><td><b>要交一份語料給工程端改規則</b></td><td>按〔⧉ 複製全部原文〕一次拿走整份,貼進文字檔給工程端。附上你觀察到的共同點(例如「<b>這幾筆都是行首黏了 R70</b>」)會讓對方快很多。記得原文含客人個資,只給內部人員。</td></tr><tr><td><b>清單是空的</b></td><td>代表目前沒有蒐集到難單,是好事。不用做任何事。</td></tr></tbody></table></div>
+<h3>容易誤解的地方</h3>
+<ul class="gotcha"><li>這頁純粹是給人看的,沒有任何自動化 —— 看了不會有人自動去修,要你自己判斷、自己把原文帶去給工程端。</li><li>不要看到一筆怪單就要求改規則。抓單規則是全隊共用的,為了一筆特例去改,很可能讓原本正常的單開始出錯。判斷門檻是「<b>多人、反覆</b>」。</li><li>原文是原封不動的派單內容,裡面可能有客人姓名、電話、地址。複製出去之前先確認收的人是內部人員。</li><li>這頁跟後台主頁是兩個獨立網頁,要各自登入一次。</li><li>清單不會自己更新,要看最新的請按〔↻ 重新整理〕。</li></ul>
+
+</section>
+
+<section class="sheet" id="ch-A">
+  <h2><span class="num">A</span>出事了怎麼辦</h2>
+  <p class="purpose">照「你聽到的症狀」查,不用先知道是哪一頁的問題。</p>
+
+  <h3>司機來反映</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:30%">司機說</th><th style="width:16%">去哪一頁</th><th>怎麼處理</th></tr></thead>
+    <tbody>
+      <tr><td><b>我進不去 App / 一直被擋</b></td><td class="btn-cell">金鑰</td><td>搜他的名字,看到期狀態:紅色=過期,收款後續約。灰色=被停用,確認是不是誤停。都正常的話問他是不是換了手機 —— 換手機要按〔解綁〕他才能重新登入。</td></tr>
+      <tr><td><b>XX 社區 / 大樓 App 定不到</b></td><td class="btn-cell">位置庫</td><td>先用最下面的搜尋框查有沒有這一筆。沒有 → 新增(座標一定要開地圖核對、<b>要勾「已驗證」</b>)。有但司機還是定不到 → 看是不是灰色「未驗證」,或是「命中」一直掛 0(代表司機打的字跟你存的名字對不上,要把他的寫法加進別名)。</td></tr>
+      <tr><td><b>這種單一直抓不到</b></td><td class="btn-cell">難單紀錄</td><td>看清單裡是不是有好幾筆同樣形態。只有一兩筆、只有他遇到 → 先不動規則。多人反覆踩到 → 複製原文給工程端。</td></tr>
+      <tr><td><b>卡片地址怪怪的,跟原文對不起來</b></td><td class="btn-cell">AI 大腦</td><td>先把「AI 抓址層」開關<b>關掉</b>止血,再看 AI 學習記憶頁的待修清單確認是不是規則被改壞了。</td></tr>
+      <tr><td><b>按了接單,卡在 LINE 聊天列表沒進群</b></td><td class="btn-cell">流程</td><td>對第三張圖逐格確認:他是不是本來就在群裡、App 裡的「跳轉補救」開關有沒有開、無障礙權限有沒有授權。這頁只說明順序,個別失敗紀錄要看回報頁。</td></tr>
+      <tr><td><b>卡片上的距離怪怪的</b></td><td class="btn-cell">用量</td><td>看「距離+預估時間來源」那格,確認是不是圖資廠商當天出問題。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>後台自己跳出來的</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:30%">你看到</th><th style="width:16%">去哪一頁</th><th>怎麼處理</th></tr></thead>
+    <tbody>
+      <tr><td><b>紅色警告條「系統有 N 項需要注意」</b></td><td class="btn-cell">診斷</td><td>按「看詳情 →」。每一項都寫了現在的數字和建議動作,照著做。</td></tr>
+      <tr><td><b>「今日 Google 呼叫已達上限 80%」</b></td><td class="btn-cell">用量</td><td>再撞下去保險絲會跳,跳了全隊只剩免費定位、司機會開始查不到地址。當天要嘛調高上限(會多花錢),要嘛接受降級。長期解法是到位置庫把常查的地名補進去。</td></tr>
+      <tr><td><b>「AI 救回率連兩天下滑」</b></td><td class="btn-cell">AI 學習記憶</td><td>查兩份規則改動歷史,看那幾天有沒有人動過規則。沒人改的話看 AI 開關和每日上限。</td></tr>
+      <tr><td><b>系統頁「⚠ N 位需注意」</b></td><td class="btn-cell">系統</td><td>看那幾列:查地址次數高 + 查無率高 + 今日接單 0 單 = 最可疑。點名字跳到金鑰頁核對身分,確認是亂刷才停用。有在接單的忙司機通常只是量大。</td></tr>
+      <tr><td><b>某頁顯示「載入失敗」「讀取失敗」</b></td><td class="btn-cell">—</td><td>先確認是不是用<b>唯讀監控密碼</b>登入 —— 高風險用量和儲存空間只給管理員看。用管理員密碼登入就正常了。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>做錯了怎麼救</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:30%">手滑做了</th><th>能不能救</th></tr></thead>
+    <tbody>
+      <tr><td>續約按錯月數</td><td><span class="pill warn">可救</span> 到金鑰頁用「加天數」填<b>負數</b>扣回來。</td></tr>
+      <tr><td>誤停用司機</td><td><span class="pill ok">可救</span> 在金鑰頁按〔啟用〕就恢復。</td></tr>
+      <tr><td>位置庫座標存錯</td><td><span class="pill ok">可救</span> 按〔編輯〕改正確座標。急著止血可先按〔取消驗證〕讓 App 立刻停用這一筆。<b>不要用刪除</b> —— 刪了別名和累積資料都沒了。</td></tr>
+      <tr><td>公告發錯</td><td><span class="pill warn">部分</span> 按〔停止目前公告〕只擋住還沒收到的人。已經跳在司機畫面上的收不回來。</td></tr>
+      <tr><td>忽略候選 / 標噪音 / 刪除地點</td><td><span class="pill bad">救不回</span> 後台沒有復原按鈕,要請工程端進資料庫處理。</td></tr>
+      <tr><td>清理了 45 天前的圖片影片</td><td><span class="pill bad">救不回</span> 檔案已刪除。回報的文字還在,但照片影片沒了。</td></tr>
+    </tbody>
+  </table></div>
+
+  
+</section>
+
+<section class="sheet" id="ch-B">
+  <h2><span class="num">B</span>名詞對照表</h2>
+  <p class="purpose">後台上出現的字,白話是什麼意思。</p>
+
+  <h3>常見詞</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:22%">後台上寫</th><th>意思</th></tr></thead>
+    <tbody>
+      <tr><td class="btn-cell">金鑰</td><td>司機的啟用序號,長相是 <code>TR-</code> 開頭加兩組四碼。一把綁一支手機。</td></tr>
+      <tr><td class="btn-cell">geocode</td><td>把「地址文字」查成「地圖座標」。後台有些地方直接用這個英文字,就是<b>查地址</b>的意思。</td></tr>
+      <tr><td class="btn-cell">查無</td><td>地址查不到座標。查無率高 = 很多地址定不到。</td></tr>
+      <tr><td class="btn-cell">命中</td><td>查到了。「免費命中率」= 有多少比例是用免費資料查到的,越高越省錢。</td></tr>
+      <tr><td class="btn-cell">位置庫</td><td>我們自己建的「地名 → 座標」對照表。<b>優先權最高</b>,會蓋過 Google。</td></tr>
+      <tr><td class="btn-cell">門牌庫</td><td>政府開放的門牌資料,298 萬筆,免費。</td></tr>
+      <tr><td class="btn-cell">快取 / 墓碑</td><td>查過的結果存起來下次直接用(免費)。「墓碑」是記住「這個查過、查不到」,避免一直重複花錢查。</td></tr>
+      <tr><td class="btn-cell">保險絲</td><td>每日花費上限。撞到就自動停止付費查詢,只剩免費來源 —— 用來防止程式出錯把帳單燒爆。</td></tr>
+      <tr><td class="btn-cell">Map8 / Places</td><td>付費的地圖資料廠商。Map8 是台灣圖霸,Places 是 Google 的店家搜尋,只在剩店名時當最後救援。</td></tr>
+      <tr><td class="btn-cell">AI 抓址</td><td>地址查不到時,AI 幫忙把地址那一段從雜訊裡剪乾淨,再查一次。</td></tr>
+      <tr><td class="btn-cell">AI 看單救援</td><td>抓單規則一張都沒抓到時,AI 幫忙讀整則原文找出上車地。預設是<b>關</b>的。</td></tr>
+      <tr><td class="btn-cell">救回率</td><td>AI 出手的單裡,最後真的查到座標的比例。看趨勢比看絕對值準。</td></tr>
+      <tr><td class="btn-cell">候選</td><td>系統自己觀察到「這個名字好像有固定座標」而提出的建議,等你確認後才入庫。</td></tr>
+      <tr><td class="btn-cell">離散</td><td>同一個名字每次查到的位置差多遠。<b>離散大(紅色)= 不要直接採用</b>,通常是配到同名的別家店。</td></tr>
+      <tr><td class="btn-cell">已驗證</td><td>位置庫那一筆有沒有被確認過。<b>只有打勾的 App 才會用</b> —— 沒勾等於白補。</td></tr>
+      <tr><td class="btn-cell">解綁</td><td>解除金鑰跟手機的綁定。司機換手機時要按這個,他才能在新手機登入。</td></tr>
+      <tr><td class="btn-cell">BAL</td><td>Android 系統對「App 在背景時把畫面拉到前面」的限制。跟跳轉失敗有關,看到不用緊張。</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>顏色的意思(全站一致)</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:20%">顏色</th><th>代表</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill ok">青綠</span></td><td>正常 / 免費 / 最快路徑</td></tr>
+      <tr><td><span class="pill warn">黃橘</span></td><td>要注意 / 要花錢 / 快到期</td></tr>
+      <tr><td><span class="pill bad">紅</span></td><td>出事了 / 已過期 / 不可逆的動作</td></tr>
+      <tr><td><span class="pill info">藍</span></td><td>資訊性,不用處理</td></tr>
+      <tr><td>灰</td><td>已停用 / 未驗證 / 測試機(不計分)</td></tr>
+    </tbody>
+  </table></div>
+
+  
+</section>
+
+<section class="sheet" id="ch-C">
+  <h2><span class="num">C</span>絕對不要做的事</h2>
+  <p class="purpose">這幾件事會影響全隊、而且救不回來。動手前先讀完這一頁。</p>
+
+  <div class="callout danger">
+    <b>① 位置庫的座標沒開地圖核對就存</b>
+    位置庫優先權<b>比 Google 還高</b>,而且系統不會自己修正。寫錯一筆 = 全隊、永久、每次都導到錯地方,直到有人發現為止。
+    「🔍 查座標」查到的、批量匯入「查到的地方」那一欄,<b>都不保證正確</b> —— 免費圖資在台灣的店名和社區資料很稀疏,查不到時常常會配到附近隨便一個點。
+    每一筆都要點開地圖用眼睛確認。這一步不能省。
+  </div>
+
+  <div class="callout danger">
+    <b>② 批量匯入沒逐筆核對就按寫入</b>
+    這是全後台唯一一個「寫進去就直接生效」的動作 —— 批量寫入的每一筆<b>自動標成已驗證,App 立刻採用</b>,不像手動新增還能先不勾驗證。
+    一次寫 200 筆錯座標,就是 200 個地方導錯。
+  </div>
+
+  <div class="callout danger">
+    <b>③ 用「緊急」等級發非緊急的公告</b>
+    緊急公告會在<b>每一位司機</b>手機跳系統通知加彈窗,包含已過期和被停用的人。深夜或行車中會吵到全隊。
+    只有「全隊停擺、必須立刻更新 App」這種等級才用緊急,其餘一律用「一般」。
+    而且發送<b>沒有二次確認</b>,按下去就送出。
+  </div>
+
+  <div class="callout warn">
+    <b>④ 看到待補清單就無腦補位置庫</b>
+    清單裡超過一半的項目<b>不該</b>補。完整門牌查不到是門牌庫缺、有錯字是原文就錯(補了等於把錯字永久化)、行首黏代號是抓單規則要修 —— 這三種補了都沒用。
+    只有「店名 / 地標 / 社區名」那一類才值得補。次數多只代表常出現,不代表該補。
+  </div>
+
+  <div class="callout warn">
+    <b>⑤ 為了一筆怪單就要求改抓單規則</b>
+    抓單規則是全隊共用的。為了單一特例去改,很可能讓原本正常的單開始出錯。
+    判斷門檻是<b>「多人、反覆踩到」</b> —— 一個人遇到一次的怪單通常不用理。
+  </div>
+
+  <div class="callout warn">
+    <b>⑥ 改 AI 規則時只寫一條就存</b>
+    客製規則是<b>「取代」整套內建預設,不是「附加」</b>。只寫一條就存,等於把原本所有規則都丟掉。
+    正確做法:先按〔載入〕把目前規則抓下來,在它上面加你的新規則,再整份存回去。
+    另外「改動理由」一定要寫清楚 —— 出事時那是唯一的線索。
+  </div>
+
+  <h3>沒有復原按鈕的動作</h3>
+  <div class="tblwrap"><table class="tbl">
+    <thead><tr><th style="width:34%">動作</th><th>後果</th></tr></thead>
+    <tbody>
+      <tr><td><b>忽略候選 / 標噪音</b></td><td>那個名字永久不再出現在清單裡。</td></tr>
+      <tr><td><b>刪除位置庫地點</b></td><td>整筆消失,別名和累積資料一起沒了。座標錯請用〔編輯〕不要用刪除。</td></tr>
+      <tr><td><b>清理 45 天前的媒體</b></td><td>全隊所有司機 45 天前回報的照片影片一起刪掉。文字保留。</td></tr>
+      <tr><td><b>產生金鑰</b></td><td>沒有取消也沒有二次確認,手滑多按要自己去清單刪掉。</td></tr>
+      <tr><td><b>續約</b></td><td>沒有確認視窗,按下立刻生效、直接影響收費。月數是吃金鑰頁上方的下拉選單。</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout tip">
+    <b>把風險降到最低的做法</b>
+    不需要改資料的人,<b>發唯讀監控密碼</b>就好。唯讀帳號所有會改到資料的按鈕都會消失或按不動,標題旁邊會顯示「👁 唯讀監控」—— 這樣就不會有人手滑。
+  </div>
+
+  
+</section>
+  </main>
+</div>
+
+<script>
+var $ = function(id){ return document.getElementById(id); };
+
+/* ── 主題(跟後台共用 localStorage.tr_theme)── */
+var SUN  = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round'><circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/></svg>";
+var MOON = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2Z'/></svg>";
+function isDark(){
+  var t = document.documentElement.getAttribute('data-theme');
+  if(t) return t === 'dark';
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches;
+}
+function paintTheme(){ $('themeBtn').innerHTML = isDark() ? SUN : MOON; }
+$('themeBtn').addEventListener('click', function(){
+  var next = isDark() ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('tr_theme', next); }catch(e){}
+  paintTheme();
+});
+paintTheme();
+
+$('printBtn').addEventListener('click', function(){ window.print(); });
+
+/* ── 目錄搜尋:比對章節標題,也比對內文 ── */
+var LINKS = [].slice.call(document.querySelectorAll('.mnav a'));
+var SECT  = LINKS.map(function(a){ return document.getElementById(a.getAttribute('href').slice(1)); });
+var TEXT  = SECT.map(function(s){ return s ? s.innerText.toLowerCase() : ''; });
+/* 標題命中優先:打「位置庫」時,它其實在每一章的內文都出現過 —— 全部列出來等於沒篩。
+   所以先看有沒有章節【標題】就叫這個名字,有就只給那一章;沒有才退回內文全文搜尋。 */
+$('q').addEventListener('input', function(){
+  var v = this.value.trim().toLowerCase();
+  var byTitle = LINKS.map(function(a){ return !!v && a.getAttribute('data-t').toLowerCase().indexOf(v) >= 0; });
+  var useTitle = byTitle.some(Boolean);
+  var n = 0;
+  LINKS.forEach(function(a, i){
+    var hit = !v || (useTitle ? byTitle[i] : TEXT[i].indexOf(v) >= 0);
+    a.classList.toggle('dim', !hit);
+    if(hit) n++;
+  });
+  $('navEmpty').classList.toggle('hide', n > 0);
+});
+
+/* ── 捲動高亮:目前讀到哪一章 ── */
+var spy = new IntersectionObserver(function(es){
+  es.forEach(function(e){
+    if(!e.isIntersecting) return;
+    var id = e.target.id;
+    LINKS.forEach(function(a){ a.classList.toggle('on', a.getAttribute('href') === '#' + id); });
+  });
+}, { rootMargin: '-80px 0px -70% 0px', threshold: 0 });
+SECT.forEach(function(s){ if(s) spy.observe(s); });
+</script>
+</body>
+</html>
