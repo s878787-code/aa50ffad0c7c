@@ -921,6 +921,15 @@
         <div class="growth-readout"><span class="gv" id="dbTotal">—</span><span class="gd muted" id="dbTotalSub"></span></div>
         <div id="dbTables" style="margin-top:8px;"><div class="muted" style="font-size:13px;">點「重新整理」載入</div></div>
         <div class="muted" style="font-size:11.5px;margin-top:8px;line-height:1.6;">派單原文主要存在 <b>geo_usage</b>(付費呼叫+防濫用留的原文),是唯一會持續長大的表;<b>door_plates</b> 是政府門牌庫(298 萬筆靜態資料,不會長);<b>geo_cache</b> 是定位快取。</div>
+        <!-- geo_usage 清理:刪 N 天前【資料列】(索引跟著縮)。admin 才顯示;下限 30 天由 RPC 強制 -->
+        <div id="dbCleanup" class="hide" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line);">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;">
+            <span class="muted">清理 geo_usage 舊資料列:</span>
+            <button id="dbClean90" style="background:var(--surface);color:var(--muted);border:1px solid var(--line);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12.5px;">清理 90 天前 (—)</button>
+            <button id="dbClean30" style="background:var(--surface);color:var(--muted);border:1px solid var(--line);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:12.5px;">清理 30 天前 (—)</button>
+          </div>
+          <div class="muted" style="font-size:11px;margin-top:5px;line-height:1.6;">刪的是【整列】(讀取窗最長 14 天,刪 30 天前零功能影響)。DELETE 後檔案不會馬上縮小,但成長被止住、空間會被新列重複使用。</div>
+        </div>
       </div>
 
       <!-- 🌐 官網流量(site_views 表;官網 sendBeacon → sitehit 函式計數,零個資) -->
@@ -2267,6 +2276,14 @@
       }
       var db = res.db || {};
       $('dbTotal').textContent = fmtBytes(db.db_bytes);
+      // geo_usage 清理按鈕:顯示會刪幾筆(admin 才顯示這區)
+      var age = db.geo_usage_age || {};
+      var cu = $('dbCleanup');
+      if(cu){
+        cu.className = (ROLE === "viewer") ? "hide" : "";
+        $('dbClean90').textContent = "清理 90 天前 (" + (Number(age.d90)||0).toLocaleString() + ")";
+        $('dbClean30').textContent = "清理 30 天前 (" + (Number(age.d30)||0).toLocaleString() + ")";
+      }
       var tables = db.tables || [];
       $('dbTotalSub').textContent = " 資料庫總大小・前 "+tables.length+" 大的表";
       var top = tables.length ? (Number(tables[0].bytes)||1) : 1;
@@ -2285,6 +2302,21 @@
     });
   }
   $('dbStoreRefresh').addEventListener('click', loadDbStorage);
+  function doGeoCleanup(days){
+    // 刪之前先重抓一次最新計數(避免用過期數字),再確認
+    api("dbStorage").then(function(res){
+      var age = (res && res.db && res.db.geo_usage_age) || {};
+      var n = days === 90 ? (Number(age.d90)||0) : (Number(age.d30)||0);
+      if(!n){ toast("目前沒有 " + days + " 天前的資料可清"); loadDbStorage(); return; }
+      if(!confirm("刪除 geo_usage 中 " + days + " 天前的 " + n.toLocaleString() + " 筆資料列?\n讀取窗最長 14 天,此操作零功能影響;檔案不會馬上縮小,但成長止住、空間會被新列重用。")) return;
+      api("cleanupGeoUsage", { days: days }).then(function(r){
+        if(r && r.ok){ toast("已刪除 " + (Number(r.deleted)||0).toLocaleString() + " 筆"); loadDbStorage(); }
+        else toast("失敗:" + ((r&&r.error)||"?"));
+      });
+    });
+  }
+  $('dbClean90').addEventListener('click', function(){ doGeoCleanup(90); });
+  $('dbClean30').addEventListener('click', function(){ doGeoCleanup(30); });
   document.addEventListener('click', function(e){
     var r = e.target.closest && e.target.closest("#storageRefresh"); if(r){ loadStorage(); return; }
     var c = e.target.closest && e.target.closest("[data-a='cleanmedia']"); if(!c) return;
