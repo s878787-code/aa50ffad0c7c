@@ -572,6 +572,17 @@
         <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8 呼叫=命中+被護欄擋下(兩者都計費,約 Google 45 折);AI 抓址／看單救援=實際打出去的發數(含逾時與被腦補閘擋下的,<b>就是各自保險絲數的那個數字</b>,兩層額度獨立);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
       </div>
 
+      <!-- 0804:距離引擎 OSRM 主辦監控。切換日 8/4 —— 看 OSRM 扛不扛得住、Map8 後備有沒有一直被叫(Map8 8/7 要斷)。 -->
+      <div class="card" id="osrmCard">
+        <div class="rowline"><span class="cardtitle">🛰️ 距離引擎 · OSRM 主辦</span>
+          <span class="muted" style="font-size:12px;">0804 起距離從 Map8 換成自架 OSRM 主辦。盯它扛得住嗎、Map8 後備會不會一直被叫。</span>
+          <span class="muted" id="osrmPct" style="margin-left:auto;font-family:var(--mono);font-weight:700;">—</span>
+        </div>
+        <div id="osrmTiles" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;"></div>
+        <div class="chartbox" id="osrmChart" style="margin-top:4px;"></div>
+        <div class="muted" id="osrmNote" style="font-size:11.5px;margin-top:6px;line-height:1.6;"></div>
+      </div>
+
       <div class="card" id="capCard">
         <div class="rowline">
           <span class="cardtitle">保險絲</span>
@@ -1854,6 +1865,54 @@
      定義:ai_parse 這一層【出手的單】裡,最後真的查到座標的比例(ok_n / n)。
      它會隨「範例庫累積 + 規則被教」而上升 —— 是這條學習迴圈唯一的成效指標。
      重用既有 trendSVG(同一套 SVG 繪圖,不另外引函式庫)。 */
+  /* 🛰️ 距離引擎 OSRM 主辦監控(0804)。切換日 8/4:距離從 Map8 改自架 OSRM 主辦。
+     這張卡看三件事:① OSRM 今天扛了多少 %(健康時近 100%)② Map8 後備有沒有一直被叫
+     (健康時應趨近 0;它 8/7 要斷)③ distance_osrm 逐日趨勢(能看到 8/4 切換後的跳升)。
+     ⚠️ App v33.1 的「移動即時距離」是手機端直線算的、不打伺服器,不進這張卡 —— 這裡只有進單那次的路程計算。 */
+  function renderOsrmCard(res){
+    var host = $('osrmTiles'); if(!host) return;
+    var s = (res && res.stats) || {}, today = s.today || [];
+    function n(api){ var x = 0; today.forEach(function(r){ if(r.api === api) x += Number(r.n||0); }); return x; }
+    var osrm = n("distance_osrm"), m8 = n("map8_route"),
+        cache = n("cache_hit_route"), end = n("distance_geoapify") + n("distance_google");
+    var live = osrm + m8 + end;   // 實際「打出去算」的(快取不算,它沒呼叫任何引擎)
+    var pctEl = $('osrmPct');
+    if(live === 0){ pctEl.textContent = "今日尚無距離計算"; pctEl.style.color = ""; }
+    else {
+      var pct = Math.round(osrm * 100 / live);
+      pctEl.textContent = "OSRM 扛 " + pct + "%";
+      pctEl.style.color = pct >= 90 ? "var(--teal-ink)" : (pct >= 60 ? "var(--amber)" : "var(--red)");
+    }
+    function tile(label, val, color, sub){
+      return "<div style='flex:1;min-width:118px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;'>"
+        + "<div style='font-family:var(--mono);font-weight:800;font-size:19px;color:" + (color||"var(--ink)") + ";'>" + Number(val).toLocaleString() + "</div>"
+        + "<div class='muted' style='font-size:11.5px;'>" + label + "</div>"
+        + "<div class='muted' style='font-size:10.5px;margin-top:2px;'>" + sub + "</div></div>";
+    }
+    host.innerHTML =
+        tile("📏 OSRM 主辦", osrm, "var(--teal-ink)", "自架·查詢無上限")
+      + tile("🗺️ Map8 後備", m8, m8 > 0 ? "var(--amber)" : "var(--muted)", m8 > 0 ? "OSRM 沒接住才跳" : "健康時應為 0")
+      + tile("⚡ 快取直接回", cache, "var(--muted)", "同路線秒回·沒打引擎")
+      + tile("🔻 末端後備", end, end > 0 ? "var(--amber)" : "var(--muted)", "geoapify/google");
+    var byDay = {};
+    (s.days || []).forEach(function(r){ if(r.api === "distance_osrm"){ byDay[r.day] = (byDay[r.day]||0) + Number(r.n||0); } });
+    var ds = Object.keys(byDay).sort();
+    var chart = $('osrmChart');
+    if(chart){
+      if(ds.length < 2){ chart.innerHTML = "<div class='muted' style='font-size:12px;padding:12px 0;'>OSRM 逐日趨勢:資料還不夠畫線(需至少兩天)。</div>"; }
+      else {
+        var vals = ds.map(function(d){ return byDay[d]; });
+        var labels = ds.map(function(d){ return d.slice(5).replace("-","/"); });
+        trendSVG(chart, labels, vals, function(v){ return Number(v).toLocaleString(); });
+      }
+    }
+    $('osrmNote').innerHTML =
+        "📏 <b>OSRM 主辦</b>=進單時算「司機→上車」路程(自架、查詢無上限、無按次費用)。"
+      + "🗺️ <b>Map8 後備</b>只在 OSRM 沒接住(逾時/失敗)時跳,健康時應趨近 0 —— 這格變大 = 自架 OSRM 那台在出問題,"
+      + "而且它還在吃 Map8 日上限(<b>Map8 預計 8/7 斷</b>,斷前務必先讓 OSRM 恢復)。"
+      + "<br>⚠️ App v33.1 的「移動即時距離」是<b>手機端直線算的、不打伺服器</b>,不會出現在這裡;這張卡只反映進單那一次的路程計算。";
+  }
+
   function renderAiTrend(res){
     var host = $('aiTrendChart'); if(!host) return;
     var byDay = {};
@@ -2517,6 +2576,7 @@
       renderHealth(computeHealthWarns(res));
       renderClsCard(today);
       renderAiTrend(res);
+      renderOsrmCard(res);   // 0804:距離引擎 OSRM 主辦監控
       /* 0804:資料抵達時人若正停在「運作流程」頁,把瀑布的今日命中數補畫上去
          —— 否則要離開再回來才看得到。 */
       if($('tab-flow') && !$('tab-flow').classList.contains('hide')) renderFlow();
