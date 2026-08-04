@@ -547,10 +547,10 @@
         <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 抓址層(只修座標)</div></div>
-        <!-- 0731:ETA 改由 Map8 路徑規劃主辦 → 這格看它今天扛了多少、後備接了多少。
-             可用度掉下來就代表 Map8 那邊在出事,司機看到的預估時間會退回 OSRM 的口徑。 -->
+        <!-- 0804:距離改由自架 OSRM 主辦 → 這格看它今天扛了多少 % 、後備(Map8/其他)接了多少。
+             掉下來就代表 OSRM 那台在出事,距離會退到 Map8(吃日上限)甚至直線。 -->
         <div class="kpi" style="cursor:default;grid-column:span 2;">
-          <div class="n" id="etaSrc">—</div><div class="t" id="etaSrcSub">距離+預估時間來源(今日)</div>
+          <div class="n" id="etaSrc">—</div><div class="t" id="etaSrcSub">距離來源(今日)</div>
         </div>
       </div>
 
@@ -1730,12 +1730,11 @@
     /* ⚠️ Map8 全系列 0731 起 per1000=0【不計入本月預估成本】—— 試用免費至 08-07(使用者拍板)。
        原單價 US$2.26/千 記在 trial 欄位;到期轉正式時把 trial 的值搬回 per1000 即恢復計費。
        用量本身照記(趨勢圖「Map8 呼叫」),談級距要用的就是那個量。 */
-    /* 🗺️ Map8 路徑規劃:0731 起【距離與預估時間都走這裡】(使用者拍板)。一發拿兩個數字,
-       比分開算少一趟熱路徑往返,而且 km 與分鐘出自同一條路線。
-       與地址定位共用同一個 4000/日 錢包與同一個單價。
-       ⚠️ 盯 distance_osrm:它每跳一次就是一次【後備】—— 那個比值就是 Map8 的可用度。 */
-    map8_route:         { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 路徑規劃(距離+預估時間·主用·試用免費)" },
-    map8_route_err:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃失敗(→ 退 OSRM 後備)" },
+    /* 🗺️ Map8 路徑規劃:0804 起改【後備】(主辦換自架 OSRM;ETA 已移除,Map8 一發拿兩數字的優勢消失)。
+       只在 OSRM 沒設/逾時/失敗時才跳,仍與地址定位共用同一個日上限錢包與單價。
+       ⚠️ 平常應該幾乎是 0;map8_route 的量變大 = 主辦 OSRM 那台在出問題,是告警訊號。 */
+    map8_route:         { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 路徑規劃(距離·後備·OSRM 算不出來才跳·試用免費)" },
+    map8_route_err:     { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃失敗(後備也失敗 → 退直線)" },
     map8_route_capped:  { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 路徑規劃 超日上限被擋(與定位共用 10000)" },
     /* 已停用的一次性量測(0731):Map8 vs OSRM 距離/時間對照,109 筆後結論明確就移除了 ——
        距離中位數 −1.1%、時間中位數 +26.1%。留著標籤是為了讓當天的歷史列還看得懂。
@@ -1754,7 +1753,7 @@
     miss_capped:        { free: 0,     per1000: 0,  paid:false, label: "🪦 寫 6 小時短效墓碑(額度用盡類)" },
     miss_skipped_degraded: { free: 0,  per1000: 0,  paid:false, label: "🛡️ 系統故障→拒寫墓碑(0724 鐵律,防誤烙印)" },
     // ── 📏 距離(算 km 與 ETA;OSRM 順便回行車秒數)──────────────
-    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "📏 OSRM 距離+ETA(後備·Map8 算不出來才跳)" },
+    distance_osrm:      { free: 0,     per1000: 0,  paid:false, label: "📏 OSRM 距離(主辦·自架·查詢無上限)" },
     distance_geoapify:  { free: 0,     per1000: 0,  paid:false, label: "📏 Geoapify 距離(免費 3000/日)" },
     distance_google:    { free: 10000, per1000: 5,  paid:true,  label: "📏💰 Google 距離(退路)" },
     // ── 🧾 分類器歸因(每張新判死的單背景貼標籤 → 下一輪該修哪裡)──
@@ -2220,6 +2219,19 @@
     var gToday = geoSum(today, GOOGLE_APIS);
     var cap = Number(s.cap || 0);
     if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
+
+    /* 🛰️ OSRM 主辦健康(0804):距離改 OSRM 主辦後,若它撐不住,是 Map8 在頂 —— 但 Map8 預計 8/7 斷,
+       所以「OSRM 扛不動」必須提前亮。健康時 OSRM 應接近 100%;低於 60% 且有量 = 那台在出問題,
+       趁 Map8 還在趕快看機器,別等斷了才發現主辦也在喘。 */
+    (function(){
+      function n(api){ var x=0; today.forEach(function(r){ if(r.api===api) x+=Number(r.n||0); }); return x; }
+      var osrm=n("distance_osrm"), fb=n("map8_route")+n("distance_geoapify")+n("distance_google");
+      var tot=osrm+fb;
+      if(tot>=100){
+        var pct=Math.round(osrm*100/tot);
+        if(pct<60) warns.push((pct<30?"🔴":"🟠")+" 距離主辦 OSRM 今日只扛了 "+pct+"%(後備 Map8/其他接了 "+fb.toLocaleString()+" 次)—— 自架 OSRM 那台可能在出問題。⚠️ Map8 預計 8/7 斷,斷之前務必先讓 OSRM 恢復,否則距離會退到直線");
+      }
+    })();
     var rawRows = Number(s.raw_rows || 0);
     if(rawRows > 1000000) warns.push("🔴 用量流水帳 " + Math.round(rawRows/10000)/100 + " 百萬列,寫入量異常(正常應 <50 萬)——找工程師看清理排程有沒有掛");
 
@@ -2509,26 +2521,25 @@
          —— 否則要離開再回來才看得到。 */
       if($('tab-flow') && !$('tab-flow').classList.contains('hide')) renderFlow();
       if(s.cap != null && document.activeElement !== $('geoCap')) $('geoCap').value = s.cap;
-      /* ── ETA 來源健康度(0731)──
-         Map8 路徑規劃是主辦、OSRM 是後備。可用度 = map8_route ÷ (map8_route + 後備實際算成的)。
-         看的是「有多少張卡的預估時間真的出自 Map8」,不是呼叫成功率 —— 後者會漏掉
-         「Map8 逾時 → OSRM 補上」那一整類(對司機來說那張卡的 ETA 就不是 Map8 的口徑)。 */
+      /* ── 距離來源健康度(0804 改:OSRM 主辦、Map8 後備)──
+         可用度 = distance_osrm ÷ (osrm + 後備實際算成的)。看的是「有多少張卡的距離真的出自
+         主辦 OSRM」。健康時應該接近 100%;掉下來代表自架 OSRM 那台在出問題,Map8/其他後備
+         正在接手(會開始吃 Map8 日上限,持續低就要看 OSRM 機器)。 */
       (function(){
         var t = (res.stats && res.stats.today) || [];
         function n(api){ var x = 0; t.forEach(function(r){ if(r.api === api) x += Number(r.n||0); }); return x; }
-        /* Map8 主辦距離+ETA 之後,distance_osrm 只在【後備】時才記帳
-           (背景對照那一發刻意不記帳,不然會污染這個分母)。所以它就是後備次數。 */
+        var osrm = n("distance_osrm");
         var m8 = n("map8_route"), cap = n("map8_route_capped"), err = n("map8_route_err");
-        var fb = n("distance_osrm") + n("distance_geoapify") + n("distance_google");
-        var tot = m8 + fb;
+        var fb = m8 + n("distance_geoapify") + n("distance_google");
+        var tot = osrm + fb;
         var el = $('etaSrc'), sub = $('etaSrcSub');
         if(!el) return;
-        if(tot === 0){ el.textContent = "—"; el.style.color = ""; sub.textContent = "預估時間來源(今日):尚無資料"; return; }
-        var pct = Math.round(m8 * 100 / tot);
+        if(tot === 0){ el.textContent = "—"; el.style.color = ""; sub.textContent = "距離來源(今日):尚無資料"; return; }
+        var pct = Math.round(osrm * 100 / tot);
         el.textContent = pct + "%";
         el.style.color = pct >= 90 ? "var(--teal)" : (pct >= 60 ? "var(--amber)" : "var(--red)");
-        sub.textContent = "距離+預估時間出自 Map8 · 🗺️" + m8.toLocaleString() + " 張;後備 " + fb.toLocaleString() + " 張"
-          + (err ? " · 失敗 " + err : "") + (cap ? " · 🔴超上限 " + cap : "");
+        sub.textContent = "距離出自 OSRM(主辦) · 📏" + osrm.toLocaleString() + " 張;後備 " + fb.toLocaleString() + " 張"
+          + (m8 ? " · 🗺️Map8 " + m8 : "") + (err ? " · Map8 失敗 " + err : "") + (cap ? " · 🔴Map8 超上限 " + cap : "");
       })();
       /* null = 伺服器讀不到 → 不覆寫輸入框(同 aiCap:回填 0 再按按鈕會把上限寫死成 0) */
       if(res.map8_daily_cap != null && document.activeElement !== $('map8Cap')) $('map8Cap').value = res.map8_daily_cap;
