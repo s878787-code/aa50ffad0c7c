@@ -180,11 +180,61 @@
   .fbar{ height:3px; border-radius:2px; background:var(--teal); opacity:.5; margin-top:4px; width:0; animation:fgrow .9s var(--ease) forwards; }
   .fbar.paid{ background:var(--amber); }
   @keyframes fgrow{ to{ width:var(--w,0%);} }
+
+  /* ══ 🧠 AI 引擎(0805):運作流程頁的「它正在努力運轉」元件 ══
+     沿用既有 flow 的動畫語彙(脈衝環=fping 家族、資料點流動=fflow 家族),不另創一套風格。
+     全部純 CSS(無 JS 逐幀),GPU 只動 transform/opacity —— 後台開著也不吃效能。 */
+  .aieng{ display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  /* 核心:同心聲納環 + 呼吸感 + 三顆繞行光點 */
+  .aicore{ position:relative; width:74px; height:74px; flex-shrink:0; display:grid; place-items:center; }
+  .aicore .ring{ position:absolute; inset:0; border-radius:50%; border:1.5px solid var(--teal);
+    opacity:0; animation:aisonar 2.8s cubic-bezier(.2,.6,.3,1) infinite; }
+  .aicore .ring:nth-child(2){ animation-delay:.93s; }
+  .aicore .ring:nth-child(3){ animation-delay:1.86s; }
+  .aicore .orb{ position:absolute; inset:0; animation:aispin 5.2s linear infinite; }
+  .aicore .orb i{ position:absolute; top:-3px; left:50%; margin-left:-3px; width:6px; height:6px;
+    border-radius:50%; background:var(--teal); opacity:.85; }
+  .aicore .orb:nth-child(5){ animation-duration:7.4s; animation-direction:reverse; }
+  .aicore .orb:nth-child(5) i{ background:var(--teal-lt); width:5px; height:5px; }
+  .aicore .brain{ position:relative; z-index:2; width:40px; height:40px; border-radius:50%;
+    display:grid; place-items:center; font-size:19px;
+    background:var(--teal-soft); border:1.5px solid var(--teal-line);
+    animation:aibreath 2.4s ease-in-out infinite; }
+  @keyframes aisonar{ 0%{ transform:scale(.52); opacity:.85;} 70%{ opacity:.22;} 100%{ transform:scale(1); opacity:0;} }
+  @keyframes aispin{ to{ transform:rotate(360deg);} }
+  @keyframes aibreath{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.08);} }
+  /* 模型名:等寬 + 一道極淡的掃描光(像在讀取) */
+  .aimodel{ font-family:var(--mono); font-weight:800; font-size:15px; color:var(--ink);
+    position:relative; overflow:hidden; display:inline-block; }
+  .aimodel::after{ content:''; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--teal) 26%, transparent) 50%, transparent 70%);
+    transform:translateX(-130%); animation:fsweep 4.2s ease-in-out infinite; }
+  .aistat{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700;
+    color:var(--teal-ink); background:var(--teal-soft); border:1px solid var(--teal-line);
+    padding:2px 9px; border-radius:999px; }
+  .aistat i{ width:6px; height:6px; border-radius:50%; background:var(--teal); animation:ailive 1.5s ease-in-out infinite; }
+  @keyframes ailive{ 0%,100%{ opacity:1; box-shadow:0 0 0 0 color-mix(in srgb, var(--teal) 65%, transparent);} 60%{ opacity:.55; box-shadow:0 0 0 5px transparent;} }
+  /* 三條工作通道:資料點沿著跑,速度/延遲各異 → 看起來忙碌而不整齊劃一 */
+  .ailane{ display:flex; align-items:center; gap:9px; font-size:12px; padding:4px 0; }
+  .ailane .lb{ min-width:96px; font-weight:650; }
+  .ailane .lw{ position:relative; flex:1; min-width:70px; height:3px; border-radius:2px; background:var(--line); overflow:hidden; }
+  .ailane .lw::after{ content:''; position:absolute; top:0; left:0; width:34%; height:100%; border-radius:2px;
+    background:linear-gradient(90deg, transparent, var(--teal), transparent); animation:aitrack 2.2s linear infinite; }
+  .ailane.paid .lw::after{ background:linear-gradient(90deg, transparent, var(--amber), transparent); }
+  .ailane:nth-of-type(2) .lw::after{ animation-duration:3.1s; animation-delay:.4s; }
+  .ailane:nth-of-type(3) .lw::after{ animation-duration:2.6s; animation-delay:.9s; }
+  .ailane .lr{ font-size:11px; color:var(--muted); min-width:104px; }
+  @keyframes aitrack{ from{ transform:translateX(-110%);} to{ transform:translateX(320%);} }
+
   @media (prefers-reduced-motion: reduce){
     .fstep,.frow{ opacity:1 !important; transform:none !important; animation:none !important; }
     .fstep.fast::before,.fpulse::after,.farrow::after{ animation:none !important; }
     .fpulse::after{ opacity:1; }
     .fbar{ animation:none !important; width:var(--w,0%) !important; }
+    /* AI 引擎:全部停格,但保留可讀的靜態樣貌(環顯示一圈、通道顯示一段) */
+    .aicore .ring,.aicore .orb,.aicore .brain,.aimodel::after,.aistat i,.ailane .lw::after{ animation:none !important; }
+    .aicore .ring:first-child{ opacity:.3; transform:scale(1); }
+    .ailane .lw::after{ transform:translateX(0); }
   }
   .ghost:hover{ border-color:var(--faint); background:var(--surface-2); }
   .linkbtn{ background:none; border:none; color:var(--muted); font-size:12.5px; padding:4px 6px; border-radius:4px; transition:color var(--dur); }
@@ -955,6 +1005,33 @@
         <div class="rowline"><span class="cardtitle">階段一 · 訊息進來 → 出卡</span><span class="muted" style="font-size:12px;">解析 → 定位 → 排序</span></div>
         <div id="flowStage1" style="margin-top:10px;"></div>
       </div>
+      <!-- 🧠 AI 引擎:目前跑的模型 + 三條工作通道。放這裡=它在流程中的位置(解析之後、定位之中) -->
+      <div class="card" id="aiEngineCard">
+        <div class="rowline"><span class="cardtitle">🧠 AI 引擎</span>
+          <span class="muted" style="font-size:12px;">三層 AI 共用同一顆模型 · 平常不跑,規則接不住才出手</span>
+          <span class="aistat" style="margin-left:auto;"><i></i>運轉中</span>
+        </div>
+        <!-- 上排:核心 + 它命名的模型(兩者必須在同一行,核心才不會跟模型名脫節) -->
+        <div class="aieng" style="margin-top:10px;">
+          <div class="aicore">
+            <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+            <span class="orb"><i></i></span><span class="orb"><i></i></span>
+            <span class="brain">🧠</span>
+          </div>
+          <div style="min-width:200px;">
+            <div><span class="aimodel" id="flowAiModel">—</span></div>
+            <div class="muted" style="font-size:11.5px;margin-top:3px;" id="flowAiProvider">載入中…</div>
+          </div>
+        </div>
+        <!-- 下排:三條工作通道,吃整張卡的寬度 -->
+        <div style="margin-top:12px;">
+          <div class="ailane paid"><span class="lb">🤖 抓址</span><span class="lw"></span><span class="lr"><b id="flowAiNParse">—</b> 次 · 地址查不到→剪乾淨</span></div>
+          <div class="ailane paid"><span class="lb">🔍 看單救援</span><span class="lw"></span><span class="lr"><b id="flowAiNRescue">—</b> 次 · 規則抓 0 張→救卡</span></div>
+          <div class="ailane"><span class="lb">🏷 分類器</span><span class="lw"></span><span class="lr"><b id="flowAiNCls">—</b> 次 · <span id="flowAiClsLane">查無歸因</span></span></div>
+        </div>
+        <div class="muted" style="font-size:11px;margin-top:8px;">次數=今日各層實際出手。三層平常都是 0 —— 規則和免費層接得住就不會叫它們,<b>0 是好事</b>。</div>
+      </div>
+
       <div class="card">
         <div class="rowline"><span class="cardtitle">定位瀑布 · 便宜的先跑</span><span class="muted" style="font-size:12px;">上面沒中才往下,越下面越貴</span></div>
         <div id="flowWaterfall" style="margin-top:10px;"></div>
@@ -2151,6 +2228,33 @@
     /* 0804:原本用 FLOW_DONE 只畫一次 —— 但這頁的瀑布數字是「今日各層命中」,
        只畫一次等於永遠停在你第一次進來那一刻;而且第一次若還沒去過用量頁,
        GEO_CACHE_RES 是空的,就永遠是空的。改成每次進頁重畫(純畫圖,不花錢)。 */
+    /* 🧠 AI 引擎:模型名來自 geoUsage 回應(健康輪詢每 60 秒本來就會打,零額外請求)。
+       讀不到就留「—」+ 提示,不硬編模型名 —— 免得換了模型後台還在騙人。 */
+    (function(){
+      var ai = GEO_CACHE_RES && GEO_CACHE_RES.ai;
+      if(!ai){   // 讀不到就清成「—」,不留上一次的值(免得換了模型還顯示舊的)
+        $('flowAiModel').textContent = "—";
+        $('flowAiProvider').textContent = "模型資訊待載入(切到「用量成本」頁或稍候 60 秒自動更新)";
+        return;
+      }
+      $('flowAiModel').textContent = ai.main || "—";
+      $('flowAiProvider').textContent = (ai.provider || "自訂端點") + " · 抓址與看單救援共用這顆";
+      $('flowAiClsLane').textContent = (ai.classifier && ai.classifier !== ai.main)
+        ? ("查無歸因 · " + ai.classifier) : "查無歸因(同上這顆)";
+      // 今日各層實際出手次數 —— 讓它不只是動畫,是真的在報告工作量。
+      //   抓址=ai_parse、救援=ai_rescue(不含 _err/_cache 等衍生列)、分類器=ai_cls_ 前綴整組。
+      var today = (GEO_CACHE_RES.stats && GEO_CACHE_RES.stats.today) || [];
+      var nP=0, nR=0, nC=0;
+      today.forEach(function(r){
+        var n = Number(r.n||0);
+        if(r.api === "ai_parse") nP += n;
+        else if(r.api === "ai_rescue") nR += n;
+        else if(String(r.api||"").indexOf("ai_cls_") === 0) nC += n;
+      });
+      $('flowAiNParse').textContent = nP.toLocaleString();
+      $('flowAiNRescue').textContent = nR.toLocaleString();
+      $('flowAiNCls').textContent = nC.toLocaleString();
+    })();
     $('flowStage1').innerHTML = chain([
       step("01","收到通知","記住開群入口、清群名尾綴","",0),
       step("02","規則解析","切塊、否決聊天/費率、判上下車","",1),
