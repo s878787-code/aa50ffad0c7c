@@ -686,14 +686,14 @@
         <div class="muted" style="font-size:11px;margin:6px 0 3px;">🔒 程式硬編開頭(改不到):</div>
         <pre class="promptfix">你是台灣計程車派單解析助手。從派單原文【原封不動地剪下】上車地址那一段。
 規則:</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">📋 內建預設規則(你沒客製時就是用這套;想改就複製下來貼進下方編輯框):</div>
-        <pre class="promptfix">- 行首代號(R/RR/S/D 等字母、70/20 費率、單獨的「.」或「/」)不是地址,不要剪進去
-- 四位數字(如 0750、1930)是預約時間不是門牌號,不要剪進去
-- ⬆️📍標上車;⬇️🔽🔴標下車 —— 只剪【上車】那一段
-- 括號內若是店名/地標可以一起剪;若是指示語(開進來、請…、謝謝)則不剪</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 客製規則(留空 = 用上方內建預設;載入後這裡若空白代表你沒改過):</div>
-        <textarea id="aiRules" rows="6" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
-          placeholder="載入後顯示目前規則。留空=用程式內建預設。"></textarea>
+        <div class="rowline" style="margin:8px 0 3px;">
+          <span class="muted" style="font-size:11px;">📋 規則(每行一條;<b>直接改這一段就是改內建規則</b>,上下兩個灰框才是改不到的框架):</span>
+          <span class="muted" id="aiRulesState" style="font-size:11px;margin-left:auto;">—</span>
+        </div>
+        <textarea id="aiRules" rows="7" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
+          placeholder="載入中…"></textarea>
+        <div class="muted" style="font-size:11px;margin-top:3px;">載入時自動帶入目前生效的規則。改壞了按
+          <button class="linkbtn" id="aiRulesReset" style="padding:0 2px;">↺ 還原成原廠內建</button>,存回去即恢復。</div>
         <div class="muted" style="font-size:11px;margin:8px 0 3px;">🔒 程式硬編鐵律(永遠最後·改不到·真正的防腦補靠 aiCutFrom 子序列硬閘):</div>
         <pre class="promptfix">- 【最重要】只能刪字不能加字:輸出的每一個字都必須原封不動出現在原文裡。
   絕對不可以補縣市、不可以補「廣場/百貨/店」等你以為的全名、不可以改錯字。
@@ -720,16 +720,14 @@
         <div class="muted" style="font-size:11px;margin:6px 0 3px;">🔒 程式硬編開頭(改不到):</div>
         <pre class="promptfix">你是台灣計程車派單解析助手。從派單原文【原封不動地剪下】上車地址那一段。
 規則:</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">📋 內建預設規則(你沒客製時就是用這套;想改就複製下來貼進下方編輯框):</div>
-        <pre class="promptfix">- 行首代號(R/RR/S/D 等字母、70/20 費率、單獨的「.」或「/」)不是地址,不要剪進去
-- 四位數字(如 0750、1930)是預約時間不是門牌號,不要剪進去
-- ⬆️📍標上車;⬇️🔽🔴標下車 —— 只剪【上車】那一段
-- 括號內若是店名/地標可以一起剪;若是指示語(開進來、請…、謝謝)則不剪
-- 這則【不是派單】(聊天、群公告、費率表、廣告、司機回報)→ 回 null
-- 一則有多趟 → 只回【第一趟】的上車地址</pre>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">✏️ 客製規則(留空 = 用上方內建預設;⚠️「不是派單→null」「多趟只回第一趟」建議保留,防聊天訊息變假卡):</div>
-        <textarea id="rsRules" rows="7" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
-          placeholder="載入後顯示目前規則。留空=用程式內建預設。"></textarea>
+        <div class="rowline" style="margin:8px 0 3px;">
+          <span class="muted" style="font-size:11px;">📋 規則(每行一條;<b>直接改這一段就是改內建規則</b>。⚠️「不是派單→null」「多趟只回第一趟」建議保留,防聊天訊息變假卡):</span>
+          <span class="muted" id="rsRulesState" style="font-size:11px;margin-left:auto;">—</span>
+        </div>
+        <textarea id="rsRules" rows="8" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
+          placeholder="載入中…"></textarea>
+        <div class="muted" style="font-size:11px;margin-top:3px;">載入時自動帶入目前生效的規則。改壞了按
+          <button class="linkbtn" id="rsRulesReset" style="padding:0 2px;">↺ 還原成原廠內建</button>,存回去即恢復。</div>
         <div class="muted" style="font-size:11px;margin:8px 0 3px;">🔒 程式硬編鐵律(永遠最後·改不到):</div>
         <pre class="promptfix">- 【最重要】只能刪字不能加字:輸出的每一個字都必須原封不動出現在原文裡。
   絕對不可以補縣市、不可以補「廣場/百貨/店」等你以為的全名、不可以改錯字。
@@ -1707,6 +1705,11 @@
     /* 0803:三層 AI(抓址/看單救援/分類器)共用同一把 Mistral key。這一列 = 供應商回 429 限流。
        平常應該是 0;開始有數字就代表尖峰在互相排擠,要嘛降量、要嘛把某一層換獨立帳號。 */
     ai_ratelimit:       { free: 0,     per1000: 0,  paid:false, label: "🚦 AI 被限流 429(共用金鑰互相排擠的訊號)" },
+    /* 0804:AI 把兩趟的上車地址黏在一起回(例「中和連城路64號 中山民生西路17號」)。
+       門牌庫只讀到第一個「號」就停,所以那種字串照樣查得到座標 —— 座標是對的(第一個地址),
+       但那個剪法是錯的,所以【不進範例庫】,免得被當成正確示範教回去。
+       這一列就是「今天擋掉幾次」。長期偏高 = 抓址規則還沒把整合單教會,值得看一下原文形態。 */
+    ai_cut_glued:       { free: 0,     per1000: 0,  paid:false, label: "✂️ AI 黏了兩個地址,已擋下不進範例庫" },
     ai_assist:          { free: 0,     per1000: 0,  paid:false, label: "⑦🤖 AI 判讀轉交付費層的成敗(經驗迴路標記)" },
     /* ── 🔍 AI 看單救援(airescue,App 端):規則抓 0 張 → AI 指出地址在原文哪一段 → 規則重跑建卡 ──
        不在定位鏈上(是抓單鏈),但共用 ai_daily_cap 錢包,所以記在同一本帳。
@@ -1880,9 +1883,22 @@
       + "<br>救回率低不一定是壞事 —— 很多單原文本來就沒有地址(AI 正確回 null 也算沒救回)。看<b>趨勢</b>比看絕對值準。";
   }
 
+  /* 0804:兩套規則的【內建預設】改由伺服器回(單一事實來源),不再在 HTML 抄一份。
+     編輯框載入時直接帶入【目前生效的規則】= 有客製就用客製,否則用內建預設 ——
+     所以「改這一段」就是改內建規則本身(而不是「另外新增一層 override」)。 */
+  var AI_DEFAULTS = { extract: "", rescue: "" };
+  function fillRuleBox(boxId, stateId, res){
+    AI_DEFAULTS[res._which] = res.defaults || "";
+    var custom = (res.rules != null && String(res.rules).trim()) ? res.rules : null;
+    if(document.activeElement !== $(boxId)) $(boxId).value = custom != null ? custom : (res.defaults || "");
+    if($(stateId)) $(stateId).innerHTML = custom != null
+      ? "<span style='color:var(--amber);font-weight:600;'>● 已客製</span>"
+      : "<span style='color:var(--teal-ink);font-weight:600;'>● 原廠內建</span>";
+  }
   function renderAiBrain(res){
     if(!res || !res.ok) return;
-    if(document.activeElement !== $('aiRules')) $('aiRules').value = res.rules || "";
+    res._which = "extract";
+    fillRuleBox('aiRules', 'aiRulesState', res);
     /* 0803:這裡【只留一行摘要】。範例清單原本整串印在這個統計行裡,會隨累積越拉越長,
        把下面的「改動理由 / 儲存並套用」擠到看不見 —— 而完整清單(可搜尋)子頁已經有了。
        主後台=每天要按的控制項,觀察類資料一律歸子頁,同一份東西不兩邊維護。 */
@@ -1912,16 +1928,26 @@
   function loadAiBrain(){ api("getAiPrompt", { which:"extract" }).then(renderAiBrain); }
   $('aiBrainLoad').addEventListener('click', loadAiBrain);
   $('aiRulesSave').addEventListener('click', function(){
-    api("setAiPrompt", { which:"extract", rules: $('aiRules').value, note: $('aiRulesNote').value }).then(function(r){
+    // 內容跟原廠內建一字不差 → 送空字串清掉 override(狀態才會誠實回到「原廠內建」,
+    //   而不是存一份「剛好等於預設的客製」)。改過才存成客製。
+    var v = $('aiRules').value;
+    if(v.trim() === (AI_DEFAULTS.extract||"").trim()) v = "";
+    api("setAiPrompt", { which:"extract", rules: v, note: $('aiRulesNote').value }).then(function(r){
       if(r.ok){ toast("已套用(最多 60 秒生效)"); $('aiRulesNote').value=""; loadAiBrain(); }
       else toast(r.error || "儲存失敗(需管理員密碼)");
     });
+  });
+  $('aiRulesReset').addEventListener('click', function(){
+    $('aiRules').value = AI_DEFAULTS.extract || "";
+    $('aiRulesNote').value = "還原成原廠內建";
+    toast("已填入原廠內建,確認後按「儲存並套用」");
   });
 
   /* ── 🔍 看單救援規則(0803)。無範例庫、無鐵律編輯 —— 只有規則段 + 版本歷史。which=rescue。 */
   function renderRescue(res){
     if(!res || !res.ok) return;
-    if(document.activeElement !== $('rsRules')) $('rsRules').value = res.rules || "";
+    res._which = "rescue";
+    fillRuleBox('rsRules', 'rsRulesState', res);
     $('rsHistBox').innerHTML = (res.history||[]).slice(0,5).map(function(h){
       return "<div class='rowline' style='font-size:11.5px;padding:4px 0;'>"
         + "<span class='muted'>" + fmtReportTime(h.created_at) + " · " + esc(h.changed_by||"?") + "</span>"
@@ -1942,10 +1968,17 @@
   function loadRescue(){ api("getAiPrompt", { which:"rescue" }).then(renderRescue); }
   $('rsBrainLoad').addEventListener('click', loadRescue);
   $('rsRulesSave').addEventListener('click', function(){
-    api("setAiPrompt", { which:"rescue", rules: $('rsRules').value, note: $('rsRulesNote').value }).then(function(r){
+    var v = $('rsRules').value;
+    if(v.trim() === (AI_DEFAULTS.rescue||"").trim()) v = "";
+    api("setAiPrompt", { which:"rescue", rules: v, note: $('rsRulesNote').value }).then(function(r){
       if(r.ok){ toast("已套用(最多 60 秒生效)"); $('rsRulesNote').value=""; loadRescue(); }
       else toast(r.error || "儲存失敗(需管理員密碼)");
     });
+  });
+  $('rsRulesReset').addEventListener('click', function(){
+    $('rsRules').value = AI_DEFAULTS.rescue || "";
+    $('rsRulesNote').value = "還原成原廠內建";
+    toast("已填入原廠內建,確認後按「儲存並套用」");
   });
 
   /* ── 🤖 學習記憶(範例庫)。resue getAiPrompt 的 examples_top,不另外打 API ── */
@@ -2208,7 +2241,7 @@
          null license_key 變 '' → 它們會進 today_clean,不能靠 SQL 端排除)。 */
       if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow"
         || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist"
-        || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break" || r.api === "ai_ratelimit"
+        || r.api === "ai_err" || r.api === "ai_capped" || r.api === "ai_err_why" || r.api === "ai_break" || r.api === "ai_ratelimit" || r.api === "ai_cut_glued"
         || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return;   /* 0731:分類器/經驗標記/AI 附加標記=量測列非請求(真實成敗記在別列);ai_rescue 前綴整組=抓單鏈不是定位請求,進分母會稀釋失敗率 */
       var n = Number(r.n || 0);
       allN += n;
@@ -2644,7 +2677,7 @@
                        "db_unavailable"]; /* 0728:同 FAIL_APIS,可見失敗要進分子 */
       var aggCmp = function(rows){
         var all = 0, fail = 0, days = 1;
-        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api === "ai_err_why" || r.api === "ai_break" || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
+        rows.forEach(function(r){ if(r.api === "db_layer_error" || r.api.indexOf("map8_") === 0 || r.api === "places_new_shadow" || r.api.indexOf("ai_cls_") === 0 || r.api === "ai_assist" || r.api === "ai_err_why" || r.api === "ai_break" || r.api === "ai_cut_glued" || r.api.indexOf("ai_rescue") === 0 || r.api === "door_fuzzy_why") return; all += Number(r.n||0); if(CMP_FAILS.indexOf(r.api) >= 0) fail += Number(r.n||0); if(Number(r.d||0) > days) days = Number(r.d); });
         return { all: all, fail: fail, days: days };
       };
       var B = aggCmp(c.cmpB), A = aggCmp(c.cmpA);
