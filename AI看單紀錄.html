@@ -122,6 +122,12 @@
     </div>
 
     <div id="list"><div class="empty">載入中…</div></div>
+
+    <div style="margin-top:24px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📋 看單救援規則 · 改動歷史</div>
+      <div id="rsHist"><div class="empty">載入中…</div></div>
+      <div class="how" style="margin-top:10px;">誰在什麼時候改過看單救援規則、改動理由。要改或回滾,回後台「AI 大腦」分頁操作 —— 這裡只顯示歷史。</div>
+    </div>
   </div>
 </div>
 
@@ -147,7 +153,24 @@ function api(action, extra){
     .catch(function(){ return { error:"network" }; });
 }
 
-function enter(){ $('login').classList.add('hide'); $('app').classList.remove('hide'); load(); }
+function enter(){ $('login').classList.add('hide'); $('app').classList.remove('hide'); load(); loadRsHist(); }
+
+// 看單救援規則·改動歷史(從修址學習記憶頁搬來,放對地方)。資料源:admin getAiPrompt which=rescue 的 history。
+function loadRsHist(){
+  api("getAiPrompt", { which:"rescue" }).then(function(res){
+    var box = $('rsHist');
+    if(!res || !res.ok){ box.innerHTML = "<div class='empty'>載入失敗</div>"; return; }
+    var H = res.history || [];
+    if(!H.length){ box.innerHTML = "<div class='empty'>還沒有人改過看單救援規則 —— 目前用內建/DB 預設</div>"; return; }
+    box.innerHTML = H.map(function(h){
+      var t = String(h.created_at||"").replace("T"," ").slice(0,16);
+      return "<div class='case'><div class='chead'>"
+        + "<span class='badge skip'>" + esc(t) + "</span>"
+        + "<span class='who'>" + esc(h.changed_by||"?") + "</span></div>"
+        + "<div class='raw'>" + esc(h.note || "(未寫改動理由)") + "</div></div>";
+    }).join("");
+  });
+}
 $('go').addEventListener('click', function(){
   PW = $('pw').value.trim();
   if(!PW){ $('err').textContent="請輸入密碼"; return; }

@@ -157,11 +157,7 @@
         <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🤖 AI 修址規則 · 改動歷史</div>
         <div id="histExtract"><div class="empty">載入中…</div></div>
       </div>
-      <div class="card">
-        <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🔍 AI 看單救援規則 · 改動歷史</div>
-        <div id="histRescue"><div class="empty">載入中…</div></div>
-      </div>
-      <div class="note">要改規則或回滾,回後台「AI 大腦」分頁操作 —— 這裡只顯示歷史,避免兩個地方都能改造成混亂。</div>
+      <div class="note">要改規則或回滾,回後台「AI 大腦」分頁操作 —— 這裡只顯示歷史,避免兩個地方都能改造成混亂。<br>看單救援規則的改動歷史已移到「🔍 AI 看單紀錄」頁。</div>
     </div>
   </div>
 </div>
@@ -279,7 +275,7 @@ function loadLoop(){
 
 /* ③ 規則版本歷史 */
 function loadHist(){
-  [["extract","histExtract"],["rescue","histRescue"]].forEach(function(p){
+  [["extract","histExtract"]].forEach(function(p){
     api("getAiPrompt", { which:p[0] }).then(function(res){
       var box = $(p[1]);
       if(!res || !res.ok){ box.innerHTML = "<div class='empty'>載入失敗</div>"; return; }
