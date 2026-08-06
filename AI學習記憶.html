@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AI 學習記憶 · TripRadar</title>
+<title>AI 修址學習記憶 · TripRadar</title>
 <!--
-  AI 學習記憶(0803 獨立子頁)
+  AI 修址學習記憶(0803 獨立子頁)
   ─────────────────────────────────────────────────────────────────
   為什麼獨立成一頁:範例庫與成敗迴路會【隨時間越長越長】,塞在後台「AI 大腦」分頁裡
   會把開關/規則那些【每天要用】的控制項擠到看不到。這裡是「想深入看的時候才進來」的地方。
 
   三個分頁:
-    ① 範例庫    ai_examples —— AI 抓址成功且【事後證實查得到座標】才會存,下次同型單當 few-shot
+    ① 範例庫    ai_examples —— AI 修址成功且【事後證實查得到座標】才會存,下次同型單當 few-shot
     ② 成敗迴路  今日 ai_assist —— 成=AI 剪的字串付費層解得出;敗=AI 出手仍查無(待修清單)
     ③ 規則版本  ai_prompt_history —— 兩套提示詞的改動歷史(誰改的、為什麼)
 
@@ -94,7 +94,7 @@
 
   <div id="login" class="login">
     <div style="font-size:38px;">🧠</div>
-    <h1 style="margin:8px 0 4px;">AI 學習記憶</h1>
+    <h1 style="margin:8px 0 4px;">AI 修址學習記憶</h1>
     <div class="sub">需要後台管理密碼</div>
     <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
     <button id="go">進入</button>
@@ -103,7 +103,7 @@
 
   <div id="app" class="hide">
     <div class="top">
-      <h1>🧠 AI 學習記憶</h1>
+      <h1>🧠 AI 修址學習記憶</h1>
       <a class="back" href="index.html">← 回後台</a>
     </div>
     <div class="sub">AI 學到什麼、今天判對判錯了什麼、規則被誰改過。<b>這裡只看不改</b> —— 要改規則回後台「AI 大腦」頁。</div>
@@ -154,7 +154,7 @@
     <!-- ③ 規則版本 -->
     <div id="v-hist" class="hide">
       <div class="card">
-        <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🤖 AI 抓址規則 · 改動歷史</div>
+        <div style="font-size:12.5px;font-weight:700;margin-bottom:6px;">🤖 AI 修址規則 · 改動歷史</div>
         <div id="histExtract"><div class="empty">載入中…</div></div>
       </div>
       <div class="card">
@@ -231,7 +231,7 @@ function renderEx(){
         ? ("符合 <b>" + list.length + "</b> 筆" + (cut ? "(在已載入的 " + EX.length + " 筆裡找;總共 " + EX_TOTAL + " 筆)" : "(共 " + EX.length + " 筆)"))
         : (cut ? ("共 <b>" + EX_TOTAL + "</b> 筆,這裡列出最常用的前 <b>" + EX.length + "</b> 筆")
                : ("全部 <b>" + EX.length + "</b> 筆都在下面"))) + "</div>";
-  if(!list.length){ $('exBody').innerHTML = head + "<div class='empty'>" + (q? "找不到符合的範例" : "還沒累積 —— AI 抓址成功一次就會存一筆") + "</div>"; return; }
+  if(!list.length){ $('exBody').innerHTML = head + "<div class='empty'>" + (q? "找不到符合的範例" : "還沒累積 —— AI 修址成功一次就會存一筆") + "</div>"; return; }
   $('exBody').innerHTML = head + list.map(function(e){
     return "<div class='row'><span class='badge hit'>×" + (e.hits||1) + "</span>"
       + "<div class='body'><div class='nm'>" + esc(e.addr) + "</div>"
