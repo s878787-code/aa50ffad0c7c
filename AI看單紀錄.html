@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 看單紀錄 · TripRadar</title>
+<!--
+  AI 看單紀錄(0806)
+  ─────────────────────────────────────────────────────────────────
+  用途:【純監控】。即時看 AI 看單救援怎麼解析地址 —— 被餵什麼原文、剪出什麼、結果如何。
+        資料源:geo_usage 的 ai_rescue / ai_rescue_blocked / ai_rescue_skipcard / ai_rescue_err(admin rescueLog action)。
+  跟「難單紀錄」的差別:難單紀錄=只挑「成功剪出、Parser 該補的難單」蒐語料;
+                        這頁=全部救援事件流,含查無/被腦補閘擋/司機卡跳過,監控 AI 健康與司機卡防護成效。
+-->
+<script>(function(){try{var t=localStorage.getItem('tr_theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<style>
+  :root{
+    --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#EEF3F1;
+    --ink:#131C19; --muted:#54645E; --faint:#65746D;
+    --line:#E4EAE7; --line-2:#D4DCD8;
+    --teal:#0D7A6E; --teal-ink:#0A5A51; --teal-soft:#DBEDE8; --teal-line:#B2DAD1;
+    --red:#AE3823; --red-soft:#F5E1DB; --amber:#8A5D0F; --amber-soft:#F3E9D2;
+    --r:10px; --r-sm:7px; --r-pill:999px; --dur:.16s; --ease:cubic-bezier(.22,.61,.36,1);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84; --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }
+  @media(prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#0D1512; --surface:#141D19; --surface-2:#1B2621;
+    --ink:#E6EEEA; --muted:#9DAEA7; --faint:#7C8C84; --line:#243029; --line-2:#2F3B34;
+    --teal:#35D6AB; --teal-ink:#7FF0D0; --teal-soft:#12312A; --teal-line:#1E4A3E;
+    --red:#F08A72; --red-soft:#33201B; --amber:#E0B661; --amber-soft:#2E2718;
+  }}
+  *{box-sizing:border-box;} body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:940px;margin:0 auto;padding:20px 16px 60px;}
+  .top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+  h1{font-size:20px;margin:0;font-weight:700;}
+  .back{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line-2);padding:6px 12px;border-radius:var(--r-sm);}
+  .back:hover{border-color:var(--teal-line);color:var(--teal-ink);}
+  .sub{color:var(--muted);font-size:13px;margin:4px 0 14px;line-height:1.65;}
+  .sub b{color:var(--ink);}
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  select,button{font-family:inherit;font-size:13px;}
+  select{padding:7px 10px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .btn{background:var(--surface);color:var(--ink);border:1px solid var(--line-2);padding:7px 13px;border-radius:var(--r-sm);cursor:pointer;font-weight:600;transition:border-color var(--dur),color var(--dur);}
+  .btn:hover{border-color:var(--teal-line);color:var(--teal-ink);}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .stat{flex:1 1 110px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px 14px;}
+  .stat .n{font-size:22px;font-weight:800;font-family:var(--mono);}
+  .stat .t{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px;}
+  .stat.save{border-color:var(--amber);} .stat.save .n{color:var(--amber);}
+  .case{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:9px;}
+  .chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .badge{font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:var(--r-pill);font-family:var(--mono);white-space:nowrap;}
+  .badge.ok{background:var(--teal-soft);color:var(--teal-ink);}
+  .badge.none{background:var(--surface-2);color:var(--faint);}
+  .badge.blocked{background:var(--red-soft);color:var(--red);}
+  .badge.skip{background:var(--amber-soft);color:var(--amber);}
+  .badge.err{background:var(--red-soft);color:var(--red);}
+  .who{font-size:11.5px;color:var(--faint);margin-left:auto;}
+  .raw{font-family:var(--mono);font-size:12px;line-height:1.65;background:var(--surface-2);border-radius:var(--r-sm);
+    padding:8px 11px;white-space:pre-wrap;word-break:break-all;max-height:120px;overflow:auto;}
+  .out{font-family:var(--mono);font-size:12px;line-height:1.6;margin-top:7px;padding:8px 11px;border-radius:var(--r-sm);
+    background:var(--teal-soft);color:var(--teal-ink);white-space:pre-wrap;word-break:break-all;}
+  .out b{opacity:.7;font-weight:600;}
+  .empty{color:var(--muted);font-size:13.5px;padding:26px 0;text-align:center;}
+  .login{max-width:340px;margin:16vh auto;text-align:center;}
+  .login input{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);}
+  .login button{width:100%;margin-top:10px;background:var(--teal);color:#fff;border:none;padding:11px;font-size:15px;font-weight:700;border-radius:var(--r-sm);cursor:pointer;font-family:inherit;}
+  .err{color:var(--red);font-size:12.5px;min-height:17px;margin-top:8px;}
+  .hide{display:none !important;}
+  .how{background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r);padding:12px 15px;margin-bottom:14px;font-size:12.5px;line-height:1.75;color:var(--muted);}
+  .how b{color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="login" class="login">
+    <div style="font-size:38px;">🔍</div>
+    <h1 style="margin:8px 0 4px;">AI 看單紀錄</h1>
+    <div class="sub">需要後台管理密碼</div>
+    <input type="password" id="pw" placeholder="管理密碼" autocomplete="current-password">
+    <button id="go">進入</button>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div id="app" class="hide">
+    <div class="top">
+      <h1>🔍 AI 看單紀錄</h1>
+      <a class="back" href="index.html">← 回後台</a>
+    </div>
+    <div class="sub">即時看「AI 看單救援」怎麼解析地址 —— <b>被餵什麼原文、剪出什麼、結果如何</b>。只在規則抓 0 張時才會有救援。目前模型:<b id="model">—</b>。</div>
+
+    <div class="how">
+      <b>結果怎麼看</b>:<b style="color:var(--teal-ink)">✅ 剪出</b>=成功剪出上車(/下車)地,交回規則建卡 ·
+      <b>· 查無</b>=剪不出地址(多半根本不是派單) ·
+      <b style="color:var(--amber)">🚗 司機卡跳過</b>=偵測到司機資訊卡/車隊卡,直接跳過不打 AI(省錢) ·
+      <b style="color:var(--red)">🛑 腦補擋</b>=AI 想加原文沒有的字,被子序列閘擋下。
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="n" id="sOk">—</div><div class="t">✅ 成功剪出</div></div>
+      <div class="stat"><div class="n" id="sNone">—</div><div class="t">查無地址</div></div>
+      <div class="stat save"><div class="n" id="sSkip">—</div><div class="t">🚗 司機卡跳過(省)</div></div>
+      <div class="stat"><div class="n" id="sBlocked">—</div><div class="t">🛑 腦補擋</div></div>
+    </div>
+
+    <div class="bar">
+      <select id="limit">
+        <option value="60">最近 60 筆</option>
+        <option value="120">最近 120 筆</option>
+        <option value="200">最近 200 筆</option>
+      </select>
+      <button class="btn" id="reload">↻ 重新整理</button>
+      <span style="font-size:11.5px;color:var(--faint);">統計為近 24 小時;下方清單為最近事件流(新到舊)</span>
+    </div>
+
+    <div id="list"><div class="empty">載入中…</div></div>
+  </div>
+</div>
+
+<script>
+/* 與後台【逐字相同】的呼叫方式:admin 收 password,不帶 ANON header。 */
+var URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
+var $ = function(i){ return document.getElementById(i); };
+var esc = function(x){ return String(x==null?"":x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+var PW = sessionStorage.getItem("tr_pw") || "";
+
+var OUTCOME = {
+  ok:      { cls:"ok",      label:"✅ 剪出" },
+  no_addr: { cls:"none",    label:"· 查無" },
+  skipcard:{ cls:"skip",    label:"🚗 司機卡跳過" },
+  blocked: { cls:"blocked", label:"🛑 腦補擋" },
+  err:     { cls:"err",     label:"⚠ 呼叫失敗" }
+};
+
+function api(action, extra){
+  return fetch(URL_BASE, { method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
+    .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
+    .catch(function(){ return { error:"network" }; });
+}
+
+function enter(){ $('login').classList.add('hide'); $('app').classList.remove('hide'); load(); }
+$('go').addEventListener('click', function(){
+  PW = $('pw').value.trim();
+  if(!PW){ $('err').textContent="請輸入密碼"; return; }
+  $('err').textContent="驗證中…";
+  api("rescueLog", { limit:10 }).then(function(r){
+    if(r && r.ok){ sessionStorage.setItem("tr_pw", PW); $('err').textContent=""; enter(); }
+    else $('err').textContent = "密碼錯誤或無權限";
+  });
+});
+$('pw').addEventListener('keydown', function(e){ if(e.key==="Enter") $('go').click(); });
+
+function load(){
+  $('list').innerHTML = "<div class='empty'>載入中…</div>";
+  api("rescueLog", { limit: parseInt($('limit').value,10) }).then(function(res){
+    if(!res || !res.ok){ $('list').innerHTML = "<div class='empty'>載入失敗:" + esc((res&&res.error)||"?") + "</div>"; return; }
+    var c = res.stat24h || {};
+    $('sOk').textContent = c.ok!=null ? c.ok : "—";
+    $('sNone').textContent = c.no_addr!=null ? c.no_addr : "—";
+    $('sSkip').textContent = c.skipcard!=null ? c.skipcard : "—";
+    $('sBlocked').textContent = c.blocked!=null ? c.blocked : "—";
+    if(res.ai && res.ai.main) $('model').textContent = res.ai.main;
+    render(res.rows || []);
+  });
+}
+$('reload').addEventListener('click', load);
+$('limit').addEventListener('change', load);
+
+function render(rows){
+  if(!rows.length){ $('list').innerHTML = "<div class='empty'>這段期間沒有救援事件 👍<br><span style='font-size:12px'>(規則都抓得到,或救援開關關著)</span></div>"; return; }
+  $('list').innerHTML = rows.map(function(r){
+    var o = OUTCOME[r.outcome] || OUTCOME.no_addr;
+    var when = esc(String(r.at||"").replace("T"," ").slice(5,16));
+    var out = (r.outcome==="ok" && r.output)
+      ? "<div class='out'><b>↳ 剪出:</b>" + esc(r.output) + "</div>" : "";
+    return "<div class='case'>"
+      + "<div class='chead'>"
+        + "<span class='badge " + o.cls + "'>" + o.label + "</span>"
+        + "<span class='who'>" + esc(r.driver||"?") + " · " + when + "</span>"
+      + "</div>"
+      + "<div class='raw'>" + esc(r.input||"") + "</div>"
+      + out
+    + "</div>";
+  }).join("");
+}
+
+if(PW) enter();
+</script>
+</body>
+</html>
