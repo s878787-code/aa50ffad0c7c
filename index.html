@@ -2842,10 +2842,8 @@
       })();
       /* null = 伺服器讀不到 → 不覆寫輸入框(同 aiCap:回填 0 再按按鈕會把上限寫死成 0) */
       /* 0808 Map8 停用:上限 UI 已移除,回填跳過(元素不存在,直接執行會 null 炸掉整段輪詢)。 */
-      if(false && res.map8_daily_cap != null && document.activeElement !== $('map8Cap')) $('map8Cap').value = res.map8_daily_cap;
-      if(false && $('map8CapHint')) $('map8CapHint').textContent = (res.map8_daily_cap === 0)
-        ? "⚠️ 目前不限 · 08-07 試用到期前記得調回" : "地址定位+路徑規劃共用 · 試用至 08-07";
-      $('map8Ctl').style.display = (ROLE === "viewer") ? "none" : "flex";
+      /* 0808 Map8 停用:map8Cap/map8CapHint/map8Ctl 元素皆已移除 —— 引用一律拿掉
+         (0808 實錄:漏拿 map8Ctl 這行 → null.style TypeError → 整段回填中斷 → AI 開關全顯示「—」)。 */
       /* Places 個人/全隊上限現值(null=讀不到→不覆寫,同 map8Cap 理由);空=用內建預設 80/2000 */
       if(res.places_driver_cap != null && document.activeElement !== $('placesDriverCap')) $('placesDriverCap').value = res.places_driver_cap;
       if(res.places_global_cap != null && document.activeElement !== $('placesGlobalCap')) $('placesGlobalCap').value = res.places_global_cap;
