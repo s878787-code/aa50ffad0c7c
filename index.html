@@ -619,6 +619,8 @@
         <div class="rowline"><span class="cardtitle">每日用量趨勢</span>
           <div class="seg" id="usageSeg" style="margin-left:auto;">
             <button data-u="google" class="on">Google 呼叫</button>
+            <button data-u="geo">└ 定位</button>
+            <button data-u="places">└ Places</button>
             <button data-u="map8">Map8(已停)</button>
             <button data-u="cache">快取命中</button>
             <button data-u="ai">AI 修址</button>
@@ -3494,9 +3496,14 @@
     if(!res || !res.stats || !res.stats.days || !res.stats.days.length) return null;
     var map = {}, order = [];
     res.stats.days.forEach(function(r){
-      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, map8:0, cache:0, ai:0, rescue:0 }; order.push(r.day); }
+      if(!map[r.day]){ map[r.day] = { day:r.day, google:0, geo:0, places:0, map8:0, cache:0, ai:0, rescue:0 }; order.push(r.day); }
       var m = map[r.day];
-      if(GOOGLE_APIS.indexOf(r.api) >= 0) m.google += r.n;
+      /* 0809:google 合計保留,另拆「定位(geocode+距離)」與「Places」兩條分項 ——
+         Places 單價是 Geocoding 的 3-6 倍,混在一起看不出錢燒在哪(使用者要求分開計次)。 */
+      if(GOOGLE_APIS.indexOf(r.api) >= 0){
+        m.google += r.n;
+        if(r.api === "places") m.places += r.n; else m.geo += r.n;
+      }
       /* 🗺️ Map8 呼叫量:【只算會被收費的】—— map8(命中)+ map8_guard(它給了答案但被我們護欄擋下,
          照樣是一發付費呼叫)。map8_err/map8_capped/map8_guard_why 不是成功呼叫,不計。
          用 GEO_PRICING 的 paid 旗標判而不寫死名單:以後加新的 map8_ 列,計價一改這裡自動跟上。 */
