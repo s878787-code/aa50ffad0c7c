@@ -619,7 +619,7 @@
         <div class="rowline"><span class="cardtitle">每日用量趨勢</span>
           <div class="seg" id="usageSeg" style="margin-left:auto;">
             <button data-u="google" class="on">Google 呼叫</button>
-            <button data-u="map8">Map8 呼叫</button>
+            <button data-u="map8">Map8(已停)</button>
             <button data-u="cache">快取命中</button>
             <button data-u="ai">AI 修址</button>
             <button data-u="rescue">看單救援</button>
@@ -628,13 +628,13 @@
         </div>
         <div class="growth-readout"><span class="gv" id="usageNow">—</span><span class="gd muted" id="usageSub"></span></div>
         <div class="chartbox" id="usageChart"></div>
-        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8 呼叫=命中+被護欄擋下(兩者都計費,約 Google 45 折);AI 修址／看單救援=實際打出去的發數(含逾時與被腦補閘擋下的,<b>就是各自保險絲數的那個數字</b>,兩層額度獨立);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
+        <div class="muted" style="font-size:11px; margin-top:5px;">每點為一天。Google 呼叫=付費的 geocode／places／距離;Map8=歷史用量(試用 08-07 到期、08-08 已停用);AI 修址／看單救援=實際打出去的發數(含逾時與被腦補閘擋下的,<b>就是各自保險絲數的那個數字</b>,兩層額度獨立);命中率=免費命中(快取+門牌庫+社區庫+自架)÷(免費+Google 呼叫),越高越省。</div>
       </div>
 
       <!-- 0804:距離引擎 OSRM 主辦監控。切換日 8/4 —— 看 OSRM 扛不扛得住、Map8 後備有沒有一直被叫(Map8 8/7 要斷)。 -->
       <div class="card" id="osrmCard">
         <div class="rowline"><span class="cardtitle">🛰️ 距離引擎 · OSRM 主辦</span>
-          <span class="muted" style="font-size:12px;">0804 起距離從 Map8 換成自架 OSRM 主辦。盯它扛得住嗎、Map8 後備會不會一直被叫。</span>
+          <span class="muted" style="font-size:12px;">距離=自架 OSRM 主辦;Map8 已於 08-08 停用(試用到期),OSRM 算不出時退直線。</span>
           <span class="muted" id="osrmPct" style="margin-left:auto;font-family:var(--mono);font-weight:700;">—</span>
         </div>
         <div id="osrmTiles" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;"></div>
@@ -652,13 +652,12 @@
           <span class="muted" style="font-weight:700;">📡 Google 每日上限</span>
           <input type="number" id="geoCap" min="0" style="width:100px;" placeholder="0=不限">
           <button class="ghost" id="geoCapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;">geocode+Places+距離三種付費共用 · 超過只停 Google,前面免費層與 Map8 照跑(0=不限)</span>
+          <span class="muted" style="font-size:11.5px;">geocode+Places+距離三種付費共用 · 超過只停 Google,前面免費層照跑(0=不限;Map8 已停用)</span>
         </div>
-        <div class="rowline" id="map8Ctl" style="margin-top:8px;">
-          <span class="muted" style="font-weight:700;">🗺️ Map8 每日上限</span>
-          <input type="number" id="map8Cap" min="0" style="width:100px;" placeholder="0=不限">
-          <button class="ghost" id="map8CapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;" id="map8CapHint">地址定位+路徑規劃共用 · 試用至 08-07</span>
+        <!-- 0808:Map8 已停用(試用 08-07 到期,MAP8_KEY 已拔除,整層自動跳過)——
+             每日上限設定隨之移除;歷史用量仍可在上方趨勢圖「Map8(已停)」查看。 -->
+        <div class="rowline" style="margin-top:8px;">
+          <span class="muted" style="font-size:11.5px;">🗺️ Map8 已於 08-08 停用(試用到期):定位免費層 → Google;距離 OSRM 主辦,算不出退直線。</span>
         </div>
         <div class="rowline" id="placesCtl" style="margin-top:8px;">
           <span class="muted" style="font-weight:700;">💰 Places 個人</span>
@@ -872,7 +871,7 @@
         <div id="batchBodyWrap">
         <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
           一行一筆,兩種格式:<b>只有名稱</b>(例:<code>三峽區鴛鴦谷烤肉區</code>)→ 用名稱搜尋;<b>名稱 | 地址</b>(例:<code>青城桔市社區 | 土城區中央路三段239巷</code>)→ 用地址查座標、以名稱存檔(Tab 分隔也可以)。<br>
-          查詢先走 <b>Map8 台灣圖霸</b>(台灣本土圖資,回完整地址可核對),再退免費 OSM,最後才是 Google(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
+          查詢先走免費 OSM,查不到才走 Google(Map8 已於 08-08 停用)(一筆最多 1 次付費查詢)。查完逐筆給你勾:<b>座標請點開地圖核對,沒勾的不寫入</b> —— 位置庫優先權高過 Google,寫錯一筆全隊永久定位錯,所以寫入一律由人決定。寫入走既有「新增地點」同一條路(含重複別名檢查),預設直接標成已驗證。
         </div>
         <textarea id="batchInput" rows="7" style="width:100%; margin-top:8px; font-size:13px; font-family:inherit;" placeholder="三峽區鴛鴦谷烤肉區&#10;龜山嶺頂門市&#10;青城桔市社區 | 土城區中央路三段239巷"></textarea>
         <div class="toolbar" style="margin-top:8px;">
@@ -1843,7 +1842,7 @@
 
   /* ── 用量成本 ── */
   /* 📍 這張表的【順序 = 定位鏈的實際順序】(明細表依宣告序渲染)—— 從上往下讀就是一張單進來會經過的層。
-     v32.0 架構:免費層(位置庫→門牌庫→墓碑→自架→快取→路段)→ 🤖AI 修址 → 🗺️Map8 → Google → 距離 → 量測。 */
+     v32.0 架構:免費層(位置庫→門牌庫→墓碑→自架→快取→路段)→ 🤖AI 修址 → Google → 距離 → 量測(🗺️Map8 已於 0808 停用)。 */
   var GEO_PRICING = {
     // ── 免費層(命中率的主力,越靠上越便宜)──────────────────────────
     community_hit:      { free: 0,     per1000: 0,  paid:false, label: "①🏢 位置庫命中(策展地標,最高優先·免費)" },
@@ -1885,7 +1884,7 @@
     ai_rescue_blocked:  { free: 0,     per1000: 0,  paid:false, label: "🚨 看單救援【腦補被硬閘擋下】(比值飆高就關開關)" },
     ai_rescue_cache:    { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 命中結果快取(同一則單 N 個司機只打一次)" },
     ai_rescue_capped:   { free: 0,     per1000: 0,  paid:false, label: "🔍 看單救援 超每日上限被擋" },
-    // ── 🗺️ Map8 台灣圖霸(1.95,試用至 08-07):NT$0.07/次 ≈ Google 45 折,不分 API ──
+    // ── 🗺️ Map8 台灣圖霸【0808 已停用:試用到期、MAP8_KEY 已拔除】以下標籤保留供歷史趨勢圖對照 ──
     map8:               { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 圖霸 地址定位(試用免費至 08-07)" },
     /* 0731 分家:map8 ok:false=Map8 自己查無;map8_guard=它給了答案但被我們的護欄擋下
        (路名不符/兜底級 level 5-6/界外)。分開才知道「命中率低」是它不行還是我們太嚴。 */
@@ -2309,7 +2308,8 @@
       if(r.ok){ toast("範例庫已清空,重新學習中"); loadAiBrain(); } else toast("失敗");
     });
   });
-  $('map8CapBtn').addEventListener('click', function(){
+  /* 0808:Map8 停用,上限 UI 已移除;setMap8Cap action 伺服器端保留(未來若復用再接回)。 */
+  if(false) $('map8CapBtn').addEventListener('click', function(){
     var cap = parseInt($('map8Cap').value || "0", 10) || 0;
     /* ⚠️ 0=不限,但保險絲的用途不只省錢 —— 它攔的是程式出 bug 狂打。試用期內失控不花錢,
        試用一結束同一個 bug 就是直接開銷。所以填 0 時提醒一次,建議改填很大的數。 */
@@ -2841,8 +2841,9 @@
           + (m8 ? " · 🗺️Map8 " + m8 : "") + (err ? " · Map8 失敗 " + err : "") + (cap ? " · 🔴Map8 超上限 " + cap : "");
       })();
       /* null = 伺服器讀不到 → 不覆寫輸入框(同 aiCap:回填 0 再按按鈕會把上限寫死成 0) */
-      if(res.map8_daily_cap != null && document.activeElement !== $('map8Cap')) $('map8Cap').value = res.map8_daily_cap;
-      if($('map8CapHint')) $('map8CapHint').textContent = (res.map8_daily_cap === 0)
+      /* 0808 Map8 停用:上限 UI 已移除,回填跳過(元素不存在,直接執行會 null 炸掉整段輪詢)。 */
+      if(false && res.map8_daily_cap != null && document.activeElement !== $('map8Cap')) $('map8Cap').value = res.map8_daily_cap;
+      if(false && $('map8CapHint')) $('map8CapHint').textContent = (res.map8_daily_cap === 0)
         ? "⚠️ 目前不限 · 08-07 試用到期前記得調回" : "地址定位+路徑規劃共用 · 試用至 08-07";
       $('map8Ctl').style.display = (ROLE === "viewer") ? "none" : "flex";
       /* Places 個人/全隊上限現值(null=讀不到→不覆寫,同 map8Cap 理由);空=用內建預設 80/2000 */
