@@ -2596,13 +2596,18 @@
 
     /* 0713 調校:全隊查無率誤報 —— 這系統正常就有 50-66% 查無。門檻 85% 只當「所有 provider 一起掛/壞部署」的大盤保底。 */
     var geoRow = null; today.forEach(function(r){ if(r.api === "geocode") geoRow = r; });
-    if(geoRow && geoRow.n >= 300){
+    /* 0809 取樣門檻 300→2000:geocode 只看得到「免費層全 miss 後才到 Google」的單,本來查無率就高;
+       凌晨低量(如 309 筆全是死單輪替)算出的 88% 是小樣本假象。真「全定位源掛掉」= 高量+高查無同時發生
+       (死亡螺旋當日 geocode 8-9千),要 2000+ 的真實量才判,才不會半夜亂亮。 */
+    if(geoRow && geoRow.n >= 2000){
       var missRate = 1 - (geoRow.ok_n || 0) / geoRow.n;
       if(missRate > 0.85) warns.push("🔴 全隊查無率 " + Math.round(missRate*100) + "%(geocode " + geoRow.n + " 次)—— 異常偏高,查是不是所有定位源一起掛了或壞部署(正常上限約 66%)");
     }
     /* 0713 修:掛機訊號=連線逾時(nominatim_timeout),不是成功率。 */
     var nomDown = null; today.forEach(function(r){ if(r.api === "nominatim_timeout") nomDown = r; });
-    if(nomDown && nomDown.n >= 30) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似掛了/過載 —— 掛掉期間每筆都在燒 Google 錢");
+    /* 0809 門檻 30→150:偶發慢查詢(路段級大範圍搜尋)本來就有 ~30-50 次/日,不是過載。
+       真過載(0808 死亡螺旋)當日 269 次 → 150 乾淨隔開基線噪音與真火。 */
+    if(nomDown && nomDown.n >= 150) warns.push("🔴 自架定位(Nominatim)今日連線逾時 " + nomDown.n + " 次,疑似過載 —— 偶發慢查詢屬正常,持續攀高才是過載;逾時期間該筆退 Google");
     var dbBytes = Number(s.db_bytes || 0);
     if(dbBytes > 6 * 1024*1024*1024) warns.push("🟠 資料庫 " + (dbBytes/1024/1024/1024).toFixed(1) + " GB(Pro 上限 8GB)——該清理或升級");
 
