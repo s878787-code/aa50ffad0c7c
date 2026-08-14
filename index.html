@@ -3047,6 +3047,28 @@
         city:String(v.city||"").trim(), address:String(v.addr||"").trim(), verified:!!v.verified };
       if(p) payload.id = p.id;
       api(p?"editPlace":"addPlace", payload).then(function(res){
+        // dup_alias(僅新增時):不要死在紅字 —— 問要不要把 名稱/別名【併進既有那筆】(0815 一鍵併入)。
+        if(!p && res && res.error === "dup_alias" && res.conflict){
+          var cf = res.conflict;
+          var msg = "這個地點庫裡已經有了:\n\n#"+cf.id+"「"+(cf.name||"")+"」\n座標 "+Number(cf.lat).toFixed(5)+", "+Number(cf.lng).toFixed(5)+
+                    "\n撞到的別名:"+((cf.keys||[]).join("、"))+
+                    "\n\n要把你填的名稱/別名【併進這一筆】嗎?\n(座標用既有已驗證的,不會蓋掉)";
+          if(confirm(msg)){
+            api("mergeAlias", { id:cf.id, name:name, aliases:v.alias }).then(function(mr){
+              if(mr && mr.ok){
+                closeModal(); toast("已併入 #"+mr.id+"「"+(mr.name||"")+"」"); loadPlaces();
+                if(onSaved) onSaved();
+              } else if(mr && mr.error === "dup_alias_other" && mr.conflict){
+                toast("別名〔"+((mr.conflict.keys||[]).join("、"))+"〕屬於別筆 #"+mr.conflict.id+"「"+(mr.conflict.name||"")+"」,請人工處理");
+              } else {
+                toast("併入失敗:"+((mr&&mr.error)||"?"));
+              }
+            });
+          } else {
+            toast("已取消併入(名稱/別名與 #"+cf.id+" 重複,未寫入)");
+          }
+          return;
+        }
         if(res.error){ toast("失敗:"+res.error); return; }
         closeModal(); toast(p?"已儲存":"已新增"); loadPlaces();
         if(onSaved) onSaved();
