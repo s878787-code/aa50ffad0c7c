@@ -410,7 +410,7 @@
       <button data-tab="places"><span class="ic"><svg viewBox='0 0 24 24'><path d='M19.5 10.2c0 5.4-7.5 11-7.5 11s-7.5-5.6-7.5-11a7.5 7.5 0 0 1 15 0Z'/><circle cx='12' cy='10' r='2.4'/></svg></span>位置庫</button>
       <button data-tab="sys"><span class="ic"><svg viewBox='0 0 24 24'><circle cx='12' cy='12' r='3.2'/><path d='M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1'/></svg></span>系統</button>
       <button data-tab="flow"><span class="ic"><svg viewBox='0 0 24 24'><rect x='3' y='3' width='7' height='5' rx='1.5'/><rect x='14' y='3' width='7' height='5' rx='1.5'/><rect x='8.5' y='16' width='7' height='5' rx='1.5'/><path d='M6.5 8v3.5h11V8M12 11.5V16'/></svg></span>運作流程</button>
-      <button data-tab="v2sim"><span class="ic"><svg viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='16' rx='2'/><path d='M3 9h18M8 13h3M8 16h6'/></svg></span>V2 模擬</button>
+      <button data-tab="v2sim"><span class="ic"><svg viewBox='0 0 24 24'><rect x='3' y='4' width='18' height='16' rx='2'/><path d='M3 9h18M8 13h3M8 16h6'/></svg></span>建卡監控</button>
     </div>
     <div class="grow"></div>
     <div class="foot">
@@ -1045,19 +1045,23 @@
       </div>
     </section>
 
-    <!-- V2 車趟模擬（0817）：鏡像測試員手機的抓單結果，V1/V2 切換看 -->
+    <!-- 建卡監控（0817）：鏡像測試員手機的抓單結果，V1/V2 切換看 -->
     <section id="tab-v2sim" class="hide">
-      <div class="pagehead"><h1>V2 車趟模擬</h1><div class="sub">選一位測試員，即時看他手機上 V1 / V2 各自會建出什麼車卡。資料來自 App 背景上傳（v2_shadow）。</div></div>
+      <div class="pagehead"><h1>建卡監控</h1><div class="sub">即時追蹤測試員手機的抓單結果：V1（正式）與 V2（影子）各建了什麼卡、差在哪。資料來自 App 背景上傳，30 秒自動刷新。</div></div>
+      <!-- 統計卡片：一眼看今天 V1/V2 表現 -->
+      <div id="simStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;"></div>
       <div class="card">
         <div class="rowline" style="gap:12px;flex-wrap:wrap;">
-          <select id="simDriver" style="min-width:200px;"><option value="">全部司機</option></select>
-          <select id="simHours"><option value="6">6 小時</option><option value="24" selected>24 小時</option><option value="72">3 天</option></select>
+          <select id="simDriver" style="min-width:180px;"><option value="">全部司機</option></select>
+          <select id="simGroup" style="min-width:140px;"><option value="">全部群組</option></select>
+          <select id="simHours"><option value="1">1 小時</option><option value="6">6 小時</option><option value="24" selected>24 小時</option><option value="72">3 天</option></select>
           <div class="seg" id="simEngine">
             <button data-eng="v2" class="on">V2</button>
             <button data-eng="v1">V1</button>
             <button data-eng="both">並排</button>
           </div>
           <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simDiffOnly"> 只看差異</label>
+          <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simAuto" checked> 自動刷新</label>
           <button class="btn" onclick="loadV2Sim()">重新載入</button>
           <span class="muted" id="simStat" style="margin-left:auto;font-size:12px;"></span>
         </div>
@@ -1259,25 +1263,44 @@
        loadGeoUsage 本來就是用量頁在用的同一支,不會額外花錢。 */
     else if(t==="flow"){ if(!GEO_CACHE_RES){ loadGeoUsage(); } renderFlow(); }
     else if(t==="places"){ loadPlaces(); loadMiss(); loadCands(); }
-    else if(t==="v2sim"){ loadV2Sim(); }
+    else if(t==="v2sim"){ loadV2Sim(); startSimAuto(); }
   }
 
-  /* ── V2 車趟模擬（0817）── */
-  var SIM_ROWS = [], SIM_ENG = "v2";
+  /* ── 建卡監控（0817）── */
+  var SIM_ROWS = [], SIM_ENG = "v2", SIM_TIMER = null, SIM_LAST_ID = 0;
   function loadV2Sim(){
     var key = $('simDriver').value, hours = parseInt($('simHours').value,10)||24;
     $('simStat').textContent = "載入中…";
     api("v2shadow", { key: key, hours: hours }).then(function(res){
       if(!res.ok){ $('simStat').textContent = "失敗:"+(res.error||"?"); return; }
-      SIM_ROWS = res.rows || [];
+      var newRows = res.rows || [];
+      /* 新進筆數提示（自動刷新時知道有沒有新的） */
+      var maxId = newRows.length ? Math.max.apply(null, newRows.map(function(r){return r.id;})) : 0;
+      var fresh = SIM_LAST_ID > 0 ? newRows.filter(function(r){return r.id > SIM_LAST_ID;}).length : 0;
+      SIM_LAST_ID = Math.max(SIM_LAST_ID, maxId);
+      SIM_ROWS = newRows;
       /* 司機下拉：保留目前選擇 */
       var sel = $('simDriver'), cur = sel.value;
       sel.innerHTML = '<option value="">全部司機（'+(res.drivers||[]).reduce(function(s,d){return s+d.n;},0)+' 筆）</option>' +
         (res.drivers||[]).map(function(d){ return '<option value="'+esc(d.key)+'">'+esc(d.name||d.key)+'（'+d.n+' 筆）</option>'; }).join('');
       sel.value = cur;
+      /* 群組下拉：從資料裡收集 */
+      var gsel = $('simGroup'), gcur = gsel.value, groups = {};
+      SIM_ROWS.forEach(function(r){ var g = r.group_name || '?'; groups[g] = (groups[g]||0)+1; });
+      gsel.innerHTML = '<option value="">全部群組</option>' + Object.keys(groups).sort(function(a,b){return groups[b]-groups[a];}).map(function(g){
+        return '<option value="'+esc(g)+'">'+esc(g.slice(0,14))+'（'+groups[g]+'）</option>'; }).join('');
+      gsel.value = gcur;
       renderV2Sim();
+      if(fresh > 0) toast('新進 '+fresh+' 筆');
     });
   }
+  /* 自動刷新（30 秒）：只在分頁可見 + 勾選時跑 */
+  function simAutoTick(){
+    if($('tab-v2sim').classList.contains('hide')) return;
+    if(!$('simAuto').checked) return;
+    loadV2Sim();
+  }
+  function startSimAuto(){ if(SIM_TIMER) clearInterval(SIM_TIMER); SIM_TIMER = setInterval(simAutoTick, 30000); }
   $('simEngine').addEventListener('click', function(e){
     var b = e.target.closest('button'); if(!b) return;
     SIM_ENG = b.getAttribute('data-eng');
@@ -1286,7 +1309,14 @@
   });
   $('simDriver').addEventListener('change', loadV2Sim);
   $('simHours').addEventListener('change', loadV2Sim);
+  $('simGroup').addEventListener('change', renderV2Sim);
   $('simDiffOnly').addEventListener('change', renderV2Sim);
+  $('simAuto').addEventListener('change', function(){ if(this.checked) startSimAuto(); });
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('[data-copy]'); if(!b) return;
+    var txt = decodeURIComponent(b.getAttribute('data-copy'));
+    navigator.clipboard.writeText(txt).then(function(){ toast('已複製原文'); });
+  });
 
   /* 簽章「時間|上車|下車‖時間|上車|下車」→ 車卡陣列 */
   function sigToCards(sig){
@@ -1304,12 +1334,27 @@
       (c.dropoff ? '<div style="font-size:13px;color:#b0bec5;margin-top:2px;">→ '+esc(c.dropoff)+'</div>' : '') +
       '</div>';
   }
+  function statCard(label, val, color){
+    return '<div class="card" style="padding:10px 12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(color||'var(--ink)')+';">'+val+'</div><div class="muted" style="font-size:11px;">'+label+'</div></div>';
+  }
   function renderV2Sim(){
-    var diffOnly = $('simDiffOnly').checked;
-    var rows = SIM_ROWS.filter(function(r){ return !diffOnly || r.diff_kind !== 'D_一致'; });
-    var kinds = {};
-    SIM_ROWS.forEach(function(r){ kinds[r.diff_kind] = (kinds[r.diff_kind]||0)+1; });
-    $('simStat').textContent = rows.length+' 則 · ' + Object.keys(kinds).sort().map(function(k){ return k.replace(/^[A-F]_/,'')+' '+kinds[k]; }).join(' · ');
+    var diffOnly = $('simDiffOnly').checked, grp = $('simGroup').value;
+    var rows = SIM_ROWS.filter(function(r){ return (!diffOnly || r.diff_kind !== 'D_一致') && (!grp || (r.group_name||'?') === grp); });
+    var kinds = {}, v1Total = 0, v2Total = 0;
+    SIM_ROWS.forEach(function(r){ kinds[r.diff_kind] = (kinds[r.diff_kind]||0)+1; v1Total += r.v1_count||0; v2Total += r.v2_count||0; });
+    var same = kinds['D_一致']||0, total = SIM_ROWS.length;
+    var rate = total ? Math.round(same*100/total) : 0;
+    /* 統計卡片 */
+    $('simStats').innerHTML =
+      statCard('訊息', total) +
+      statCard('V1 建卡', v1Total, '#93c5fd') +
+      statCard('V2 建卡', v2Total, '#4ade80') +
+      statCard('一致', same+'（'+rate+'%）', '#22c55e') +
+      statCard('V2 漏抓', kinds['A_v2漏抓']||0, (kinds['A_v2漏抓']||0)>0?'#ef4444':'#22c55e') +
+      statCard('V2 多抓', kinds['B_v2多抓']||0, '#f59e0b') +
+      statCard('張數不同', kinds['C_張數不同']||0, '#3b82f6') +
+      statCard('欄位不同', kinds['F_欄位不同']||0, '#a78bfa');
+    $('simStat').textContent = rows.length+' 則顯示中';
     var html = rows.map(function(r){
       var v1 = sigToCards(r.v1_sig), v2 = sigToCards(r.v2_sig);
       var t = new Date(r.created_at);
@@ -1318,7 +1363,7 @@
       var head = '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">' +
         '<span class="muted">'+hh+' · '+esc(r.group_name||'?')+'</span>' +
         '<span style="color:'+kindColor+';font-weight:600;">'+esc(r.diff_kind.replace(/^[A-F]_/,''))+' V1='+r.v1_count+' V2='+r.v2_count+'</span></div>';
-      var raw = '<details style="margin-top:6px;"><summary class="muted" style="font-size:11px;cursor:pointer;">原文</summary><pre style="font-size:11px;white-space:pre-wrap;color:#8b8fa4;margin:4px 0 0;max-height:120px;overflow:auto;">'+esc(r.raw_text||'')+'</pre></details>';
+      var raw = '<details style="margin-top:6px;"><summary class="muted" style="font-size:11px;cursor:pointer;">原文 <button class="btn" style="font-size:10px;padding:1px 6px;margin-left:6px;" data-copy="'+encodeURIComponent(r.raw_text||'')+'">複製</button></summary><pre style="font-size:11px;white-space:pre-wrap;color:#8b8fa4;margin:4px 0 0;max-height:120px;overflow:auto;">'+esc(r.raw_text||'')+'</pre></details>';
       var body = '';
       if(SIM_ENG==='v2') body = v2.length ? v2.map(function(c){return cardHtml(c,'v2');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V2：0 張</div>';
       else if(SIM_ENG==='v1') body = v1.length ? v1.map(function(c){return cardHtml(c,'v1');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V1：0 張</div>';
