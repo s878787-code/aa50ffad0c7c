@@ -835,6 +835,8 @@
     <!-- ═══ 位置庫 ═══ -->
     <section id="tab-places" class="hide">
       <div class="pagehead"><h1>社區/大樓 位置庫</h1><div class="sub">派單只寫「XX社區/大樓/店名」Google 定不到 → 補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 → 點座標複製「25.033, 121.565」貼進來。<b>驗證打勾才會被 App 採用。</b></div></div>
+      <!-- 位置資料資產（0819）：公司累積的定位資料，永久保存 -->
+      <div id="geoAssets" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;"></div>
       <div class="card" id="candCard">
         <div class="rowline">
           <span class="cardtitle">🤖 自動回填候選 <span id="candN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
@@ -3158,7 +3160,24 @@
   $('placeRefresh').addEventListener('click', loadPlaces);
   $('placeQ').addEventListener('input', renderPlaces);
   $('placeNewBtn').addEventListener('click', function(){ openPlaceForm(null); });
-  function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); }
+  function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); loadGeoAssets(); }
+  /* 位置資料資產統計（0819） */
+  function loadGeoAssets(){
+    api("geoAssets").then(function(r){
+      if(!r.ok) return;
+      function fmt(n){ return (n||0).toLocaleString(); }
+      function card(label, val, sub, color){
+        return '<div class="card" style="padding:10px 12px;text-align:center;"><div style="font-size:20px;font-weight:700;color:'+(color||'var(--ink)')+';">'+val+'</div><div style="font-size:12px;font-weight:600;">'+label+'</div>'+(sub?'<div class="muted" style="font-size:10px;margin-top:2px;">'+sub+'</div>':'')+'</div>';
+      }
+      $('geoAssets').innerHTML =
+        card('地址座標', fmt(r.addr_coords), '查過定位成功的地址・永久保存', '#22c55e') +
+        card('門牌庫', fmt(r.door_plates_est), '政府開放資料・六都+宜蘭', '#93c5fd') +
+        card('位置庫', fmt(r.community_places), '人工策展社區/店名', '#a78bfa') +
+        card('待策展', fmt(r.place_candidates), '自動回填候選', '#f59e0b') +
+        card('路線快取', fmt(r.route_cache), '司機→上車地行車距離', 'var(--muted)') +
+        card('路段', fmt(r.door_roads), '', 'var(--muted)');
+    });
+  }
   function parseCoord(s){
     var t = String(s||"").replace(/，/g, ",");
     var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
