@@ -1049,26 +1049,38 @@
 
     <!-- 建卡監控（0817）：鏡像測試員手機的抓單結果，V1/V2 切換看 -->
     <section id="tab-v2sim" class="hide">
-      <div class="pagehead"><h1>建卡監控</h1><div class="sub">即時追蹤測試員手機的抓單結果：V1（正式）與 V2（影子）各建了什麼卡、差在哪。資料來自 App 背景上傳，30 秒自動刷新。</div></div>
-      <!-- 統計卡片：一眼看今天 V1/V2 表現 -->
-      <div id="simStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;"></div>
-      <div class="card">
-        <div class="rowline" style="gap:12px;flex-wrap:wrap;">
-          <select id="simDriver" style="min-width:180px;"><option value="">全部司機</option></select>
-          <select id="simGroup" style="min-width:140px;"><option value="">全部群組</option></select>
-          <select id="simHours"><option value="1">1 小時</option><option value="6">6 小時</option><option value="24" selected>24 小時</option><option value="72">3 天</option></select>
-          <div class="seg" id="simEngine">
-            <button data-eng="v2" class="on">V2</button>
-            <button data-eng="v1">V1</button>
-            <button data-eng="both">並排</button>
-          </div>
-          <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simDiffOnly"> 只看差異</label>
-          <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simAuto" checked> 自動刷新</label>
-          <button class="btn" onclick="loadV2Sim()">重新載入</button>
-          <span class="muted" id="simStat" style="margin-left:auto;font-size:12px;"></span>
+      <div class="pagehead"><h1>建卡監控</h1><div class="sub">即時追蹤測試員手機的抓單結果：V1（正式）與 V2（影子）各建了什麼卡、差在哪。</div></div>
+      <!-- 主開關：關閉時不撈資料、不自動刷新（省 Supabase 呼叫量） -->
+      <div class="card" style="margin-bottom:12px;">
+        <div class="rowline" style="align-items:center;gap:10px;">
+          <label style="font-weight:bold;font-size:15px;display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="simEnabled" style="width:18px;height:18px;"> 啟用建卡監控
+          </label>
+          <span class="muted" style="font-size:12px;">關閉時不會呼叫 API，不消耗 Supabase 額度</span>
         </div>
       </div>
-      <div id="simCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px;"></div>
+      <div id="simDisabledMsg" style="padding:40px 20px;text-align:center;color:var(--muted);">建卡監控已關閉。打開上方開關即可開始監控。</div>
+      <!-- 統計卡片：一眼看今天 V1/V2 表現 -->
+      <div id="simActiveArea" style="display:none;">
+        <div id="simStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:12px;"></div>
+        <div class="card">
+          <div class="rowline" style="gap:12px;flex-wrap:wrap;">
+            <select id="simDriver" style="min-width:180px;"><option value="">全部司機</option></select>
+            <select id="simGroup" style="min-width:140px;"><option value="">全部群組</option></select>
+            <select id="simHours"><option value="1">1 小時</option><option value="6">6 小時</option><option value="24" selected>24 小時</option><option value="72">3 天</option></select>
+            <div class="seg" id="simEngine">
+              <button data-eng="v2" class="on">V2</button>
+              <button data-eng="v1">V1</button>
+              <button data-eng="both">並排</button>
+            </div>
+            <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simDiffOnly"> 只看差異</label>
+            <label style="font-size:13px;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="simAuto" checked> 自動刷新</label>
+            <button class="btn" onclick="loadV2Sim()">重新載入</button>
+            <span class="muted" id="simStat" style="margin-left:auto;font-size:12px;"></span>
+          </div>
+        </div>
+        <div id="simCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-top:12px;"></div>
+      </div>
     </section>
 
   </main>
@@ -1265,7 +1277,7 @@
        loadGeoUsage 本來就是用量頁在用的同一支,不會額外花錢。 */
     else if(t==="flow"){ if(!GEO_CACHE_RES){ loadGeoUsage(); } renderFlow(); }
     else if(t==="places"){ loadPlaces(); loadMiss(); loadCands(); }
-    else if(t==="v2sim"){ loadV2Sim(); startSimAuto(); }
+    else if(t==="v2sim"){ if($('simEnabled').checked){ loadV2Sim(); startSimAuto(); } }
   }
 
   /* ── 建卡監控（0817）── */
@@ -1314,6 +1326,12 @@
   $('simGroup').addEventListener('change', renderV2Sim);
   $('simDiffOnly').addEventListener('change', renderV2Sim);
   $('simAuto').addEventListener('change', function(){ if(this.checked) startSimAuto(); });
+  $('simEnabled').addEventListener('change', function(){
+    var on = this.checked;
+    $('simActiveArea').style.display = on ? '' : 'none';
+    $('simDisabledMsg').style.display = on ? 'none' : '';
+    if(on){ loadV2Sim(); startSimAuto(); } else { if(SIM_TIMER) clearInterval(SIM_TIMER); SIM_TIMER=null; }
+  });
   document.addEventListener('click', function(e){
     var b = e.target.closest('[data-copy]'); if(!b) return;
     var txt = decodeURIComponent(b.getAttribute('data-copy'));
