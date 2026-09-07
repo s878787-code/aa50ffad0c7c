@@ -420,7 +420,6 @@
            獨立成子頁的理由:這兩份資料會【隨時間越長越長】,塞進分頁會把每天要用的控制項擠掉。 -->
       <a href="難單紀錄.html">🧩 難單紀錄 →</a>
       <a href="AI看單紀錄.html">🔍 AI 看單紀錄 →</a>
-      <a href="AI學習記憶.html">🧠 AI 修址學習記憶 →</a>
       <!-- 0804:使用手冊子頁。放側欄 = 每個分頁都摸得到 —— 不會用的功能通常是「當下不知道去哪查」,
            而不是「不知道有這份文件」。它不抓任何資料,所以【沒有登入閘】(理由見該檔檔頭)。 -->
       <a href="後台使用手冊.html">📘 使用手冊 →</a>
@@ -635,7 +634,6 @@
         <div class="kpi" style="cursor:default;"><div class="n" id="geoToday">—</div><div class="t">今日 Google 呼叫</div></div>
         <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
         <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
-        <div class="kpi" style="cursor:default;"><div class="n" id="aiState">—</div><div class="t">AI 修址層(只修座標)</div></div>
         <!-- 0804:距離改由自架 OSRM 主辦 → 這格看它今天扛了多少 % 、後備(Map8/其他)接了多少。
              掉下來就代表 OSRM 那台在出事,距離會退到 Map8(吃日上限)甚至直線。 -->
         <div class="kpi" style="cursor:default;grid-column:span 2;">
@@ -653,7 +651,6 @@
             <button data-u="places">└ Places</button>
             <button data-u="map8">Map8(已停)</button>
             <button data-u="cache">快取命中</button>
-            <button data-u="ai">AI 修址</button>
             <button data-u="rescue">看單救援</button>
             <button data-u="rate">命中率</button>
           </div>
@@ -744,20 +741,12 @@
 
     <!-- ═══ AI 大腦 ═══ -->
     <section id="tab-ai" class="hide">
-      <div class="pagehead"><h1>AI 大腦 <span id="aiModelBadge" style="font-size:12px;font-weight:600;color:var(--teal-ink);background:var(--teal-soft);border:1px solid var(--teal-line);padding:2px 10px;border-radius:20px;vertical-align:middle;margin-left:8px;">🤖 模型載入中…</span></h1><div class="sub">兩個 AI 各司其職:<b>看單救援</b>在規則抓 0 張時把整張卡救回來(v33 起連下車一起剪),<b>修址</b>在地址查不到座標時把地址修乾淨再查一次。這頁管它們的開關、規則、以及它學到的東西。</div></div>
+      <div class="pagehead"><h1>AI 大腦 <span id="aiModelBadge" style="font-size:12px;font-weight:600;color:var(--teal-ink);background:var(--teal-soft);border:1px solid var(--teal-line);padding:2px 10px;border-radius:20px;vertical-align:middle;margin-left:8px;">🤖 模型載入中…</span></h1><div class="sub"><b>AI 看單救援</b>:規則抓 0 張時把整張卡救回來(v33 起連下車一起剪)。這頁管它的開關、上限、規則。(舊的「AI 修址」層 0908 已停用並自後台移除,伺服器端只剩關閉的開關。)</div></div>
 
       <div class="card" id="aiFuseCard">
         <div class="rowline"><span class="cardtitle">開關與每日上限</span>
           <span class="muted" style="font-size:12px;">超過上限當天就停用該層,卡片照出、不影響抓單</span>
           <button class="linkbtn" id="aiFuseRefresh" style="margin-left:auto;">↻ 重新整理</button>
-        </div>
-<div class="rowline" id="aiCtl" style="margin-top:8px;">
-          <span class="muted" style="font-weight:700;">🤖 AI 修址層</span>
-          <button class="ghost" id="aiToggle" style="padding:5px 12px;">—</button>
-          <span class="muted" style="font-size:12.5px;">每日上限</span>
-          <input type="number" id="aiCap" min="0" style="width:90px;" placeholder="0=不限">
-          <button class="ghost" id="aiCapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;">只修座標,不改卡片文字(0=不限)</span>
         </div>
 <div class="rowline" id="aiRescueCtl" style="margin-top:8px;">
           <span class="muted" style="font-weight:700;">🔍 AI 看單救援</span>
@@ -765,52 +754,11 @@
           <span class="muted" style="font-size:12.5px;">每日上限</span>
           <input type="number" id="aiRescueCap" min="0" style="width:90px;" placeholder="0=不限">
           <button class="ghost" id="aiRescueCapBtn" style="padding:5px 12px;">設定</button>
-          <span class="muted" style="font-size:11.5px;">規則抓 0 張時才跑 · 卡片標「🤖 AI 確認中」· 額度與修址層各自獨立</span>
+          <span class="muted" style="font-size:11.5px;">規則抓 0 張時才跑 · 卡片標「🤖 AI 確認中」</span>
         </div>
       </div>
 
-      <div class="card" id="aiTrendCard">
-        <div class="rowline"><span class="cardtitle">AI 修址救回率 · 逐日</span>
-          <span class="muted" style="font-size:12px;">AI 出手的單裡,最後真的查到座標的比例</span>
-          <span class="muted" id="aiTrendNow" style="margin-left:auto;font-family:var(--mono);font-weight:700;">—</span>
-        </div>
-        <div class="chartbox" id="aiTrendChart" style="margin-top:8px;"></div>
-        <div class="muted" id="aiTrendNote" style="font-size:11.5px;margin-top:6px;line-height:1.6;"></div>
-      </div>
 
-      <!-- 🤖 AI 修址提示詞(0802 可編輯規則 + 0803 顯示完整框架)。規則你自己改,範例它自己學。 -->
-      <div class="card" id="aiBrainCard">
-        <div class="rowline"><span class="cardtitle">🤖 AI 修址規則(可編輯)</span>
-          <span class="muted" style="font-size:11.5px;">從派單原文剪出上車地址 · 改完最多 60 秒生效</span>
-          <button class="linkbtn" id="aiBrainLoad" style="margin-left:auto;">↻ 載入</button>
-        </div>
-        <div class="muted" style="font-size:11px;margin:6px 0 3px;">🔒 程式硬編開頭(改不到):</div>
-        <pre class="promptfix">你是台灣計程車派單解析助手。從派單原文【原封不動地剪下】上車地址那一段。
-規則:</pre>
-        <div class="rowline" style="margin:8px 0 3px;">
-          <span class="muted" style="font-size:11px;">📋 規則(每行一條;<b>直接改這一段就是改內建規則</b>,上下兩個灰框才是改不到的框架):</span>
-          <span class="muted" id="aiRulesState" style="font-size:11px;margin-left:auto;">—</span>
-        </div>
-        <textarea id="aiRules" rows="7" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;"
-          placeholder="載入中…"></textarea>
-        <div class="muted" style="font-size:11px;margin-top:3px;">載入時自動帶入目前生效的規則。改壞了按
-          <button class="linkbtn" id="aiRulesReset" style="padding:0 2px;">↺ 還原成原廠內建</button>,存回去即恢復。</div>
-        <div class="muted" style="font-size:11px;margin:8px 0 3px;">🔒 程式硬編鐵律(永遠最後·改不到·真正的防腦補靠 aiCutFrom 子序列硬閘):</div>
-        <pre class="promptfix">- 【最重要】只能刪字不能加字:輸出的每一個字都必須原封不動出現在原文裡。
-  絕對不可以補縣市、不可以補「廣場/百貨/店」等你以為的全名、不可以改錯字。
-- 抽不出地址就回 null
-只回 JSON:{"addr":"從原文剪下的字串"} 或 {"addr":null}</pre>
-        <div class="rowline" style="margin-top:8px;">
-          <input type="text" id="aiRulesNote" style="flex:1;" placeholder="改動理由(選填,但強烈建議寫 —— 出事時這是唯一的線索)">
-          <button class="ghost" id="aiRulesSave" style="padding:5px 14px;">儲存並套用</button>
-        </div>
-        <div class="muted" style="font-size:11.5px;margin-top:10px;" id="aiBrainStat">—</div>
-        <div id="aiHistBox" style="margin-top:8px;"></div>
-        <div class="rowline" style="margin-top:10px;">
-          <span class="muted" style="font-size:11.5px;">懷疑學歪了?清空範例庫重新累積(規則不動)</span>
-          <button class="ghost" id="aiExClear" style="padding:4px 12px;margin-left:auto;">清空範例庫</button>
-        </div>
-      </div>
 
       <!-- 🔍 AI 看單救援提示詞(0803 新增可編輯)。規則抓 0 張時才跑,產出整張卡 → 風險較高,獨立編輯。 -->
       <div class="card" id="rsBrainCard">
@@ -845,17 +793,15 @@
 
       
       <div class="card">
-        <div class="rowline"><span class="cardtitle">想看它學到什麼?</span></div>
+        <div class="rowline"><span class="cardtitle">想看它讀了什麼?</span></div>
         <div class="muted" style="font-size:12.5px;margin-top:8px;line-height:1.75;">
-          範例庫、今日成敗迴路、規則改動歷史 —— 這些會<b>越累積越長</b>,放在
-          <a href="AI學習記憶.html" style="color:var(--teal-ink);font-weight:600;">🧠 AI 修址學習記憶</a> 子頁,
-          這頁只留每天要操作的開關與規則。<br>
           規則抓不到、AI 讀出來的難單在
           <a href="難單紀錄.html" style="color:var(--teal-ink);font-weight:600;">🧩 難單紀錄</a> —— 看原文形態、蒐語料;多人反覆踩到的才值得動 Parser。
+          每一次救援的輸入/輸出在 <a href="AI看單紀錄.html" style="color:var(--teal-ink);font-weight:600;">🔍 AI 看單紀錄</a>。
         </div>
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-          <a class="ghost" href="AI學習記憶.html" style="text-decoration:none;display:inline-block;">🧠 AI 修址學習記憶 →</a>
           <a class="ghost" href="難單紀錄.html" style="text-decoration:none;display:inline-block;">🧩 難單紀錄 →</a>
+          <a class="ghost" href="AI看單紀錄.html" style="text-decoration:none;display:inline-block;">🔍 AI 看單紀錄 →</a>
         </div>
       </div>
     </section>
@@ -1059,7 +1005,6 @@
         </div>
         <!-- 下排:三條工作通道,吃整張卡的寬度 -->
         <div style="margin-top:12px;">
-          <div class="ailane paid"><span class="lb">🤖 修址</span><span class="lw"></span><span class="lr"><b id="flowAiNParse">—</b> 次 · 地址查不到→剪乾淨</span></div>
           <div class="ailane paid"><span class="lb">🔍 看單救援</span><span class="lw"></span><span class="lr"><b id="flowAiNRescue">—</b> 次 · 規則抓 0 張→救卡</span></div>
           <div class="ailane"><span class="lb">🏷 分類器</span><span class="lw"></span><span class="lr"><b id="flowAiNCls">—</b> 次 · <span id="flowAiClsLane">查無歸因</span></span></div>
         </div>
@@ -1299,7 +1244,7 @@
     /* 0803 審查 P2:原本 loadHealth()+loadGeoUsage() 會把較重的 geo_usage_stats RPC 打兩次。
        loadGeoUsage 內部已經呼叫 renderHealth(computeHealthWarns(res)),行為相同、負載減半。 */
     else if(t==="alerts"){ loadGeoUsage(); }
-    else if(t==="ai"){ loadGeoUsage(); loadAiBrain(); loadRescue(); }
+    else if(t==="ai"){ loadGeoUsage(); loadRescue(); }
     /* 0803 審查 P2:儲存卡從 usage 搬到這裡後沒人載入它 → 三張卡只有它是空的。
        同時把 loadGeoUsage 裡那行順帶呼叫拿掉(那個耦合只因為以前同頁)。 */
     else if(t==="sys"){ loadAbuse(); loadSiteViews(); if(typeof loadStorage==='function') loadStorage(); loadDbStorage(); }
@@ -2310,13 +2255,6 @@
   /* 三顆按鈕都【不帶 cap】除非使用者真的按了「設定」—— 後端 cap 省略就不動它。
      0731 審查 HIGH:原本每顆按鈕都把輸入框現值當 cap 一起寫回,而 getStats 讀取失敗時
      會回 0 並填進輸入框,於是「切一下開關」就順手把上限靜默改成 0 了。 */
-  $('aiToggle').addEventListener('click', function(){
-    if(!aiLoaded) return toast("設定還沒載入,請稍候");
-    api("setAiConfig", { which: "extract", enabled: !aiEnabled }).then(function(res){
-      if(res.ok){ toast(res.enabled ? "🤖 AI 修址層已開啟" : "⛔ AI 修址層已關閉"); loadGeoUsage(); }
-      else toast("設定失敗(需管理員密碼)");
-    });
-  });
   $('aiRescueToggle').addEventListener('click', function(){
     if(!aiLoaded) return toast("設定還沒載入,請稍候");
     /* 開啟前確認一次:這顆會讓 AI 影響「會出卡」的路徑,比修址層高一級風險 */
@@ -2329,15 +2267,6 @@
   /* 三個保險絲【完全獨立】:Google / AI 修址層 / AI 看單救援,各數各的、互不排擠。
      0731 使用者裁決 —— 共用版試過,問題是很容易寫成單向(v18 踩過),而且兩層 AI 的量級差太遠,
      綁在一起會讓修址層把額度吃光、救援層被連坐停擺,後台還只看得到「capped」查不出是誰吃的。 */
-  $('aiCapBtn').addEventListener('click', function(){
-    if(!aiLoaded) return toast("設定還沒載入,請稍候");
-    var cap = parseInt($('aiCap').value || "0", 10) || 0;
-    /* 只設上限、不動開關:which 送 extract 並回填它【當下的值】,避免順手把修址層切掉 */
-    api("setAiConfig", { which: "extract", enabled: aiEnabled, cap: cap }).then(function(res){
-      if(res.ok){ toast(cap ? "修址層每日上限已設為 " + cap : "修址層已取消上限(0=不限)"); loadGeoUsage(); }
-      else toast("設定失敗(需管理員密碼)");
-    });
-  });
   /* ── 🧠 AI 學習迴圈控制台(C1+C2)────────────────────────────────
      規則:使用者可編輯,存 app_config.ai_prompt_rules,每次改動寫一筆版本歷史。
      範例:系統自動累積【事後證實查得到座標】的剪法,下次同型單檢索出來當 few-shot。
@@ -2395,33 +2324,6 @@
       + "<br>⚠️ App v33.1 的「移動即時距離」是<b>手機端直線算的、不打伺服器</b>,不會出現在這裡;這張卡只反映進單那一次的路程計算。";
   }
 
-  function renderAiTrend(res){
-    var host = $('aiTrendChart'); if(!host) return;
-    var byDay = {};
-    ((res.stats && res.stats.days) || []).forEach(function(r){
-      if(r.api === "ai_parse" && r.ok_n != null){
-        byDay[r.day] = byDay[r.day] || { n:0, ok:0 };
-        byDay[r.day].n += Number(r.n||0); byDay[r.day].ok += Number(r.ok_n||0);
-      }
-    });
-    var ds = Object.keys(byDay).sort();
-    if(ds.length < 2){
-      host.innerHTML = "<div class='muted' style='font-size:12.5px;padding:14px 0;'>資料還不夠畫線(需要至少兩天)。</div>";
-      $('aiTrendNow').textContent = "—"; $('aiTrendNote').textContent = ""; return;
-    }
-    var vals = ds.map(function(d){ var b = byDay[d]; return b.n ? Math.round(100*b.ok/b.n) : 0; });
-    var labels = ds.map(function(d){ return d.slice(5).replace("-","/"); });
-    trendSVG(host, labels, vals, function(v){ return v + "%"; }, 100);   // fixedMax=100:百分比軸固定,不會因當日高點而變形
-    var last = vals[vals.length-1], first = vals[0];
-    $('aiTrendNow').textContent = last + "%";
-    $('aiTrendNow').style.color = last >= first ? "var(--teal-ink)" : "var(--amber)";
-    var totalN = ds.reduce(function(a,d){ return a + byDay[d].n; }, 0);
-    $('aiTrendNote').innerHTML = "區間 <b>" + labels[0] + "</b> → <b>" + labels[labels.length-1] + "</b> · 共 "
-      + totalN.toLocaleString() + " 次判讀 · 起 " + first + "% → 今 " + last + "%"
-      + (last > first ? " <span style='color:var(--teal-ink);font-weight:600;'>↑ 學習中</span>"
-         : (last < first ? " <span style='color:var(--amber);font-weight:600;'>↓ 退步,檢查規則或難單型態</span>" : ""))
-      + "<br>救回率低不一定是壞事 —— 很多單原文本來就沒有地址(AI 正確回 null 也算沒救回)。看<b>趨勢</b>比看絕對值準。";
-  }
 
   /* 0804:兩套規則的【內建預設】改由伺服器回(單一事實來源),不再在 HTML 抄一份。
      編輯框載入時直接帶入【目前生效的規則】= 有客製就用客製,否則用內建預設 ——
@@ -2435,63 +2337,16 @@
       ? "<span style='color:var(--amber);font-weight:600;'>● 已客製</span>"
       : "<span style='color:var(--teal-ink);font-weight:600;'>● 原廠內建</span>";
   }
-  function renderAiBrain(res){
-    if(!res || !res.ok) return;
-    if(res.ai){   // 目前實際生效的 AI 模型(修址+救援共用 main;分類器 classifier)
-      $('aiModelBadge').innerHTML = "🤖 " + esc(res.ai.main)
-        + (res.ai.classifier && res.ai.classifier!==res.ai.main ? " · 分類器 "+esc(res.ai.classifier) : "")
-        + (res.ai.provider ? " · "+esc(res.ai.provider) : "");
-    }
-    res._which = "extract";
-    fillRuleBox('aiRules', 'aiRulesState', res);
-    /* 0803:這裡【只留一行摘要】。範例清單原本整串印在這個統計行裡,會隨累積越拉越長,
-       把下面的「改動理由 / 儲存並套用」擠到看不見 —— 而完整清單(可搜尋)子頁已經有了。
-       主後台=每天要按的控制項,觀察類資料一律歸子頁,同一份東西不兩邊維護。 */
-    var exN = res.examples_n || 0;
-    $('aiBrainStat').innerHTML = exN
-      ? ("已學會 <b>" + exN + "</b> 個成功範例 · <a href='AI學習記憶.html' style='color:var(--teal-ink);font-weight:600;'>看清單 →</a>")
-      : "還沒累積範例 —— AI 修址成功一次就會存一筆,下次同型的單拿它當範例。";
-    /* 版本歷史【留在主後台】—— 它帶「回滾」按鈕,那是操作不是觀察(子頁那份是唯讀的)。
-       但只留最近 3 筆:要翻更早的去子頁,這裡不讓它長。 */
-    $('aiHistBox').innerHTML = (res.history||[]).slice(0,3).map(function(h){
-      return "<div class='rowline' style='font-size:11.5px;padding:4px 0;'>"
-        + "<span class='muted'>" + fmtReportTime(h.created_at) + " · " + esc(h.changed_by||"?") + "</span>"
-        + "<span style='flex:1;color:#8D9A97;overflow:hidden;text-overflow:ellipsis;white-space:nowrap'>" + esc(h.note||"(未寫理由)") + "</span>"
-        + "<button class='linkbtn' data-rollback='" + h.id + "'>回滾</button></div>";
-    }).join("");
-    $('aiHistBox').querySelectorAll('[data-rollback]').forEach(function(b){
-      b.addEventListener('click', function(){
-        var h = (res.history||[]).filter(function(x){ return String(x.id) === b.getAttribute('data-rollback'); })[0];
-        if(!h) return;
-        if(!confirm("回滾到這個版本?\n\n" + (h.note || "(未寫理由)"))) return;
-        $('aiRules').value = h.rules || "";
-        $('aiRulesNote').value = "回滾至 " + fmtReportTime(h.created_at);
-        toast("已填入,確認後按「儲存並套用」");
-      });
-    });
-  }
-  function loadAiBrain(){ api("getAiPrompt", { which:"extract" }).then(renderAiBrain); }
-  $('aiBrainLoad').addEventListener('click', loadAiBrain);
-  $('aiRulesSave').addEventListener('click', function(){
-    // 內容跟原廠內建一字不差 → 送空字串清掉 override(狀態才會誠實回到「原廠內建」,
-    //   而不是存一份「剛好等於預設的客製」)。改過才存成客製。
-    var v = $('aiRules').value;
-    if(v.trim() === (AI_DEFAULTS.extract||"").trim()) v = "";
-    api("setAiPrompt", { which:"extract", rules: v, note: $('aiRulesNote').value }).then(function(r){
-      if(r.ok){ toast("已套用(最多 60 秒生效)"); $('aiRulesNote').value=""; loadAiBrain(); }
-      else toast(r.error || "儲存失敗(需管理員密碼)");
-    });
-  });
-  $('aiRulesReset').addEventListener('click', function(){
-    $('aiRules').value = AI_DEFAULTS.extract || "";
-    $('aiRulesNote').value = "還原成原廠內建";
-    toast("已填入原廠內建,確認後按「儲存並套用」");
-  });
 
   /* ── 🔍 看單救援規則(0803)。無範例庫、無鐵律編輯 —— 只有規則段 + 版本歷史。which=rescue。 */
   function renderRescue(res){
     if(!res || !res.ok) return;
     res._which = "rescue";
+    if(res.ai){   // 目前實際生效的 AI 模型(原本由修址卡顯示;0908 修址自後台移除 → 改由這裡更新頁首徽章)
+      $('aiModelBadge').innerHTML = "🤖 " + esc(res.ai.main)
+        + (res.ai.classifier && res.ai.classifier!==res.ai.main ? " · 分類器 "+esc(res.ai.classifier) : "")
+        + (res.ai.provider ? " · "+esc(res.ai.provider) : "");
+    }
     fillRuleBox('rsRules', 'rsRulesState', res);
     $('rsHistBox').innerHTML = (res.history||[]).slice(0,5).map(function(h){
       return "<div class='rowline' style='font-size:11.5px;padding:4px 0;'>"
@@ -2567,7 +2422,7 @@
         return;
       }
       $('flowAiModel').textContent = ai.main || "—";
-      $('flowAiProvider').textContent = (ai.provider || "自訂端點") + " · 修址與看單救援共用這顆";
+      $('flowAiProvider').textContent = (ai.provider || "自訂端點") + " · 看單救援用這顆";
       $('flowAiClsLane').textContent = (ai.classifier && ai.classifier !== ai.main)
         ? ("查無歸因 · " + ai.classifier) : "查無歸因(同上這顆)";
       // 今日各層實際出手次數 —— 讓它不只是動畫,是真的在報告工作量。
@@ -2580,7 +2435,6 @@
         else if(r.api === "ai_rescue") nR += n;
         else if(String(r.api||"").indexOf("ai_cls_") === 0) nC += n;
       });
-      $('flowAiNParse').textContent = nP.toLocaleString();
       $('flowAiNRescue').textContent = nR.toLocaleString();
       $('flowAiNCls').textContent = nC.toLocaleString();
     })();
@@ -2603,10 +2457,9 @@
       ["free","③ 錯字修正","門牌庫模糊比對",["door_fuzzy"]],
       ["free","④ 墓碑/快取","查過的秒回",["cache_hit","cache_hit_road","cache_hit_route","cache_hit_miss"]],
       ["free","⑤ 自架 Nominatim","自己的圖資機",["geocode_nominatim"]],
-      ["paid","⑥ AI 修址","地址剪乾淨再查一次",["ai_parse"]],
-      ["paid","⑦ Map8","台灣圖霸",["map8","map8_route"]],
-      ["paid","⑧ Google","長尾退路",["geocode"]],
-      ["paid","⑨ Places","裸店名最後救援",["places"]]
+      ["paid","⑥ Map8","台灣圖霸",["map8","map8_route"]],
+      ["paid","⑦ Google","長尾退路",["geocode"]],
+      ["paid","⑧ Places","裸店名最後救援",["places"]]
     ];
     var vals = W.map(function(r){ return r[3].reduce(function(a,k){ return a + (H[k]||0); },0); });
     var max = Math.max.apply(null, vals.concat([1]));
@@ -2631,12 +2484,6 @@
        + "<b>⓪.5</b> 是繞開 Android 15/16 跳轉限制的主力(需開「跳轉補救」開關)。</div>";
   }
 
-  $('aiExClear').addEventListener('click', function(){
-    if(!confirm("清空範例庫?\n\nAI 會從零重新累積(規則不受影響)。懷疑它學歪了才需要這樣做。")) return;
-    api("clearAiExamples", {}).then(function(r){
-      if(r.ok){ toast("範例庫已清空,重新學習中"); loadAiBrain(); } else toast("失敗");
-    });
-  });
   /* 0808:Map8 停用,上限 UI 已移除;setMap8Cap action 伺服器端保留(未來若復用再接回)。 */
   if(false) $('map8CapBtn').addEventListener('click', function(){
     var cap = parseInt($('map8Cap').value || "0", 10) || 0;
@@ -3148,7 +2995,6 @@
          抽出的原因見上方健康預警註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
       renderClsCard(today);
-      renderAiTrend(res);
       renderOsrmCard(res);   // 0804:距離引擎 OSRM 主辦監控
       /* 0804:資料抵達時人若正停在「運作流程」頁,把瀑布的今日命中數補畫上去
          —— 否則要離開再回來才看得到。 */
@@ -3183,14 +3029,8 @@
       if(res.places_global_cap != null && document.activeElement !== $('placesGlobalCap')) $('placesGlobalCap').value = res.places_global_cap;
       if($('placesCtl')) $('placesCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
       aiEnabled = res.ai_enabled !== false;
-      $('aiToggle').textContent = aiEnabled ? "✅ 開啟中(點擊關閉)" : "⛔ 已關閉(點擊開啟)";
-      $('aiToggle').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
-      $('aiState').textContent = aiEnabled ? "開啟" : "關閉";
-      $('aiState').style.color = aiEnabled ? "var(--teal)" : "var(--red)";
       /* null = 伺服器讀不到設定 → 【不覆寫】輸入框(舊行為是填 0,按下任一按鈕就把上限寫死成 0) */
-      if(res.ai_daily_cap != null && document.activeElement !== $('aiCap')) $('aiCap').value = res.ai_daily_cap;
       aiLoaded = true;
-      $('aiCtl').style.display = (ROLE === "viewer") ? "none" : "flex";
       /* 看單救援:預設關,且【=== true 才算開】—— 舊版伺服器沒有這個欄位時 undefined → 顯示關閉,
          fail-safe 方向跟修址層(!== false)刻意相反,因為這顆碰得到出卡路徑。 */
       aiRescueEnabled = res.ai_rescue_enabled === true;
