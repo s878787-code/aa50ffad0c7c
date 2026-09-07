@@ -618,7 +618,11 @@
             <button data-qf="done">✅ 已修復 <span id="qfDoneCount"></span></button>
             <button data-qf="all">全部</button>
           </div>
-          <button class="primary" id="qfCopyAll" style="margin-left:auto;">📋 複製全部待修給 Claude</button>
+          <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="linkbtn" id="qfSelOpen" style="font-size:12px;">全選待修</button>
+            <button class="linkbtn" id="qfSelClear" style="font-size:12px;">清除勾選</button>
+            <button class="primary" id="qfCopySel" disabled>📋 複製勾選給 Claude(0)</button>
+          </span>
         </div>
         <input id="qfSearch" type="search" autocomplete="off" placeholder="🔍 司機 / 地址 / 原文"
                style="width:100%; box-sizing:border-box; margin-top:10px; padding:8px 12px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);">
@@ -1827,8 +1831,12 @@
   function snapField(r, key){ var m = String(r.parse_snapshot||"").match(new RegExp(key+"=(\\S+)")); return (m && m[1] !== "-") ? m[1] : ""; }
   function noteBody(r){ return String(r.note||"").replace(/^\[[^\]]*\]\s*/, "").trim(); }
   var QF_FILTER = "open", QF_QUERY = "";
+  var QF_SEL = new Set();   // 勾選要一起「複製給 Claude」的回報 id(0908 使用者拍板:不要一鍵全部,要勾選)
+  function updateQfSel(){ var b = $('qfCopySel'); if(!b) return; b.textContent = "📋 複製勾選給 Claude("+QF_SEL.size+")"; b.disabled = QF_SEL.size === 0; }
   function renderQuickFix(){
     var all = REPORTS.filter(isQuickReport);
+    var ids = new Set(all.map(function(r){ return r.id; }));
+    Array.from(QF_SEL).forEach(function(id){ if(!ids.has(id)) QF_SEL.delete(id); });   // 被刪/不再是快速的 → 清掉勾選
     var open = all.filter(function(r){ return !r.resolved; });
     var bdg = $('navQfBdg'); if(bdg){ bdg.textContent = open.length; bdg.classList.toggle('hide', open.length===0); }
     $('qfOpenCount').textContent = "("+open.length+")";
@@ -1861,14 +1869,20 @@
       var nb = noteBody(r);
       var imgs = (r.image_urls && r.image_urls.length) ? r.image_urls : (r.image_url ? [r.image_url] : []);
       var thumbs = imgs.map(function(u){ var su = safeUrl(u); return su ? "<a href='"+esc(su)+"' target='_blank' rel='noopener'><img src='"+esc(su)+"' style='height:64px;border-radius:6px;border:1px solid var(--line);margin:6px 6px 0 0;'></a>" : ""; }).join("");
+      var noIssue = !!r.no_issue;   // 🙆 沒問題結案(resolved 但不算修復筆數)
+      var bs = "font-size:12px;padding:3px 9px;";
       d.innerHTML =
         "<div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;'>"+
-          (r.resolved ? "<span>✅</span>" : "")+
+          "<input type='checkbox' class='qfchk' title='勾選後可一起複製給 Claude' style='width:16px;height:16px;cursor:pointer;flex-shrink:0;'"+(QF_SEL.has(r.id) ? " checked" : "")+">"+
+          (r.resolved ? (noIssue ? "<span title='沒問題結案,不算修復筆數'>🙆</span>" : "<span>✅</span>") : "")+
           "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
           "<span class='muted' style='font-size:12px;'>"+esc(when)+" · v"+esc(r.app_version||"?")+(grp ? " · "+esc(grp) : "")+"</span>"+
-          "<span style='margin-left:auto;display:flex;gap:6px;'>"+
-            "<button class='btn' data-a='claude' style='font-size:12px;padding:3px 9px;'>📋 複製給 Claude</button>"+
-            (ROLE==="viewer" ? "" : "<button class='btn' data-a='res' style='font-size:12px;padding:3px 9px;'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 已修復")+"</button>")+
+          "<span style='margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;'>"+
+            "<button class='btn' data-a='claude' style='"+bs+"'>📋 複製給 Claude</button>"+
+            (ROLE==="viewer" ? "" :
+              "<button class='btn' data-a='res' style='"+bs+"'>"+(r.resolved ? "↩️ 移回待修" : "✅ 已修復")+"</button>"+
+              (r.resolved ? "" : "<button class='btn' data-a='noissue' style='"+bs+"' title='這張其實沒錯:結案但不算進司機的修復筆數,司機會收到說明'>🙆 沒問題</button>")+
+              "<button class='btn danger' data-a='del' style='"+bs+"'>🗑 刪除</button>")+
           "</span>"+
         "</div>"+
         "<div style='font-size:13.5px;margin-top:6px;color:var(--ink);'>"+esc(card)+"</div>"+
@@ -1876,11 +1890,24 @@
         (thumbs ? "<div>"+thumbs+"</div>" : "")+
         "<pre data-a='raw' title='點一下展開/收起原文' style='white-space:pre-wrap;font-size:12px;background:var(--chip);border-radius:8px;padding:8px 10px;margin:6px 0 0;max-height:72px;overflow:hidden;cursor:pointer;color:var(--muted);'>"+esc(r.raw_dispatch||"(沒附原文)")+"</pre>";
       d.querySelector("[data-a='claude']").addEventListener('click', function(){ copyClaude([r]); });
+      d.querySelector('.qfchk').addEventListener('change', function(e){ if(e.target.checked) QF_SEL.add(r.id); else QF_SEL.delete(r.id); updateQfSel(); });
       var rb = d.querySelector("[data-a='res']");
       if(rb) rb.addEventListener('click', function(){
         api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
-          if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記已修復,司機 App 會看到打勾"); loadReports(); }
+          if(res.ok){ toast(r.resolved ? "已移回待修" : "已標記已修復,司機 App 會看到打勾"); loadReports(); }
         });
+      });
+      var nib = d.querySelector("[data-a='noissue']");
+      if(nib) nib.addEventListener('click', function(){
+        api("setReportNoIssue",{id:r.id}).then(function(res){
+          if(res.ok){ toast("已結案:沒問題(不算修復筆數),司機會收到說明"); QF_SEL.delete(r.id); loadReports(); }
+          else toast(res.error === "not_ready" ? "資料表還沒有 no_issue 欄位,先跑 v43 SQL" : (res.error || "失敗"));
+        });
+      });
+      var delb = d.querySelector("[data-a='del']");
+      if(delb) delb.addEventListener('click', function(){
+        if(!confirm("刪除這筆回報?(不可復原,司機端也會消失)")) return;
+        api("deleteReport",{id:r.id}).then(function(res){ if(res.ok){ toast("已刪除"); QF_SEL.delete(r.id); loadReports(); } else toast(res.error || "刪除失敗"); });
       });
       var pre = d.querySelector("[data-a='raw']");
       pre.addEventListener('click', function(){
@@ -1898,7 +1925,9 @@
     renderQuickFix();
   });
   $('qfSearch').addEventListener('input', function(){ QF_QUERY = this.value.trim().toLowerCase(); renderQuickFix(); });
-  $('qfCopyAll').addEventListener('click', function(){ copyClaude(REPORTS.filter(function(r){ return isQuickReport(r) && !r.resolved; })); });
+  $('qfCopySel').addEventListener('click', function(){ copyClaude(REPORTS.filter(function(r){ return QF_SEL.has(r.id); })); });
+  $('qfSelOpen').addEventListener('click', function(){ REPORTS.filter(function(r){ return isQuickReport(r) && !r.resolved; }).forEach(function(r){ QF_SEL.add(r.id); }); renderQuickFix(); });
+  $('qfSelClear').addEventListener('click', function(){ QF_SEL.clear(); renderQuickFix(); });
   $('qfRefresh').addEventListener('click', function(){ loadReports(); loadDevStatus(); });
 
   /* ── 🛠 開發狀態(線上版本 / main 最新 commit / 待發佈版號):admin devStatus,伺服器 60 秒快取;總覽與快速修復頁各畫一份 ── */
