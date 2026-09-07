@@ -606,7 +606,7 @@
 
     <!-- ═══ ⚡ 快速修復(0908 使用者要求):只列司機一鍵送來的快速回報,極簡;管理者+協作者一起修 V2 ═══ -->
     <section id="tab-quickfix" class="hide">
-      <div class="pagehead"><h1>⚡ 快速修復</h1><div class="sub">司機按卡片 ⚠ 一鍵送來的回報:原文+卡片資訊都在。「複製給 Claude」貼去修 V2 → 修好標「已修復」→ 司機 App 會看到打勾(累積 50/80/120/180 筆依序解鎖 +3/+4/+7/+14 天,活動到 9/30)。詳細回報在「問題回報」分頁。</div></div>
+      <div class="pagehead"><h1>⚡ 快速修復</h1><div class="sub">兩種來源:卡片 ⚠ 一鍵的「車卡回報」(原文+卡片資訊自動附)、回報頁的「簡易回報」(幾張截圖+簡略說明)。「複製給 Claude」貼去修 V2 → 修好標「已修復」→ 司機 App 會看到打勾(累積 50/80/120/180 筆依序解鎖 +3/+4/+7/+14 天,活動到 9/30)。長按卡片的詳細回報與回報頁「詳細回報(帶偵錯資訊)」在「問題回報」分頁。</div></div>
       <div class="card">
         <div class="rowline"><span class="cardtitle">🛠 目前版本 / 最新修改</span><button class="linkbtn" id="qfRefresh" style="margin-left:auto;">↻ 重新整理</button></div>
         <div id="devStatusQf" style="margin-top:8px;"><span class="muted">讀取中…</span></div>
@@ -1821,7 +1821,9 @@
   /* ══ ⚡ 快速修復頁(0908 使用者要求):只列「快速回報」(卡片 ⚠ 一鍵 / 回報頁快速),極簡,管理者+協作者一起修 V2 ══ */
   /* 分流(0908 使用者拍板):【只有】卡片 ⚠ 一鍵送的(note 帶 SelfHelpTopics.QUICK_REASON 的細項「快速回報,未指明哪裡錯」)
      進「快速修復」;其餘(卡片長按詳細回報、回報頁「我要回報」、詳細表單)一律進「問題回報」。兩頁互斥、不重複顯示。 */
-  function isQuickReport(r){ return String(r.note||"").indexOf("快速回報,未指明") >= 0; }
+  /* 0908 第二版:快速修復 = 卡片 ⚠ 一鍵(車卡回報)+ 回報頁「簡易回報」(note 以 [簡易回報] 開頭);
+     問題回報 = 卡片長按詳細 + 回報頁「詳細回報(帶偵錯資訊)」。 */
+  function isQuickReport(r){ var n = String(r.note||""); return n.indexOf("快速回報,未指明") >= 0 || n.indexOf("[簡易回報]") === 0; }
   function snapField(r, key){ var m = String(r.parse_snapshot||"").match(new RegExp(key+"=(\\S+)")); return (m && m[1] !== "-") ? m[1] : ""; }
   function noteBody(r){ return String(r.note||"").replace(/^\[[^\]]*\]\s*/, "").trim(); }
   var QF_FILTER = "open", QF_QUERY = "";
@@ -1853,8 +1855,12 @@
       var when = isNaN(t.getTime()) ? "" : (p2(t.getMonth()+1)+"/"+p2(t.getDate())+" "+p2(t.getHours())+":"+p2(t.getMinutes()));
       var time = snapField(r,'time'), pick = snapField(r,'上車'), drop = snapField(r,'下車'), dist = snapField(r,'離我');
       var grp = (String(r.parse_snapshot||"").match(/群組=(\S+)/)||[])[1] || "";
-      var card = (time ? "🕒 "+time+" " : "⚡ ") + (pick || "(沒抓到上車)") + (drop ? " → "+drop : "") + (dist ? " · "+dist : "");
+      // 車卡回報有卡片快照(時間/上下車/距離);簡易回報沒有 → 主行改顯示「📷 簡易回報」,內容靠備註+截圖
+      var isSimple = String(r.note||"").indexOf("[簡易回報]") === 0;
+      var card = isSimple ? "📷 簡易回報" : ((time ? "🕒 "+time+" " : "⚡ ") + (pick || "(沒抓到上車)") + (drop ? " → "+drop : "") + (dist ? " · "+dist : ""));
       var nb = noteBody(r);
+      var imgs = (r.image_urls && r.image_urls.length) ? r.image_urls : (r.image_url ? [r.image_url] : []);
+      var thumbs = imgs.map(function(u){ var su = safeUrl(u); return su ? "<a href='"+esc(su)+"' target='_blank' rel='noopener'><img src='"+esc(su)+"' style='height:64px;border-radius:6px;border:1px solid var(--line);margin:6px 6px 0 0;'></a>" : ""; }).join("");
       d.innerHTML =
         "<div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;'>"+
           (r.resolved ? "<span>✅</span>" : "")+
@@ -1867,6 +1873,7 @@
         "</div>"+
         "<div style='font-size:13.5px;margin-top:6px;color:var(--ink);'>"+esc(card)+"</div>"+
         (nb ? "<div style='font-size:12.5px;color:var(--amber);margin-top:3px;'>「"+esc(nb)+"」</div>" : "")+
+        (thumbs ? "<div>"+thumbs+"</div>" : "")+
         "<pre data-a='raw' title='點一下展開/收起原文' style='white-space:pre-wrap;font-size:12px;background:var(--chip);border-radius:8px;padding:8px 10px;margin:6px 0 0;max-height:72px;overflow:hidden;cursor:pointer;color:var(--muted);'>"+esc(r.raw_dispatch||"(沒附原文)")+"</pre>";
       d.querySelector("[data-a='claude']").addEventListener('click', function(){ copyClaude([r]); });
       var rb = d.querySelector("[data-a='res']");
