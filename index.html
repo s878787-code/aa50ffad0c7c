@@ -404,6 +404,7 @@
       <button data-tab="home" class="on"><span class="ic"><svg viewBox='0 0 24 24'><path d='M3 10.6 12 3l9 7.6'/><path d='M5.5 9.4V20a1 1 0 0 0 1 1H17.5a1 1 0 0 0 1-1V9.4'/></svg></span>總覽</button>
       <button data-tab="keys"><span class="ic"><svg viewBox='0 0 24 24'><circle cx='8' cy='15.5' r='3.6'/><path d='M10.6 13 20 3.6M16.2 4.4l2.6 2.6M13.4 7.2l2.2 2.2'/></svg></span>司機金鑰</button>
       <button data-tab="reports"><span class="ic"><svg viewBox='0 0 24 24'><path d='M12 3 2.6 20h18.8L12 3Z'/><path d='M12 9.5v5M12 17.6h.01'/></svg></span>問題回報<span class="bdg hide" id="navRepBdg"></span></button>
+      <button data-tab="quickfix"><span class="ic"><svg viewBox='0 0 24 24'><path d='M13 2 4 14h7l-1 8 9-12h-7l1-8Z'/></svg></span>快速修復<span class="bdg hide" id="navQfBdg"></span></button>
       <button data-tab="usage"><span class="ic"><svg viewBox='0 0 24 24'><path d='M3 13h3.5l2.5 6 4-13 2.5 7H21'/></svg></span>用量成本</button>
       <button data-tab="alerts"><span class="ic"><svg viewBox='0 0 24 24'><path d='M12 3.5a6.5 6.5 0 0 0-6.5 6.5c0 4.2-1.5 5.5-1.5 5.5h16s-1.5-1.3-1.5-5.5A6.5 6.5 0 0 0 12 3.5Z'/><path d='M10.3 19a2 2 0 0 0 3.4 0'/></svg></span>診斷提醒<span class="bdg hide" id="navAlertBdg"></span></button>
       <button data-tab="ai"><span class="ic"><svg viewBox='0 0 24 24'><rect x='4' y='7' width='16' height='12' rx='3'/><path d='M12 7V4M8.5 12.5h.01M15.5 12.5h.01M9.5 16h5'/></svg></span>AI 大腦</button>
@@ -451,6 +452,12 @@
         <div class="kpi" data-go="usage"><div class="n" id="kGeoToday">—</div><div class="t">今日 Google 呼叫</div></div>
         <div class="kpi" data-go="usage"><div class="n" id="kHit">—</div><div class="t">免費命中率</div></div>
         <div class="kpi good" data-go="keys"><div class="n" id="kRev">$0</div><div class="t">預估月營收</div></div>
+      </div>
+
+      <!-- 🛠 目前版本 / 最新修改(0908):線上 version.json + main 最新 commit + 待發佈版號;跟快速修復頁同一份資料 -->
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">🛠 目前版本 / 最新修改</span><button class="linkbtn" data-go="quickfix" style="margin-left:auto;">⚡ 快速修復 →</button></div>
+        <div id="devStatusHome" style="margin-top:8px;"><span class="muted">讀取中…</span></div>
       </div>
 
       <div class="card">
@@ -591,10 +598,33 @@
           <button class="linkbtn" id="repSelAllOpen" style="font-size:12px;">全選目前未修復</button>
           <button class="linkbtn" id="repSelClear" style="font-size:12px;">清除選取</button>
           <span style="margin-left:auto;"></span>
+          <button id="repBatchClaude" title="把勾選的回報一次壓成給 Claude 的塊(---- 分隔)" style="background:var(--surface); color:var(--teal-ink); border:1px solid var(--teal-line); padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">📋 複製勾選給 Claude</button>
           <button id="repBatchResolve" style="background:var(--teal); color:#fff; border:none; padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">✅ 批次標記已修復</button>
         </div>
         <div id="repList" style="margin-top:6px;"></div>
         <div class="empty hide" id="repEmpty">這個分類目前沒有回報。</div>
+      </div>
+    </section>
+
+    <!-- ═══ ⚡ 快速修復(0908 使用者要求):只列司機一鍵送來的快速回報,極簡;管理者+協作者一起修 V2 ═══ -->
+    <section id="tab-quickfix" class="hide">
+      <div class="pagehead"><h1>⚡ 快速修復</h1><div class="sub">司機按卡片 ⚠ 一鍵送來的回報:原文+卡片資訊都在。「複製給 Claude」貼去修 V2 → 修好標「已修復」→ 司機 App 會看到打勾(累積 100 筆可兌換 +3 天)。詳細回報在「問題回報」分頁。</div></div>
+      <div class="card">
+        <div class="rowline"><span class="cardtitle">🛠 目前版本 / 最新修改</span><button class="linkbtn" id="qfRefresh" style="margin-left:auto;">↻ 重新整理</button></div>
+        <div id="devStatusQf" style="margin-top:8px;"><span class="muted">讀取中…</span></div>
+      </div>
+      <div class="card">
+        <div class="rowline">
+          <div class="chips" id="qfChips" style="margin-bottom:0;">
+            <button data-qf="open" class="on">🔧 待修 <span id="qfOpenCount"></span></button>
+            <button data-qf="done">✅ 已修復 <span id="qfDoneCount"></span></button>
+            <button data-qf="all">全部</button>
+          </div>
+          <button class="primary" id="qfCopyAll" style="margin-left:auto;">📋 複製全部待修給 Claude</button>
+        </div>
+        <input id="qfSearch" type="search" autocomplete="off" placeholder="🔍 司機 / 地址 / 原文"
+               style="width:100%; box-sizing:border-box; margin-top:10px; padding:8px 12px; font-size:13px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);">
+        <div id="qfList" style="margin-top:6px;"></div>
       </div>
     </section>
 
@@ -1143,7 +1173,7 @@
   }
 
   /* ── 分頁切換 ── */
-  var TABS = ["home","keys","reports","usage","alerts","ai","places","sys","flow","v2sim"];
+  var TABS = ["home","keys","reports","quickfix","usage","alerts","ai","places","sys","flow","v2sim"];
   function goTab(t){
     if(TABS.indexOf(t)<0) t="home";
     TABS.forEach(function(x){
@@ -1239,6 +1269,7 @@
     $('app').classList.remove('hide');
     render();
     loadReports();
+    loadDevStatus();   // 🛠 目前版本/最新修改(總覽 + 快速修復頁);伺服器 60 秒快取,很輕
     // 用量/位置庫是掃 geo_usage 大表的重查詢 → 改成切到該分頁才載入(登入時 5 個一起打會冷啟逾時、板面全空)。
     // 但【健康預警是例外】(0727):它必須在登入當下就跑,而且不管你停在哪個分頁都要持續更新 ——
     //   否則就會重演 0724:整隊停擺一小時,後台一片正常。
@@ -1742,6 +1773,10 @@
     document.querySelectorAll('#repList .repchk').forEach(function(chk){ chk.checked = false; });
     updateRepBatchBar();
   });
+  $('repBatchClaude').addEventListener('click', function(){
+    var sel = new Set(Array.from(SELECTED_REPORTS));
+    copyClaude(REPORTS.filter(function(r){ return sel.has(r.id); }));
+  });
   $('repBatchResolve').addEventListener('click', function(){
     var ids = Array.from(SELECTED_REPORTS);
     if(!ids.length){ toast("先勾選要標記的回報"); return; }
@@ -1761,7 +1796,7 @@
   });
   function loadReports(){
     api("reports").then(function(res){
-      if(res.rows){ REPORTS = res.rows; renderReports(); renderHome(); }
+      if(res.rows){ REPORTS = res.rows; renderReports(); renderHome(); renderQuickFix(); }
     });
   }
   function renderReports(){
@@ -1840,6 +1875,147 @@
     { label:"操作說明", text:"這個其實可以這樣操作:____。你再試一次,還有問題再跟我說!" },
     { label:"已修復", text:"你回報的問題已經修好了,更新到最新版就正常了,感謝你幫忙抓蟲 🙏" },
   ];
+  /* ══ ⚡ 快速修復頁(0908 使用者要求):只列「快速回報」(卡片 ⚠ 一鍵 / 回報頁快速),極簡,管理者+協作者一起修 V2 ══ */
+  function isQuickReport(r){ return String(r.note||"").indexOf("快速回報") >= 0; }
+  function snapField(r, key){ var m = String(r.parse_snapshot||"").match(new RegExp(key+"=(\\S+)")); return (m && m[1] !== "-") ? m[1] : ""; }
+  function noteBody(r){ return String(r.note||"").replace(/^\[[^\]]*\]\s*/, "").trim(); }
+  var QF_FILTER = "open", QF_QUERY = "";
+  function renderQuickFix(){
+    var all = REPORTS.filter(isQuickReport);
+    var open = all.filter(function(r){ return !r.resolved; });
+    var bdg = $('navQfBdg'); if(bdg){ bdg.textContent = open.length; bdg.classList.toggle('hide', open.length===0); }
+    $('qfOpenCount').textContent = "("+open.length+")";
+    $('qfDoneCount').textContent = "("+(all.length-open.length)+")";
+    var list = all.filter(function(r){
+      if(QF_FILTER==="open" && r.resolved) return false;
+      if(QF_FILTER==="done" && !r.resolved) return false;
+      if(QF_QUERY){
+        var hay = ((r.driver_name||"")+" "+(r.note||"")+" "+(r.raw_dispatch||"")+" "+(r.parse_snapshot||"")).toLowerCase();
+        if(hay.indexOf(QF_QUERY)<0) return false;
+      }
+      return true;
+    });
+    var box = $('qfList'); box.innerHTML = "";
+    if(!list.length){
+      box.innerHTML = "<div class='muted' style='padding:18px 6px;font-size:13px;'>"+(QF_FILTER==="open" ? "沒有待修的快速回報 🎉" : "沒有符合的回報")+"</div>";
+      return;
+    }
+    list.forEach(function(r){
+      var d = document.createElement('div');
+      d.className = "repcard" + (r.resolved ? " resolved" : "");
+      d.style.padding = "10px 12px";
+      var t = new Date(r.created_at);
+      var when = isNaN(t.getTime()) ? "" : (p2(t.getMonth()+1)+"/"+p2(t.getDate())+" "+p2(t.getHours())+":"+p2(t.getMinutes()));
+      var time = snapField(r,'time'), pick = snapField(r,'上車'), drop = snapField(r,'下車'), dist = snapField(r,'離我');
+      var grp = (String(r.parse_snapshot||"").match(/群組=(\S+)/)||[])[1] || "";
+      var card = (time ? "🕒 "+time+" " : "⚡ ") + (pick || "(沒抓到上車)") + (drop ? " → "+drop : "") + (dist ? " · "+dist : "");
+      var nb = noteBody(r);
+      d.innerHTML =
+        "<div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap;'>"+
+          (r.resolved ? "<span>✅</span>" : "")+
+          "<b>"+esc(r.driver_name||r.license_key||"?")+"</b>"+
+          "<span class='muted' style='font-size:12px;'>"+esc(when)+" · v"+esc(r.app_version||"?")+(grp ? " · "+esc(grp) : "")+"</span>"+
+          "<span style='margin-left:auto;display:flex;gap:6px;'>"+
+            "<button class='btn' data-a='claude' style='font-size:12px;padding:3px 9px;'>📋 複製給 Claude</button>"+
+            (ROLE==="viewer" ? "" : "<button class='btn' data-a='res' style='font-size:12px;padding:3px 9px;'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 已修復")+"</button>")+
+          "</span>"+
+        "</div>"+
+        "<div style='font-size:13.5px;margin-top:6px;color:var(--ink);'>"+esc(card)+"</div>"+
+        (nb ? "<div style='font-size:12.5px;color:var(--amber);margin-top:3px;'>「"+esc(nb)+"」</div>" : "")+
+        "<pre data-a='raw' title='點一下展開/收起原文' style='white-space:pre-wrap;font-size:12px;background:var(--chip);border-radius:8px;padding:8px 10px;margin:6px 0 0;max-height:72px;overflow:hidden;cursor:pointer;color:var(--muted);'>"+esc(r.raw_dispatch||"(沒附原文)")+"</pre>";
+      d.querySelector("[data-a='claude']").addEventListener('click', function(){ copyClaude([r]); });
+      var rb = d.querySelector("[data-a='res']");
+      if(rb) rb.addEventListener('click', function(){
+        api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
+          if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記已修復,司機 App 會看到打勾"); loadReports(); }
+        });
+      });
+      var pre = d.querySelector("[data-a='raw']");
+      pre.addEventListener('click', function(){
+        var opened = pre.style.maxHeight === "none";
+        pre.style.maxHeight = opened ? "72px" : "none";
+        pre.style.color = opened ? "var(--muted)" : "var(--ink)";
+      });
+      box.appendChild(d);
+    });
+  }
+  $('qfChips').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if(!b) return;
+    QF_FILTER = b.getAttribute('data-qf');
+    document.querySelectorAll('#qfChips button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    renderQuickFix();
+  });
+  $('qfSearch').addEventListener('input', function(){ QF_QUERY = this.value.trim().toLowerCase(); renderQuickFix(); });
+  $('qfCopyAll').addEventListener('click', function(){ copyClaude(REPORTS.filter(function(r){ return isQuickReport(r) && !r.resolved; })); });
+  $('qfRefresh').addEventListener('click', function(){ loadReports(); loadDevStatus(); });
+
+  /* ── 🛠 開發狀態(線上版本 / main 最新 commit / 待發佈版號):admin devStatus,伺服器 60 秒快取;總覽與快速修復頁各畫一份 ── */
+  var DEV = null;
+  function fmtDT(iso){ if(!iso) return "—"; var d = new Date(iso); if(isNaN(d.getTime())) return "—"; return p2(d.getMonth()+1)+"/"+p2(d.getDate())+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
+  function loadDevStatus(){
+    api("devStatus").then(function(res){
+      if(res && res.ok){ DEV = res; renderDevStatus(); }
+      else if(!DEV){ ["devStatusHome","devStatusQf"].forEach(function(id){ var el=$(id); if(el) el.innerHTML = "<span class='muted'>版本資訊讀不到("+esc((res&&res.error)||"?")+")</span>"; }); }
+    });
+  }
+  function renderDevStatus(){
+    if(!DEV) return;
+    var o = DEV.online, mv = DEV.main_version, cs = DEV.commits || [];
+    var html = "<div style='display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:13px;'>";
+    html += "<span>🟢 線上 <b>v"+esc(o ? o.name : "?")+"</b>"+
+      (o && o.code!=null ? " <span class='muted'>(code "+esc(o.code)+")</span>" : "")+
+      (o && o.published_at ? " <span class='muted'>· 發佈 "+fmtDT(o.published_at)+"</span>" : "")+"</span>";
+    if(mv && mv.name){
+      var both = !!(o && mv.code!=null && o.code!=null);
+      var ahead = both && Number(mv.code) > Number(o.code);
+      html += "<span>🧪 main <b>v"+esc(mv.name)+"</b> <span class='muted'>(code "+esc(mv.code)+")</span>"+
+        (ahead ? " <span style='color:var(--amber);font-weight:700;'>尚未發佈</span>"
+               : (both ? " <span class='muted'>= 線上</span>" : " <span class='muted'>(線上版本讀不到,無法比對)</span>"))+"</span>";
+    }
+    html += "</div>";
+    if(cs.length){
+      html += "<div style='margin-top:8px;font-size:12.5px;line-height:1.7;'>";
+      cs.slice(0,6).forEach(function(c,i){
+        html += "<div style='display:flex;gap:8px;min-width:0;'"+(i===0 ? "" : " class='muted'")+">"+
+          "<code style='font-family:ui-monospace,Menlo,monospace;flex-shrink:0;'>"+esc(c.sha)+"</code>"+
+          "<span style='white-space:nowrap;flex-shrink:0;'>"+fmtDT(c.date)+"</span>"+
+          "<span style='white-space:nowrap;flex-shrink:0;'>"+esc(c.author)+"</span>"+
+          "<span style='overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' title='"+esc(c.message)+"'>"+esc(c.message)+"</span></div>";
+      });
+      html += "</div>";
+    } else if(DEV.repo_hint){
+      html += "<div class='muted' style='margin-top:6px;font-size:12px;'>"+esc(DEV.repo_hint)+"</div>";
+    }
+    ["devStatusHome","devStatusQf"].forEach(function(id){ var el=$(id); if(el) el.innerHTML = html; });
+  }
+
+  /* ── 複製給 Claude(0908 使用者要求):把一筆回報壓成「修 V2 規則」需要的最小塊 ──
+     卡片資訊(parse_snapshot)+ 司機修正 + 截圖網址 + 派單原文;不含完整偵錯傾印(那個走「複製報告」)。
+     多筆用 ---- 分隔;貼到對話就能直接開修、進案例庫。 */
+  function claudeBlock(r){
+    var t = new Date(r.created_at);
+    var when = isNaN(t.getTime()) ? "" : (p2(t.getMonth()+1)+"/"+p2(t.getDate())+" "+p2(t.getHours())+":"+p2(t.getMinutes()));
+    var lines = [];
+    lines.push("【回報 #"+String(r.id||"").slice(0,8)+" ・ "+when+" ・ "+(r.driver_name||r.license_key||"?")+" ・ v"+(r.app_version||"?")+(r.report_type? " ・ "+r.report_type : "")+"】");
+    if(r.note) lines.push("備註:"+String(r.note).trim());
+    var snap = String(r.parse_snapshot||"").replace(/^從卡片🚩回報\s*[·・]\s*/, "").trim();
+    if(snap) lines.push("卡片:"+snap);
+    var fix = [];
+    if(r.corrected_pickup) fix.push("上車→"+r.corrected_pickup);
+    if(r.corrected_dropoff) fix.push("下車→"+r.corrected_dropoff);
+    if(r.corrected_time) fix.push("時間→"+r.corrected_time);
+    if(fix.length) lines.push("司機說應該是:"+fix.join(" ｜ "));
+    var imgs = (r.image_urls && r.image_urls.length) ? r.image_urls : (r.image_url ? [r.image_url] : []);
+    if(imgs.length) lines.push("截圖:\n"+imgs.join("\n"));
+    if(r.video_url) lines.push("影片:"+r.video_url);
+    lines.push("原文:\n"+(r.raw_dispatch ? String(r.raw_dispatch).trim() : "(沒附原文)"));
+    return lines.join("\n");
+  }
+  function copyClaude(list){
+    if(!list.length){ toast("沒有可複製的回報"); return; }
+    var txt = list.map(claudeBlock).join("\n\n----\n\n");
+    navigator.clipboard.writeText(txt).then(function(){ toast("已複製 "+list.length+" 筆給 Claude,貼到對話就能開修"); });
+  }
   function reportCard(r, compact){
     var d = document.createElement('div');
     d.className = "repcard" + (r.resolved ? " resolved" : "");
@@ -1927,8 +2103,10 @@
     actions.innerHTML = (ROLE === "viewer" ? "" :
       "<button data-a='res'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 標記已修復")+"</button>"+
       "<button data-a='edit'>✏️ 編輯內容</button>")+
+      "<button data-a='claude' title='卡片資訊+司機修正+截圖網址+派單原文,貼給 Claude 修 V2 規則'>📋 複製給 Claude</button>"+
       "<button data-a='copy'>複製報告</button>"+
       (ROLE === "viewer" ? "" : "<button class='danger' data-a='del'>刪除</button>");
+    actions.querySelector("[data-a='claude']").addEventListener('click', function(){ copyClaude([r]); });
     if (ROLE !== "viewer") actions.querySelector("[data-a='res']").addEventListener('click', function(){
       api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
         if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記為已修復"); loadReports(); }
