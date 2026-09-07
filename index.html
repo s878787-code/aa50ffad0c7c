@@ -598,7 +598,6 @@
           <button class="linkbtn" id="repSelAllOpen" style="font-size:12px;">全選目前未修復</button>
           <button class="linkbtn" id="repSelClear" style="font-size:12px;">清除選取</button>
           <span style="margin-left:auto;"></span>
-          <button id="repBatchClaude" title="把勾選的回報一次壓成給 Claude 的塊(---- 分隔)" style="background:var(--surface); color:var(--teal-ink); border:1px solid var(--teal-line); padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">📋 複製勾選給 Claude</button>
           <button id="repBatchResolve" style="background:var(--teal); color:#fff; border:none; padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">✅ 批次標記已修復</button>
         </div>
         <div id="repList" style="margin-top:6px;"></div>
@@ -1773,10 +1772,6 @@
     document.querySelectorAll('#repList .repchk').forEach(function(chk){ chk.checked = false; });
     updateRepBatchBar();
   });
-  $('repBatchClaude').addEventListener('click', function(){
-    var sel = new Set(Array.from(SELECTED_REPORTS));
-    copyClaude(REPORTS.filter(function(r){ return sel.has(r.id); }));
-  });
   $('repBatchResolve').addEventListener('click', function(){
     var ids = Array.from(SELECTED_REPORTS);
     if(!ids.length){ toast("先勾選要標記的回報"); return; }
@@ -2103,10 +2098,9 @@
     actions.innerHTML = (ROLE === "viewer" ? "" :
       "<button data-a='res'>"+(r.resolved ? "↩️ 移回未修復" : "✅ 標記已修復")+"</button>"+
       "<button data-a='edit'>✏️ 編輯內容</button>")+
-      "<button data-a='claude' title='卡片資訊+司機修正+截圖網址+派單原文,貼給 Claude 修 V2 規則'>📋 複製給 Claude</button>"+
       "<button data-a='copy'>複製報告</button>"+
       (ROLE === "viewer" ? "" : "<button class='danger' data-a='del'>刪除</button>");
-    actions.querySelector("[data-a='claude']").addEventListener('click', function(){ copyClaude([r]); });
+    // 「複製給 Claude」0908 使用者拍板只留在「⚡ 快速修復」頁(那邊才是修 V2 的入口);問題回報頁不再放
     if (ROLE !== "viewer") actions.querySelector("[data-a='res']").addEventListener('click', function(){
       api("setReportResolved",{id:r.id, resolved:!r.resolved}).then(function(res){
         if(res.ok){ toast(r.resolved ? "已移回未修復" : "已標記為已修復"); loadReports(); }
