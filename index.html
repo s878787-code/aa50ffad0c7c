@@ -1473,13 +1473,14 @@
       hb.appendChild(tr);
     });
 
-    // 最新未修復回報 top 3
-    var open = REPORTS.filter(function(r){ return !r.resolved; }).slice(0,3);
+    // 最新未修復回報 top 3(0908 分流:只算「問題回報」的,卡片 ⚠ 一鍵的歸快速修復頁自己的紅點)
+    var openAll = REPORTS.filter(function(r){ return !r.resolved && !isQuickReport(r); });
+    var open = openAll.slice(0,3);
     var box=$('homeRepList'); box.innerHTML="";
     $('homeRepEmpty').classList.toggle('hide', open.length>0);
-    $('kOpenRep').textContent = REPORTS.filter(function(r){ return !r.resolved; }).length;
+    $('kOpenRep').textContent = openAll.length;
     open.forEach(function(r){ box.appendChild(reportCard(r, true)); });
-    var openN = REPORTS.filter(function(r){ return !r.resolved; }).length;
+    var openN = openAll.length;
     $('navRepBdg').textContent = openN;
     $('navRepBdg').classList.toggle('hide', openN===0);
     renderGrowth();
@@ -1740,14 +1741,16 @@
     });
   }
   function renderReports(){
-    var open = REPORTS.filter(function(r){ return !r.resolved; });
-    var done = REPORTS.filter(function(r){ return !!r.resolved; });
+    // 問題回報頁只列【非一鍵】的回報(卡片 ⚠ 一鍵的走「快速修復」頁,兩邊互斥)
+    var DETAIL = REPORTS.filter(function(r){ return !isQuickReport(r); });
+    var open = DETAIL.filter(function(r){ return !r.resolved; });
+    var done = DETAIL.filter(function(r){ return !!r.resolved; });
     $('repOpenCount').textContent = "("+open.length+")";
     $('repResolvedCount').textContent = "("+done.length+")";
 
     // 類型 chips(依現有資料動態產生)
     var types = {};
-    REPORTS.forEach(function(r){ var t=r.report_type||"其他"; types[t]=(types[t]||0)+1; });
+    DETAIL.forEach(function(r){ var t=r.report_type||"其他"; types[t]=(types[t]||0)+1; });
     if(REP_TYPE!=="全部" && !types[REP_TYPE]) REP_TYPE="全部";   // 選中的類型已無資料 → 自動退回全部,避免過濾卡死
     var tc = $('repTypeChips'); tc.innerHTML="";
     var allB = document.createElement('button');
@@ -1761,7 +1764,7 @@
       tc.appendChild(b);
     });
 
-    var list = REPORTS.filter(function(r){
+    var list = DETAIL.filter(function(r){
       if(REP_FILTER==="open" && r.resolved) return false;
       if(REP_FILTER==="resolved" && !r.resolved) return false;
       if(REP_TYPE!=="全部" && (r.report_type||"其他")!==REP_TYPE) return false;
@@ -1816,7 +1819,9 @@
     { label:"已修復", text:"你回報的問題已經修好了,更新到最新版就正常了,感謝你幫忙抓蟲 🙏" },
   ];
   /* ══ ⚡ 快速修復頁(0908 使用者要求):只列「快速回報」(卡片 ⚠ 一鍵 / 回報頁快速),極簡,管理者+協作者一起修 V2 ══ */
-  function isQuickReport(r){ return String(r.note||"").indexOf("快速回報") >= 0; }
+  /* 分流(0908 使用者拍板):【只有】卡片 ⚠ 一鍵送的(note 帶 SelfHelpTopics.QUICK_REASON 的細項「快速回報,未指明哪裡錯」)
+     進「快速修復」;其餘(卡片長按詳細回報、回報頁「我要回報」、詳細表單)一律進「問題回報」。兩頁互斥、不重複顯示。 */
+  function isQuickReport(r){ return String(r.note||"").indexOf("快速回報,未指明") >= 0; }
   function snapField(r, key){ var m = String(r.parse_snapshot||"").match(new RegExp(key+"=(\\S+)")); return (m && m[1] !== "-") ? m[1] : ""; }
   function noteBody(r){ return String(r.note||"").replace(/^\[[^\]]*\]\s*/, "").trim(); }
   var QF_FILTER = "open", QF_QUERY = "";
