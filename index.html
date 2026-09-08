@@ -2238,8 +2238,12 @@
     map8_shadow_cmp:    { free: 0,     per1000: 0, trial: 2.26, paid:false, label: "⑧🗺️ Map8 shadow:與 Google 對照抽樣(試用免費)" },
     map8_shadow_err:    { free: 0,     per1000: 0,  paid:false, label: "⑧🗺️ Map8 shadow 呼叫失敗" },
     // ── 💰 Google(最後手段;每日上限保險絲擋在前面)──────────────
-    geocode:            { free: 10000, per1000: 5,  paid:true,  label: "⑨💰 Google Geocoding(長尾退路)" },
-    places:             { free: 10000, per1000: 5,  paid:true,  label: "⑩💰 Places 就近補救(地標名·新版兩段式)" },
+    geocode:            { free: 10000, per1000: 5,  paid:true,  label: "⑨💰 Google Geocoding(長尾退路·有服務到才算)" },
+    places:             { free: 10000, per1000: 5,  paid:true,  label: "⑩💰 Places 就近補救(地標名·有服務到才算)" },
+    /* 0908 使用者拍板「真的有使用到才計費」:Google 沒服務到的請求(REQUEST_DENIED 金鑰/帳單、OVER_QUERY_LIMIT、逾時)
+       由 geocode 函式另記 *_denied,不計費、不吃上限;這裡 0 元列出讓你看得到「被拒了多少」。 */
+    geocode_denied:     { free: 0,     per1000: 0,  paid:false, label: "⛔ Google Geocoding 被拒/沒服務(不計費;金鑰或帳單問題)" },
+    places_denied:      { free: 0,     per1000: 0,  paid:false, label: "⛔ Places 被拒/沒服務(不計費;金鑰或帳單問題)" },
     places_cap_hit:     { free: 0,     per1000: 0,  paid:false, label: "⑩💰 Places 上限已滿被擋(全隊1000/個人60)" },
     budget_blocked:     { free: 0,     per1000: 0,  paid:false, label: "🔴 超 Google 每日上限被擋(全隊斷糧)" },
     // ── 🪦 墓碑寫入(死單安息機制,研磨機的解藥)────────────────
@@ -2746,6 +2750,11 @@
     if(!res || !res.ok) return warns;
     var s = res.stats || {}, today = s.today || [];
     var gToday = geoSum(today, GOOGLE_APIS);
+    // 0908:Google 拒絕請求(金鑰/帳單/API 限制)→ 立刻亮紅。8/14~9/8 被拒三週沒人發現,就是缺這條。
+    (function(){
+      var denied = geoSum(today, ["geocode_denied","places_denied"]);
+      if(denied >= 20) warns.push("🔴 Google 今日拒絕請求 " + denied.toLocaleString() + " 次(金鑰/帳單/API 限制?)→ 免費層查不到的單全部沒定位,請查 Google Cloud Console");
+    })();
     var cap = Number(s.cap || 0);
     if(cap > 0 && gToday >= cap * 0.8) warns.push("🟠 今日 Google 呼叫 " + gToday.toLocaleString() + " 已達上限 " + cap.toLocaleString() + " 的 " + Math.round(gToday*100/cap) + "%,快觸發保險絲(觸發後全隊只剩快取/免費源)");
 
@@ -3038,8 +3047,10 @@
       }
       var s = res.stats || {}, today = s.today || [], month = s.month || [];
       var gToday = geoSum(today, GOOGLE_APIS), hits = geoSum(today, FREE_HITS.concat(["cache_hit_route","cache_hit_road","geocode_nominatim"]));
-      $('geoToday').textContent = gToday;
-      $('kGeoToday').textContent = gToday;
+      // 0908:被拒/沒服務的另計(不算錢);有的話在數字旁標出來,免得像 8/14~9/8 那樣被拒三週還以為在正常花錢
+      var gDenied = geoSum(today, ["geocode_denied","places_denied","geocode_exception"]);
+      $('geoToday').textContent = gToday + (gDenied ? " (+" + gDenied.toLocaleString() + " 被拒)" : "");
+      $('kGeoToday').textContent = gToday + (gDenied ? " ⛔" + gDenied.toLocaleString() : "");
       var hitTxt = (gToday + hits) ? Math.round(hits * 100 / (gToday + hits)) + "%" : "—";
       $('geoHitRate').textContent = hitTxt;
       $('kHit').textContent = hitTxt;
