@@ -638,7 +638,7 @@
       <div class="kpis" style="grid-template-columns:repeat(2,1fr);">
         <div class="kpi" style="cursor:default;"><div class="n" id="geoToday">—</div><div class="t">今日 Google 呼叫</div></div>
         <div class="kpi good" style="cursor:default;"><div class="n" id="geoHitRate">—</div><div class="t">免費命中率(今日)</div></div>
-        <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本</div></div>
+        <div class="kpi" style="cursor:default;"><div class="n" id="geoCost">—</div><div class="t">本月預估成本<span id="geoCostNote" style="display:block;font-size:10.5px;color:var(--faint);margin-top:2px;"></span></div></div>
         <!-- 0804:距離改由自架 OSRM 主辦 → 這格看它今天扛了多少 % 、後備(Map8/其他)接了多少。
              掉下來就代表 OSRM 那台在出事,距離會退到 Map8(吃日上限)甚至直線。 -->
         <div class="kpi" style="cursor:default;grid-column:span 2;">
@@ -2172,6 +2172,7 @@
   /* ── 用量成本 ── */
   /* 📍 這張表的【順序 = 定位鏈的實際順序】(明細表依宣告序渲染)—— 從上往下讀就是一張單進來會經過的層。
      v32.0 架構:免費層(位置庫→門牌庫→墓碑→自架→快取→路段)→ 🤖AI 修址 → Google → 距離 → 量測(🗺️Map8 已於 0808 停用)。 */
+  var FIXED_MONTHLY_USD = 30;   // Supabase 方案固定月費(0908 使用者要求併入本月預估成本;改方案時改這個數字)
   var GEO_PRICING = {
     // ── 免費層(命中率的主力,越靠上越便宜)──────────────────────────
     community_hit:      { free: 0,     per1000: 0,  paid:false, label: "①🏢 位置庫命中(策展地標,最高優先·免費)" },
@@ -3056,7 +3057,9 @@
       $('kHit').textContent = hitTxt;
       var cost = 0;
       month.forEach(function(r){ var p = GEO_PRICING[r.api]; if(p && p.per1000) cost += Math.max(0, r.n - p.free) * p.per1000 / 1000; });
-      $('geoCost').textContent = "US$" + cost.toFixed(2);
+      // 0908 使用者要求:成本要含 Supabase 每月固定費(方案費,不隨用量變);Google 用量另列在小字
+      $('geoCost').textContent = "US$" + (cost + FIXED_MONTHLY_USD).toFixed(2);
+      var gcn = $('geoCostNote'); if(gcn) gcn.textContent = "Google 用量 US$" + cost.toFixed(2) + " + Supabase 固定 US$" + FIXED_MONTHLY_USD.toFixed(0);
       /* 健康預警:計算已抽成 computeHealthWarns()(0727),這裡只負責重繪。
          抽出的原因見上方健康預警註解 —— 原本埋在這裡,只有切到本分頁才會算,而顯示卻在總覽,永遠不會亮。 */
       renderHealth(computeHealthWarns(res));
