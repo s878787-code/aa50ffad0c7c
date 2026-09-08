@@ -622,6 +622,7 @@
             <button class="linkbtn" id="qfSelOpen" style="font-size:12px;">全選待修</button>
             <button class="linkbtn" id="qfSelClear" style="font-size:12px;">清除勾選</button>
             <button class="primary" id="qfCopySel" disabled>📋 複製勾選給 Claude(0)</button>
+            <button id="qfResolveSel" disabled style="background:var(--teal); color:#fff; border:none; padding:6px 15px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">✅ 勾選的標記已修復(0)</button>
           </span>
         </div>
         <input id="qfSearch" type="search" autocomplete="off" placeholder="🔍 司機 / 地址 / 原文"
@@ -1832,7 +1833,12 @@
   function noteBody(r){ return String(r.note||"").replace(/^\[[^\]]*\]\s*/, "").trim(); }
   var QF_FILTER = "open", QF_QUERY = "";
   var QF_SEL = new Set();   // 勾選要一起「複製給 Claude」的回報 id(0908 使用者拍板:不要一鍵全部,要勾選)
-  function updateQfSel(){ var b = $('qfCopySel'); if(!b) return; b.textContent = "📋 複製勾選給 Claude("+QF_SEL.size+")"; b.disabled = QF_SEL.size === 0; }
+  function updateQfSel(){
+    var n = QF_SEL.size;
+    var b = $('qfCopySel'); if(b){ b.textContent = "📋 複製勾選給 Claude("+n+")"; b.disabled = n === 0; }
+    // 修完貼回來後,同一批勾選直接批量收案(0908 使用者要求);唯讀角色藏起來
+    var r = $('qfResolveSel'); if(r){ r.textContent = "✅ 勾選的標記已修復("+n+")"; r.disabled = n === 0; r.style.display = (ROLE === "viewer") ? "none" : ""; }
+  }
   function renderQuickFix(){
     var all = REPORTS.filter(isQuickReport);
     var ids = new Set(all.map(function(r){ return r.id; }));
@@ -1928,6 +1934,14 @@
   $('qfCopySel').addEventListener('click', function(){ copyClaude(REPORTS.filter(function(r){ return QF_SEL.has(r.id); })); });
   $('qfSelOpen').addEventListener('click', function(){ REPORTS.filter(function(r){ return isQuickReport(r) && !r.resolved; }).forEach(function(r){ QF_SEL.add(r.id); }); renderQuickFix(); });
   $('qfSelClear').addEventListener('click', function(){ QF_SEL.clear(); renderQuickFix(); });
+  $('qfResolveSel').addEventListener('click', function(){
+    var ids = Array.from(QF_SEL); if(!ids.length) return;
+    if(!confirm("把勾選的 " + ids.length + " 筆標記為已修復?\n\n司機 App 會看到打勾,並計入回報獎勵筆數。")) return;
+    api("batchSetReportsResolved", { ids: ids }).then(function(res){
+      if(res && res.ok){ toast("已標記 " + (res.n || ids.length) + " 筆為已修復"); QF_SEL.clear(); loadReports(); }
+      else toast((res && res.error) || "失敗(需管理員密碼)");
+    });
+  });
   $('qfRefresh').addEventListener('click', function(){ loadReports(); loadDevStatus(); });
 
   /* ── 🛠 開發狀態(線上版本 / main 最新 commit / 待發佈版號):admin devStatus,伺服器 60 秒快取;總覽與快速修復頁各畫一份 ── */
