@@ -1025,7 +1025,6 @@
       </div>
     </section>
 
-    <!-- 建卡監控（0817）：鏡像測試員手機的抓單結果，V1/V2 切換看 -->
 
   </main>
 </div>
@@ -1231,61 +1230,6 @@
   });
 
   /* 簽章「時間|上車|下車‖時間|上車|下車」→ 車卡陣列 */
-  function sigToCards(sig){
-    if(!sig) return [];
-    return sig.split('‖').filter(Boolean).map(function(s){
-      var p = s.split('|');
-      return { time: p[0]!=='-'?p[0]:'', pickup: p[1]||'', dropoff: p[2]!=='-'?(p[2]||''):'' };
-    });
-  }
-  function cardHtml(c, eng){
-    var badge = c.time ? '<span class="pill" style="background:#1e3a5f;color:#93c5fd;">🕒 預約 '+esc(c.time)+'</span>' : '<span class="pill" style="background:#3d2a12;color:#fbbf24;">⚡ 即時</span>';
-    return '<div style="background:#1e2530;border-radius:10px;padding:10px 12px;margin-top:6px;">' +
-      '<div style="display:flex;align-items:center;gap:8px;font-size:11px;">'+badge+'<span class="muted">'+eng.toUpperCase()+'</span></div>' +
-      '<div style="font-size:16px;font-weight:600;color:#f0f0f0;margin-top:4px;">'+esc(c.pickup||'（無上車地）')+'</div>' +
-      (c.dropoff ? '<div style="font-size:13px;color:#b0bec5;margin-top:2px;">→ '+esc(c.dropoff)+'</div>' : '') +
-      '</div>';
-  }
-  function statCard(label, val, color){
-    return '<div class="card" style="padding:10px 12px;text-align:center;"><div style="font-size:22px;font-weight:700;color:'+(color||'var(--ink)')+';">'+val+'</div><div class="muted" style="font-size:11px;">'+label+'</div></div>';
-  }
-  function renderV2Sim(){
-    var diffOnly = $('simDiffOnly').checked, grp = $('simGroup').value;
-    var rows = SIM_ROWS.filter(function(r){ return (!diffOnly || r.diff_kind !== 'D_一致') && (!grp || (r.group_name||'?') === grp); });
-    var kinds = {}, v1Total = 0, v2Total = 0;
-    SIM_ROWS.forEach(function(r){ kinds[r.diff_kind] = (kinds[r.diff_kind]||0)+1; v1Total += r.v1_count||0; v2Total += r.v2_count||0; });
-    var same = kinds['D_一致']||0, total = SIM_ROWS.length;
-    var rate = total ? Math.round(same*100/total) : 0;
-    /* 統計卡片 */
-    $('simStats').innerHTML =
-      statCard('訊息', total) +
-      statCard('V1 建卡', v1Total, '#93c5fd') +
-      statCard('V2 建卡', v2Total, '#4ade80') +
-      statCard('一致', same+'（'+rate+'%）', '#22c55e') +
-      statCard('V2 漏抓', kinds['A_v2漏抓']||0, (kinds['A_v2漏抓']||0)>0?'#ef4444':'#22c55e') +
-      statCard('V2 多抓', kinds['B_v2多抓']||0, '#f59e0b') +
-      statCard('張數不同', kinds['C_張數不同']||0, '#3b82f6') +
-      statCard('欄位不同', kinds['F_欄位不同']||0, '#a78bfa');
-    $('simStat').textContent = rows.length+' 則顯示中';
-    var html = rows.map(function(r){
-      var v1 = sigToCards(r.v1_sig), v2 = sigToCards(r.v2_sig);
-      var t = new Date(r.created_at);
-      var hh = ('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2);
-      var kindColor = r.diff_kind==='D_一致' ? '#22c55e' : r.diff_kind.startsWith('A') ? '#ef4444' : r.diff_kind.startsWith('B') ? '#f59e0b' : '#3b82f6';
-      var head = '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">' +
-        '<span class="muted">'+hh+' · '+esc(r.group_name||'?')+'</span>' +
-        '<span style="color:'+kindColor+';font-weight:600;">'+esc(r.diff_kind.replace(/^[A-F]_/,''))+' V1='+r.v1_count+' V2='+r.v2_count+'</span></div>';
-      var raw = '<details style="margin-top:6px;"><summary class="muted" style="font-size:11px;cursor:pointer;">原文 <button class="btn" style="font-size:10px;padding:1px 6px;margin-left:6px;" data-copy="'+encodeURIComponent(r.raw_text||'')+'">複製</button></summary><pre style="font-size:11px;white-space:pre-wrap;color:#8b8fa4;margin:4px 0 0;max-height:120px;overflow:auto;">'+esc(r.raw_text||'')+'</pre></details>';
-      var body = '';
-      if(SIM_ENG==='v2') body = v2.length ? v2.map(function(c){return cardHtml(c,'v2');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V2：0 張</div>';
-      else if(SIM_ENG==='v1') body = v1.length ? v1.map(function(c){return cardHtml(c,'v1');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V1：0 張</div>';
-      else body = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-        '<div>'+(v1.length ? v1.map(function(c){return cardHtml(c,'v1');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V1：0 張</div>')+'</div>' +
-        '<div>'+(v2.length ? v2.map(function(c){return cardHtml(c,'v2');}).join('') : '<div class="muted" style="font-size:12px;margin-top:6px;">V2：0 張</div>')+'</div></div>';
-      return '<div class="card" style="padding:12px;">'+head+body+raw+'</div>';
-    }).join('');
-    $('simCards').innerHTML = html || '<div class="muted" style="padding:20px;">尚無資料。測試員的 App 需 v35.8+ 才會上傳全部（含一致）記錄。</div>';
-  }
   $('logoutBtn').addEventListener('click', function(){
     sessionStorage.removeItem("tr_pw"); location.hash=""; location.reload();
   });
