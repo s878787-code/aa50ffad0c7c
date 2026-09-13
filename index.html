@@ -816,7 +816,7 @@
       <div class="pagehead"><h1>社區/大樓 位置庫</h1><div class="sub">派單只寫「XX社區/大樓/店名」Google 定不到 → 補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 → 點座標複製「25.033, 121.565」貼進來。<b>驗證打勾才會被 App 採用。</b></div></div>
       <!-- 位置資料資產（0819）：公司累積的定位資料，永久保存 -->
       <div id="geoAssets" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;"></div>
-      <!-- 永久座標資產(0913 總報告 C1):geo_assets 版本表 —— 查版本、撤回/存疑/啟用/改座標、舊 geo_cache 分批匯入。SQL = migrations_v48_geo_assets_0913.sql -->
+      <!-- 永久座標資產(0913 總報告 C1):geo_assets 版本表 —— 查版本、撤回/存疑/啟用/改座標。SQL = migrations_v48_geo_assets_0913.sql -->
       <div class="card" id="gaCard">
         <div class="rowline">
           <span class="cardtitle">🗺 永久座標資產 <span id="gaN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
@@ -844,22 +844,6 @@
         </div>
         <div class="empty hide" id="gaEmpty"></div>
         <div id="gaLegacy" style="margin-top:8px;"></div>
-        <div id="gaImport" class="hide" style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
-          <div class="rowline"><span class="cardtitle">📦 舊快取匯入(geo_cache → 永久座標資產)</span></div>
-          <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
-            沿主鍵一批一批往後掃,<b>只補「還沒有任何資產版本」的鍵</b>:不覆蓋新版 geocode 已寫入的、不讓撤回過的鍵復活、不刪舊快取,可重跑不重複。路線快取、查無墓碑自動跳過;來源看不懂的舊列只進待審。
-            舊列的取得時間<b>不猜</b>(留空=未知),舊 created_at 另存為「舊快取最後寫入」。先按〔試算〕看數字,再〔開始匯入〕跑到完;中途關頁或停止,下次可從進度續跑。
-          </div>
-          <div class="toolbar" style="margin-top:8px;">
-            <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:12px;">每批
-              <select id="gaBatch" style="width:auto; padding:5px 8px; font-size:12.5px;"><option value="1000">1,000 列</option><option value="2000">2,000 列</option><option value="5000" selected>5,000 列</option></select>
-            </label>
-            <button class="ghost" id="gaDry">試算(不寫入)</button>
-            <button class="primary" id="gaRun">開始匯入</button>
-            <button class="ghost" id="gaStop" disabled>停止</button>
-          </div>
-          <div id="gaProg" class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;"></div>
-        </div>
         </div>
       </div>
       <div class="card" id="candCard">
@@ -3220,14 +3204,13 @@
     });
   }
   /* ── 🗺 永久座標資產(0913 總報告 C1;SQL = migrations_v48_geo_assets_0913.sql,admin 動作 geoAsset*)──
-     geo_assets 把每個查詢鍵的座標存成【版本】,geocode 依狀態決定用不用。這張卡只做三件事:
-     看統計、查一個地址的所有版本並改狀態、把舊 geo_cache 分批匯入。狀態規則/連帶存疑/匯入去重全在 SQL,前端不重算 ——
+     geo_assets 把每個查詢鍵的座標存成【版本】,geocode 依狀態決定用不用。這張卡只做兩件事:
+     看統計、查一個地址的所有版本並改狀態。狀態規則/連帶存疑全在 SQL,前端不重算 ——
+     (舊 geo_cache 匯入 0913 已跑完,匯入介面已移除;SQL 的 geo_assets_import_batch 保留,真要重跑用 CLI。)
      前端算錯頂多顯示錯,不會讓 DB 做錯事。 */
-  var GA_STATS = null;     // 最近一次成功的 geoAssetStats(開始匯入要看 import.last_q / done 決定能不能續跑)
+  var GA_STATS = null;     // 最近一次成功的 geoAssetStats
   var GA_LAST = null;      // 目前列表怎麼來的:{kind:"search", q} / {kind:"review"} —— 改完狀態後照原樣重查
   var GA_SEQ = 0;          // 連按兩次查詢時,只認最後一次的回應(舊回應晚到不蓋掉新結果)
-  var GA_RUN = null;       // 匯入/試算進行中的狀態;null = 沒在跑
-  var GA_VIEW = null;      // 最後一次匯入的數字(跑完/停止後進度區還要看得到)
   var GA_STATUS = { active:["ok","服務中"], candidate:["warn","待審"], suspect:["bad","存疑"], revoked:["off","撤回"], superseded:["","已取代"] };
   var GA_PREC = { door:"門牌", place:"地點", road:"路段", area:"區域", unknown:"未知" };
   var GA_ORIGIN = { live:"現查", legacy_import:"舊匯入", admin:"人工" };
@@ -3266,10 +3249,8 @@
     var box = $('gaStats'); if(!box) return;
     box.innerHTML = "<span class='muted'>載入中…</span>";
     api("geoAssetStats").then(function(res){
-      // 匯入跑到一半時就算統計讀失敗也不收起匯入區(收起來就按不到「停止」)
-      function hideImport(){ if(!GA_RUN) $('gaImport').classList.add('hide'); }
-      if(!res || !res.ok){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>"+esc(gaErrMsg(res))+"</span>"; hideImport(); return; }
-      if(res.missing){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>SQL v48 尚未部署(先跑 migrations_v48_geo_assets_0913.sql)</span>"; hideImport(); return; }
+      if(!res || !res.ok){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>"+esc(gaErrMsg(res))+"</span>"; return; }
+      if(res.missing){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>SQL v48 尚未部署(先跑 migrations_v48_geo_assets_0913.sql)</span>"; return; }
       GA_STATS = res;
       $('gaN').textContent = "共 "+gaNum(res.total)+" 筆版本・待審/存疑 "+gaNum(res.review);
       var bs = res.by_status || {};
@@ -3285,24 +3266,12 @@
         .map(function(k){ return esc(GA_PROV[k] || k)+" "+gaNum(prov[k]); }).join("・") || "—";
       var org = res.by_origin || {};
       var orgLine = Object.keys(org).map(function(k){ return esc(GA_ORIGIN[k] || k)+" "+gaNum(org[k]); }).join("・") || "—";
-      var im = res.import || {}, sk = im.skipped || {}, impLine;
-      if(!im.started_at && !im.last_q && !Number(im.scanned)){
-        impLine = "還沒開始匯入";
-      } else {
-        impLine = "已掃 "+gaNum(im.scanned)+" 列・已匯入 "+gaNum(im.imported)+" 筆・跳過:路線快取 "+gaNum(sk.route_cache)+"、查無墓碑 "+gaNum(sk.tombstone)+
-          "、無效座標 "+gaNum(sk.invalid_coords)+"、已有資產 "+gaNum(sk.already_asset)+"、其他 "+gaNum(sk.other)+
-          "(另有 "+gaNum(sk.coord_revoked)+" 筆撞到已撤回座標,匯入成存疑)・"+
-          (im.done ? "<span class='pill ok'>已完成</span>" : "<span class='pill warn'>未完成(可從進度續跑)</span>")+
-          "・最後更新 "+esc(rel(im.updated_at));
-      }
+
       box.innerHTML =
         "<div><b>狀態</b> "+statusLine+"</div>"+
         "<div><b>服務中・精度</b> <span class='muted'>"+precLine+"</span></div>"+
         "<div><b>服務中・來源</b> <span class='muted'>"+provLine+"</span></div>"+
-        "<div><b>全部・出處</b> <span class='muted'>"+orgLine+"</span></div>"+
-        "<div><b>舊快取匯入</b> <span class='muted'>"+impLine+"</span></div>"+
-        (res.import_index ? "" : "<div class='muted' style='font-size:11.5px;'>⚠ 還沒建匯入加速索引:匯入會沿主鍵掃完整 230 萬列、比較吃資料庫 IO。建議先照 v48 檔頭 ②b 建索引,並在離峰跑。</div>");
-      if(ROLE !== "viewer") $('gaImport').classList.remove('hide');
+        "<div><b>全部・出處</b> <span class='muted'>"+orgLine+"</span></div>";
     });
   }
 
@@ -3490,123 +3459,11 @@
     }, "存成人工版本");
   }
 
-  /* ── 舊快取匯入迴圈:一次一批、前一批回來才送下一批(不平行 —— 0724 大表掃描把 DB 拖垮過)──
-     連線中斷/回應壞掉:同一批重試 3 次(2s/4s/8s);重送同一批是安全的(已有資產的鍵不會重複匯入)。
-     其他錯誤(DB 錯、SQL 沒跑)直接停,不跳過那一批 —— 跳過會留下沒掃到的洞。 */
-  function gaImportButtons(){
-    var running = !!GA_RUN;
-    $('gaDry').disabled = running; $('gaRun').disabled = running; $('gaBatch').disabled = running;
-    $('gaStop').disabled = !running || GA_RUN.stop;
-    $('gaStop').textContent = running && GA_RUN.stop ? "停止中…(等這批回來)" : "停止";
-  }
-  function gaImportRender(note){
-    var r = GA_VIEW; if(!r) return;
-    var secs = Math.round(((r.endedAt || Date.now()) - r.startedAt) / 1000);
-    var head = r.state === "running" ? (r.dry ? "試算中" : "匯入中")
-             : r.state === "done" ? (r.dry ? "試算完成" : "匯入完成")
-             : r.state === "stopped" ? "已停止" : "已中止";
-    $('gaProg').innerHTML =
-      "<b>"+head+"</b>・第 "+r.batches+" 批・已掃 "+gaNum(r.scanned)+" 列・耗時 "+Math.floor(secs/60)+" 分 "+(secs%60)+" 秒<br>"+
-      (r.dry ? "可匯入:服務中 "+gaNum(r.active)+" + 待審 "+gaNum(r.cand)+" + 存疑 "+gaNum(r.coordrev)+" = <b>"+gaNum(r.active + r.cand + r.coordrev)+"</b> 筆"
-             : "已匯入 <b>"+gaNum(r.imported)+"</b> 筆(其中可服務 "+gaNum(r.active)+"、待審 "+gaNum(r.cand)+"、存疑 "+gaNum(r.coordrev)+")")+"<br>"+
-      "跳過:路線快取 "+gaNum(r.route)+"、查無墓碑 "+gaNum(r.tomb)+"、無效座標 "+gaNum(r.bad)+"、已有資產 "+gaNum(r.already)+"、其他 "+gaNum(r.other)+
-      (r.retries ? "・連線重試 "+r.retries+" 次" : "")+
-      (r.uncertain ? "<br>⚠ 有批次重送過(伺服器可能早已匯入),數字以上方統計卡為準" : "")+
-      (note ? "<br>"+esc(note) : "");
-  }
-  function gaImportStart(dry){
-    if(ROLE === "viewer"){ toast("唯讀帳號不能匯入"); return; }
-    if(GA_RUN){ toast("已經在跑了,先等它跑完或按停止"); return; }
-    var limit = parseInt($('gaBatch').value, 10) || 5000;
-    var after = null;
-    if(!dry){
-      if(!GA_STATS){ toast("統計還沒載入成功,先按重新整理"); return; }
-      if(!confirm("開始把舊 geo_cache 匯入成永久座標資產?\n\n"+
-        "・只補「還沒有任何資產版本」的鍵,不覆蓋、不刪舊快取,可重跑\n"+
-        "・路線快取、查無墓碑自動跳過;來源不明的舊列只進待審\n"+
-        "・會一批一批跑到掃完,期間請不要關這個分頁(關了之後可從進度續跑)")) return;
-      var im = GA_STATS.import || {};
-      // 續跑 = 從上次最後一個鍵往後;從頭 = after 傳 null,SQL 會重設進度計數(已匯入的鍵不會重複)
-      if(im.last_q && !im.done) after = confirm("從上次進度(已掃 "+gaNum(im.scanned)+" 列)繼續?按「取消」則從頭重新掃") ? im.last_q : null;
-    }
-    GA_RUN = { dry:dry, stop:false, after:after };
-    GA_VIEW = { dry:dry, state:"running", startedAt:Date.now(), endedAt:0, batches:0, scanned:0, imported:0, active:0, cand:0,
-                route:0, tomb:0, bad:0, already:0, other:0, coordrev:0, retries:0 };
-    var run = GA_RUN, view = GA_VIEW;
-    gaImportButtons();
-    gaImportRender(after ? "從上次進度續跑…" : "從頭開始…");
-    function finish(state, note){
-      view.state = state; view.endedAt = Date.now();
-      GA_RUN = null; gaImportButtons();
-      gaImportRender(note);
-      loadGaStats();
-    }
-    function step(attempt){
-      if(run.stop){ finish("stopped", dry ? "" : "進度已存,下次按〔開始匯入〕可選擇續跑"); toast("已停止"); return; }
-      api("geoAssetsImportBatch", { after:run.after, limit:limit, dry_run:dry }).then(function(res){
-        if(!res || !res.ok){
-          var e = res && res.error;
-          if((e === "network" || e === "bad_response") && attempt < 3){
-            var wait = 2000 * Math.pow(2, attempt);   // 2s → 4s → 8s
-            view.retries++;
-            gaImportRender("連線中斷,"+(wait/1000)+" 秒後重試同一批(第 "+(attempt+1)+"/3 次)");
-            setTimeout(function(){ step(attempt + 1); }, wait);
-            return;
-          }
-          var why = (e === "network" || e === "bad_response") ? "連線一直失敗(已重試 3 次)" : gaWriteMsg(res);
-          finish("error", "中止:"+why+(dry ? "" : "。已完成的批次都有存,稍後按〔開始匯入〕可從進度續跑"));
-          toast("匯入中止:"+why);
-          return;
-        }
-        view.batches++;
-        view.scanned += Number(res.scanned)||0;
-        view.imported += Number(res.imported)||0;
-        view.active += Number(res.importable_active)||0;
-        view.cand += Number(res.importable_candidate)||0;
-        view.route += Number(res.route_cache)||0;
-        view.tomb += Number(res.tombstone)||0;
-        view.bad += Number(res.invalid_coords)||0;
-        if(attempt > 0 || res.state_synced === false) view.uncertain = true;   // 重送過:伺服器可能早已匯入這批,「已有資產」會被高估
-        else view.already += Number(res.already_asset)||0;
-        view.other += Number(res.other_skip)||0;
-        view.coordrev += Number(res.coord_revoked)||0;
-        run.after = res.next_after;
-        if(res.next_after == null){
-          finish("done", "");
-          toast(dry ? "試算完成:可匯入 "+gaNum(view.active + view.cand + view.coordrev)+" 筆(掃 "+gaNum(view.scanned)+" 列)"
-                    : "匯入完成:已匯入 "+gaNum(view.imported)+" 筆(掃 "+gaNum(view.scanned)+" 列)");
-          return;
-        }
-        gaImportRender("");
-        setTimeout(function(){ step(0); }, 300);   // 批次間喘口氣:匯入是背景工作,不跟派單定位搶資料庫
-      });
-    }
-    if(!dry && after === null){
-      (function reset(attempt){
-        gaImportRender("重設匯入進度中…");
-        api("geoAssetsImportReset").then(function(res){
-          if(res && res.ok){ step(0); return; }
-          var e = res && res.error;
-          if((e === "network" || e === "bad_response") && attempt < 3){
-            view.retries++;
-            setTimeout(function(){ reset(attempt + 1); }, 2000 * Math.pow(2, attempt));
-            return;
-          }
-          finish("error", "中止:重設匯入進度失敗(" + gaWriteMsg(res) + ")");
-          toast("匯入中止:重設進度失敗");
-        });
-      })(0);
-    } else step(0);
-  }
+
   $('gaRefresh').addEventListener('click', function(){ loadGaStats(); gaReload(); });
   $('gaSearch').addEventListener('click', function(){ gaSearch($('gaQ').value); });
   $('gaQ').addEventListener('keydown', function(e){ if(e.key === 'Enter') gaSearch($('gaQ').value); });
   $('gaReview').addEventListener('click', gaLoadReview);
-  $('gaDry').addEventListener('click', function(){ gaImportStart(true); });
-  $('gaRun').addEventListener('click', function(){ gaImportStart(false); });
-  $('gaStop').addEventListener('click', function(){ if(GA_RUN){ GA_RUN.stop = true; gaImportButtons(); } });
-  /* 正式匯入跑到一半關頁:進度有存、可續跑,但還是提醒一下(試算隨時可以關) */
-  window.addEventListener('beforeunload', function(e){ if(GA_RUN && !GA_RUN.dry){ e.preventDefault(); e.returnValue = ""; } });
 
   function parseCoord(s){
     var t = String(s||"").replace(/，/g, ",");
