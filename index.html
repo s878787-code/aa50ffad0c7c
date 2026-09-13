@@ -816,6 +816,52 @@
       <div class="pagehead"><h1>社區/大樓 位置庫</h1><div class="sub">派單只寫「XX社區/大樓/店名」Google 定不到 → 補一筆座標,全隊 App 就定得到。座標取法:Google 地圖右鍵該點 → 點座標複製「25.033, 121.565」貼進來。<b>驗證打勾才會被 App 採用。</b></div></div>
       <!-- 位置資料資產（0819）：公司累積的定位資料，永久保存 -->
       <div id="geoAssets" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;"></div>
+      <!-- 永久座標資產(0913 總報告 C1):geo_assets 版本表 —— 查版本、撤回/存疑/啟用/改座標、舊 geo_cache 分批匯入。SQL = migrations_v48_geo_assets_0913.sql -->
+      <div class="card" id="gaCard">
+        <div class="rowline">
+          <span class="cardtitle">🗺 永久座標資產 <span id="gaN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
+          <button class="linkbtn" id="gaRefresh" style="margin-left:auto;">↻ 重新整理</button>
+          <button class="linkbtn" id="gaTgl">收合 ▴</button>
+        </div>
+        <div id="gaBody">
+        <div class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;">
+          <b>這是什麼</b> · 每個查詢鍵(地址)定到的座標都存成<b>一個版本</b>,記來源、精度、第一次取得時間、最後驗證、最後被派單使用。App 定位時照狀態決定用不用:
+          <span class="pill ok">服務中</span> 直接採用 · <span class="pill warn">待審</span> 不採用、等人判斷 · <span class="pill bad">存疑</span> 不採用,同鍵舊快取也不用 · <span class="pill off">撤回</span> 不採用;同鍵舊快取、座標相同的舊複製品、之後現查又回到同一點(30 公尺內)一律不收 · <span class="muted">已取代</span> 歷史紀錄。<br>
+          <b>什麼時候用</b> · 司機回報「定位到錯的地方」→ 在這裡查那個地址 → 按〔撤回〕(預設連帶把同座標的其他鍵標存疑)或〔改座標〕。撤回/存疑都不刪資料,隨時可按〔啟用〕恢復。
+        </div>
+        <div id="gaStats" style="margin-top:10px; font-size:12.5px; line-height:1.9;"></div>
+        <div class="toolbar" style="margin-top:10px;">
+          <div class="search" style="flex:1; min-width:200px;"><input type="text" id="gaQ" placeholder="查地址 / 查詢鍵,例:桃園市中壢區中正路100號"></div>
+          <button class="primary" id="gaSearch">🔍 查資產</button>
+          <button class="ghost" id="gaReview">📋 待審/存疑</button>
+        </div>
+        <div id="gaListHead" class="muted" style="font-size:12px; margin-top:8px;">輸入地址查它的所有版本(含各網格版本與歷史),或按〔待審/存疑〕看需要人判斷的。</div>
+        <div class="tablewrap hide" id="gaWrap" style="margin-top:6px;">
+          <table>
+            <thead><tr><th>查詢鍵</th><th>座標</th><th>來源/精度</th><th>狀態</th><th>版本/時間</th><th>動作</th></tr></thead>
+            <tbody id="gaTbody"></tbody>
+          </table>
+        </div>
+        <div class="empty hide" id="gaEmpty"></div>
+        <div id="gaLegacy" style="margin-top:8px;"></div>
+        <div id="gaImport" class="hide" style="margin-top:14px; border-top:1px solid var(--line); padding-top:12px;">
+          <div class="rowline"><span class="cardtitle">📦 舊快取匯入(geo_cache → 永久座標資產)</span></div>
+          <div class="muted" style="font-size:12px; margin-top:6px; line-height:1.85;">
+            沿主鍵一批一批往後掃,<b>只補「還沒有任何資產版本」的鍵</b>:不覆蓋新版 geocode 已寫入的、不讓撤回過的鍵復活、不刪舊快取,可重跑不重複。路線快取、查無墓碑自動跳過;來源看不懂的舊列只進待審。
+            舊列的取得時間<b>不猜</b>(留空=未知),舊 created_at 另存為「舊快取最後寫入」。先按〔試算〕看數字,再〔開始匯入〕跑到完;中途關頁或停止,下次可從進度續跑。
+          </div>
+          <div class="toolbar" style="margin-top:8px;">
+            <label class="muted" style="display:flex; align-items:center; gap:6px; font-size:12px;">每批
+              <select id="gaBatch" style="width:auto; padding:5px 8px; font-size:12.5px;"><option value="1000">1,000 列</option><option value="2000">2,000 列</option><option value="5000" selected>5,000 列</option></select>
+            </label>
+            <button class="ghost" id="gaDry">試算(不寫入)</button>
+            <button class="primary" id="gaRun">開始匯入</button>
+            <button class="ghost" id="gaStop" disabled>停止</button>
+          </div>
+          <div id="gaProg" class="muted" style="font-size:12px; margin-top:8px; line-height:1.85;"></div>
+        </div>
+        </div>
+      </div>
       <div class="card" id="candCard">
         <div class="rowline">
           <span class="cardtitle">🤖 自動回填候選 <span id="candN" class="muted" style="font-weight:400;font-size:12px;"></span></span>
@@ -1083,6 +1129,31 @@
       body: JSON.stringify(Object.assign({ password: PW, action: action }, extra||{})) })
       .then(function(r){ return r.json().catch(function(){ return { error:"bad_response" }; }); })
       .catch(function(){ return { error:"network" }; });
+  }
+
+  /* 0913 總報告 B3:寫入類動作 —— 連線中斷時伺服器可能其實已經做完,不能叫管理者直接重按(續約會重複加天數)。
+     intentId:同一個操作(同金鑰+同內容)連線中斷後重按,沿用同一個 request_id → 伺服器認得出是同一次、不會做兩遍;
+     成功或伺服器明確回錯後就清掉,下一次按才是新的一次。 */
+  var PENDING_INTENT = {};
+  function reqId(){
+    try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){}
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+  function intentId(kind){
+    var p = PENDING_INTENT[kind];
+    if (p && Date.now() - p.at < 10*60*1000) return p.id;
+    var id = reqId(); PENDING_INTENT[kind] = { id:id, at:Date.now() }; return id;
+  }
+  function settleIntent(kind, res){
+    var e = res && res.error;
+    if (!(e === "network" || e === "bad_response")) delete PENDING_INTENT[kind];
+  }
+  function writeFailMsg(res){
+    var e = (res && res.error) || "";
+    if (e === "network" || e === "bad_response") return "結果未確認(連線中斷):先重新整理看是否已生效;要重按請按同一顆,不會重複加";
+    if (e === "not_found") return "失敗:找不到這把金鑰(可能已被刪除)";
+    if (e === "partial_write") return "部分完成:" + (res.detail || "");
+    return "失敗" + (e ? ":" + e : "") + (res && res.detail ? "(" + res.detail + ")" : "");
   }
 
   /* ── 分頁切換 ── */
@@ -1445,27 +1516,33 @@
       });
     } else if(a==="renew"){
       var m=$('renewMonths').value;
-      api("renew",{key:r.key,months:m}).then(function(res){ res.ok? (toast("「"+who+"」已續約 "+m+" 個月"),reload()) : toast("失敗"); });
+      var kindM = "renew|"+r.key+"|m"+m;
+      api("renew",{key:r.key,months:m,request_id:intentId(kindM)}).then(function(res){
+        settleIntent(kindM, res);
+        res.ok? (toast("「"+who+"」已續約 "+m+" 個月"+(res.replayed?"(上一次其實已完成,這次沒有重複加)":"")+(res.warning?"(⚠ "+res.warning+")":"")),reload()) : toast(writeFailMsg(res));
+      });
     } else if(a==="addDays"){
       /* 各別天數(0713):正數=加天、負數=扣回(打錯修正);到期起算,過期的從今天起算 */
       openModal("加天數:"+who, [{id:"d", label:"加幾天(負數=扣回,±365)", type:"number", placeholder:"例 7 或 -3", value:""}], function(v){
         var d=parseInt(v.d,10);
         if(!d){ toast("天數要非 0 的整數"); return; }
-        api("renew",{key:r.key,days:d}).then(function(res){
+        var kindD = "renew|"+r.key+"|d"+d;
+        api("renew",{key:r.key,days:d,request_id:intentId(kindD)}).then(function(res){
+          settleIntent(kindD, res);
           if(res.ok){ closeModal(); toast("「"+who+"」已"+(d>0?"加 "+d:"扣 "+(-d))+" 天"); reload(); }
-          else toast("失敗");
+          else toast(writeFailMsg(res));
         });
       });
     } else if(a==="toggle"){
       var on=!r.active;
       if(!on && !confirm("停用「"+who+"」?App 下次驗證就進不去。")) return;
-      api("setActive",{key:r.key,active:on}).then(function(res){ if(res.ok){ toast(on?"已啟用":"已停用"); reload(); } });
+      api("setActive",{key:r.key,active:on}).then(function(res){ if(res.ok){ toast(on?"已啟用":"已停用"); reload(); } else toast(writeFailMsg(res)); });
     } else if(a==="unbind"){
       if(!confirm("清除「"+who+"」的手機綁定?他可用同一把金鑰綁新手機。")) return;
-      api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } });
+      api("unbind",{key:r.key}).then(function(res){ if(res.ok){ toast("已清除綁定"); reload(); } else toast(writeFailMsg(res)); });
     } else if(a==="delete"){
       if(!confirm("永久刪除「"+who+"」?建議用停用保留紀錄。")) return;
-      api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } });
+      api("delete",{key:r.key}).then(function(res){ if(res.ok){ toast("已刪除"); reload(); } else toast(writeFailMsg(res)); });
     } else if(a==="tier"){
       var toPro = (r.tier!=="pro");
       if(!confirm("把「"+who+"」切成 "+(toPro?"⭐進階版(開放高速喊單)":"基本版(關閉高速喊單)")+"?")) return;
@@ -1840,6 +1917,10 @@
     ["devStatusHome","devStatusQf"].forEach(function(id){ var el=$(id); if(el) el.innerHTML = html; });
   }
 
+  /* 0913 總報告 S2:複製出去的文字不帶完整授權序號(會被貼到對話/群組);保留前 8 碼認得出是誰。
+     新回報的媒體網址已不含序號;舊回報網址裡的序號也會被遮(該網址因此失效,看圖請在後台看,或先跑搬檔)。 */
+  function redactKeys(s){ return String(s).replace(/TR-[A-Z0-9]{4}-[A-Z0-9]{4}/g, function(k){ return k.slice(0,8)+"····"; }); }
+
   /* ── 複製給 Claude(0908 使用者要求):把一筆回報壓成「修 V2 規則」需要的最小塊 ──
      卡片資訊(parse_snapshot)+ 司機修正 + 截圖網址 + 派單原文;不含完整偵錯傾印(那個走「複製報告」)。
      多筆用 ---- 分隔;貼到對話就能直接開修、進案例庫。 */
@@ -1860,7 +1941,7 @@
     if(imgs.length) lines.push("截圖:\n"+imgs.join("\n"));
     if(r.video_url) lines.push("影片:"+r.video_url);
     lines.push("原文:\n"+(r.raw_dispatch ? String(r.raw_dispatch).trim() : "(沒附原文)"));
-    return lines.join("\n");
+    return redactKeys(lines.join("\n"));
   }
   function copyClaude(list){
     if(!list.length){ toast("沒有可複製的回報"); return; }
@@ -1976,7 +2057,7 @@
       });
     });
     actions.querySelector("[data-a='copy']").addEventListener('click', function(){
-      navigator.clipboard.writeText(r.report||"").then(function(){ toast("報告已複製,可直接貼給 Claude 除錯"); });
+      navigator.clipboard.writeText(redactKeys(r.report||"")).then(function(){ toast("報告已複製,可直接貼給 Claude 除錯"); });
     });
     if (ROLE !== "viewer") actions.querySelector("[data-a='del']").addEventListener('click', function(){
       if(!confirm("刪除這筆回報?")) return;
@@ -3120,7 +3201,7 @@
   $('placeRefresh').addEventListener('click', loadPlaces);
   $('placeQ').addEventListener('input', renderPlaces);
   $('placeNewBtn').addEventListener('click', function(){ openPlaceForm(null); });
-  function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); loadGeoAssets(); }
+  function loadPlaces(){ api("places").then(function(res){ if(res.rows){ PLACES = res.rows; renderPlaces(); } }); loadGeoAssets(); loadGaStats(); }
   /* 位置資料資產統計（0819） */
   function loadGeoAssets(){
     api("geoAssets").then(function(r){
@@ -3138,6 +3219,395 @@
         card('路段', fmt(r.door_roads), '', 'var(--muted)');
     });
   }
+  /* ── 🗺 永久座標資產(0913 總報告 C1;SQL = migrations_v48_geo_assets_0913.sql,admin 動作 geoAsset*)──
+     geo_assets 把每個查詢鍵的座標存成【版本】,geocode 依狀態決定用不用。這張卡只做三件事:
+     看統計、查一個地址的所有版本並改狀態、把舊 geo_cache 分批匯入。狀態規則/連帶存疑/匯入去重全在 SQL,前端不重算 ——
+     前端算錯頂多顯示錯,不會讓 DB 做錯事。 */
+  var GA_STATS = null;     // 最近一次成功的 geoAssetStats(開始匯入要看 import.last_q / done 決定能不能續跑)
+  var GA_LAST = null;      // 目前列表怎麼來的:{kind:"search", q} / {kind:"review"} —— 改完狀態後照原樣重查
+  var GA_SEQ = 0;          // 連按兩次查詢時,只認最後一次的回應(舊回應晚到不蓋掉新結果)
+  var GA_RUN = null;       // 匯入/試算進行中的狀態;null = 沒在跑
+  var GA_VIEW = null;      // 最後一次匯入的數字(跑完/停止後進度區還要看得到)
+  var GA_STATUS = { active:["ok","服務中"], candidate:["warn","待審"], suspect:["bad","存疑"], revoked:["off","撤回"], superseded:["","已取代"] };
+  var GA_PREC = { door:"門牌", place:"地點", road:"路段", area:"區域", unknown:"未知" };
+  var GA_ORIGIN = { live:"現查", legacy_import:"舊匯入", admin:"人工" };
+  var GA_PROV = { google_geocoding:"Google Geocoding", google_places:"Google Places", nominatim:"OSM", tgos:"TGOS", map8:"Map8",
+                  door_plates:"門牌庫", community:"位置庫", admin:"人工", unknown:"來源不明" };
+  function gaNum(v){ return (Number(v)||0).toLocaleString(); }
+  function gaT(iso){ if(!iso) return "—"; var d = new Date(iso); if(isNaN(d.getTime())) return "—"; return fmtD(iso)+" "+p2(d.getHours())+":"+p2(d.getMinutes()); }
+  function gaPill(s){
+    var c = GA_STATUS[s];
+    if(!c) return "<span class='pill off'>"+esc(s||"?")+"</span>";
+    return c[0] ? "<span class='pill "+c[0]+"'>"+c[1]+"</span>" : "<span class='muted'>"+c[1]+"</span>";
+  }
+  function gaMap(lat, lng, digits){
+    return "<a href='https://www.google.com/maps?q="+Number(lat)+","+Number(lng)+"' target='_blank' rel='noopener' style='font-size:12px;'>"+
+      Number(lat).toFixed(digits)+","+Number(lng).toFixed(digits)+"</a>";
+  }
+  /* 讀取失敗的說法:舊版 admin 沒有這些動作 → 管理密碼掉進尾段回 no_key、監控密碼被舊白名單擋回 forbidden_viewer(同 siteViews) */
+  function gaErrMsg(res){
+    var e = res && res.error;
+    if(e === "unknown_action" || e === "no_key" || e === "forbidden_viewer") return "admin 函式還沒更新(重新部署 admin 後這裡就會顯示)";
+    if(e === "rpc_missing_run_sql_v48") return "SQL v48 尚未部署(先跑 migrations_v48_geo_assets_0913.sql)";
+    if(e === "network" || e === "bad_response") return "連線失敗,稍後按重新整理";
+    return "讀取失敗:" + (e || "?") + (res && res.detail ? "(" + res.detail + ")" : "");
+  }
+  /* 寫入失敗的說法:writeFailMsg 的 not_found 是講金鑰的,資產要自己講 */
+  function gaWriteMsg(res){
+    var e = res && res.error;
+    if(e === "not_found") return "失敗:找不到這筆資產(可能已變更,請重查)";
+    if(e === "rpc_missing_run_sql_v48" || e === "unknown_action" || e === "no_key" || e === "forbidden_viewer") return "失敗:" + gaErrMsg(res);
+    if(e === "bad_coords") return "失敗:座標不在台灣範圍(或是 0,0)";
+    if(e === "db_error" && /conflict_retry/.test(String((res && res.detail) || ""))) return "失敗:剛好在匯入同一個地址,請再按一次";
+    return writeFailMsg(res);
+  }
+
+  function loadGaStats(){
+    var box = $('gaStats'); if(!box) return;
+    box.innerHTML = "<span class='muted'>載入中…</span>";
+    api("geoAssetStats").then(function(res){
+      // 匯入跑到一半時就算統計讀失敗也不收起匯入區(收起來就按不到「停止」)
+      function hideImport(){ if(!GA_RUN) $('gaImport').classList.add('hide'); }
+      if(!res || !res.ok){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>"+esc(gaErrMsg(res))+"</span>"; hideImport(); return; }
+      if(res.missing){ GA_STATS = null; $('gaN').textContent = ""; box.innerHTML = "<span class='muted'>SQL v48 尚未部署(先跑 migrations_v48_geo_assets_0913.sql)</span>"; hideImport(); return; }
+      GA_STATS = res;
+      $('gaN').textContent = "共 "+gaNum(res.total)+" 筆版本・待審/存疑 "+gaNum(res.review);
+      var bs = res.by_status || {};
+      var statusLine = ["active","candidate","suspect","revoked","superseded"].map(function(s){
+        var c = GA_STATUS[s];
+        return c[0] ? "<span class='pill "+c[0]+"'>"+c[1]+" "+gaNum(bs[s])+"</span>" : "<span class='muted'>"+c[1]+" "+gaNum(bs[s])+"</span>";
+      }).join(" ");
+      var prec = res.active_by_precision || {};
+      var precLine = ["door","place","road","area","unknown"].filter(function(k){ return Number(prec[k]) > 0; })
+        .map(function(k){ return GA_PREC[k]+" "+gaNum(prec[k]); }).join("・") || "—";
+      var prov = res.active_by_provider || {};
+      var provLine = Object.keys(prov).sort(function(a, b){ return (Number(prov[b])||0) - (Number(prov[a])||0); })
+        .map(function(k){ return esc(GA_PROV[k] || k)+" "+gaNum(prov[k]); }).join("・") || "—";
+      var org = res.by_origin || {};
+      var orgLine = Object.keys(org).map(function(k){ return esc(GA_ORIGIN[k] || k)+" "+gaNum(org[k]); }).join("・") || "—";
+      var im = res.import || {}, sk = im.skipped || {}, impLine;
+      if(!im.started_at && !im.last_q && !Number(im.scanned)){
+        impLine = "還沒開始匯入";
+      } else {
+        impLine = "已掃 "+gaNum(im.scanned)+" 列・已匯入 "+gaNum(im.imported)+" 筆・跳過:路線快取 "+gaNum(sk.route_cache)+"、查無墓碑 "+gaNum(sk.tombstone)+
+          "、無效座標 "+gaNum(sk.invalid_coords)+"、已有資產 "+gaNum(sk.already_asset)+"、其他 "+gaNum(sk.other)+
+          "(另有 "+gaNum(sk.coord_revoked)+" 筆撞到已撤回座標,匯入成存疑)・"+
+          (im.done ? "<span class='pill ok'>已完成</span>" : "<span class='pill warn'>未完成(可從進度續跑)</span>")+
+          "・最後更新 "+esc(rel(im.updated_at));
+      }
+      box.innerHTML =
+        "<div><b>狀態</b> "+statusLine+"</div>"+
+        "<div><b>服務中・精度</b> <span class='muted'>"+precLine+"</span></div>"+
+        "<div><b>服務中・來源</b> <span class='muted'>"+provLine+"</span></div>"+
+        "<div><b>全部・出處</b> <span class='muted'>"+orgLine+"</span></div>"+
+        "<div><b>舊快取匯入</b> <span class='muted'>"+impLine+"</span></div>"+
+        (res.import_index ? "" : "<div class='muted' style='font-size:11.5px;'>⚠ 還沒建匯入加速索引:匯入會沿主鍵掃完整 230 萬列、比較吃資料庫 IO。建議先照 v48 檔頭 ②b 建索引,並在離峰跑。</div>");
+      if(ROLE !== "viewer") $('gaImport').classList.remove('hide');
+    });
+  }
+
+  function gaListLoading(){
+    $('gaListHead').textContent = "查詢中…";
+    $('gaWrap').classList.add('hide'); $('gaEmpty').classList.add('hide'); $('gaLegacy').innerHTML = "";
+  }
+  function gaListError(msg){
+    $('gaListHead').textContent = "";
+    $('gaWrap').classList.add('hide'); $('gaLegacy').innerHTML = "";
+    $('gaEmpty').textContent = msg; $('gaEmpty').classList.remove('hide');
+  }
+  function gaSearch(q){
+    q = String(q||"").trim();
+    if(!q){ toast("先輸入地址或查詢鍵"); return; }
+    GA_LAST = { kind:"search", q:q };
+    var seq = ++GA_SEQ;
+    gaListLoading();
+    api("geoAssetLookup", { q:q }).then(function(res){
+      if(seq !== GA_SEQ) return;
+      if(!res || !res.ok){ gaListError(gaErrMsg(res)); return; }
+      var assets = res.assets || [], legacy = res.legacy || [];
+      $('gaListHead').textContent = "查「"+q+"」(查詢鍵:"+(res.keys||[]).join(" / ")+",也比對地址結尾)→ 資產版本 "+assets.length+" 筆、舊快取 "+legacy.length+" 筆"+
+        (Number(res.total) > assets.length ? "(只顯示前 "+assets.length+" 筆,共 "+(Number(res.total) > 500 ? "500+" : res.total)+" 筆 —— 貼完整一點的地址可縮小範圍)" : "");
+      gaRenderRows(assets, legacy.length
+        ? "沒有資產版本(還沒匯入,也還沒被新版 geocode 寫過);下面是舊快取列。"
+        : "查無資產,也沒有舊快取列(這個地址可能從沒被查過,或 App 送出的鍵格式不同 —— 試試貼完整地址)。");
+      gaRenderLegacy(legacy);
+    });
+  }
+  function gaLoadReview(){
+    GA_LAST = { kind:"review" };
+    var seq = ++GA_SEQ;
+    gaListLoading();
+    api("geoAssetReview", { statuses:["candidate","suspect"] }).then(function(res){
+      if(seq !== GA_SEQ) return;
+      if(!res || !res.ok){ gaListError(gaErrMsg(res)); return; }
+      var rows = res.rows || [];
+      $('gaListHead').textContent = "待審/存疑:"+rows.length+" 筆(最近變更在前,最多 200 筆)";
+      gaRenderRows(rows, "目前沒有待審或存疑的資產。");
+    });
+  }
+  function gaReload(){
+    if(!GA_LAST) return;
+    if(GA_LAST.kind === "review") gaLoadReview(); else gaSearch(GA_LAST.q);
+  }
+
+  function gaRenderRows(rows, emptyMsg){
+    var tb = $('gaTbody'); tb.innerHTML = "";
+    $('gaWrap').classList.toggle('hide', rows.length === 0);
+    $('gaEmpty').textContent = emptyMsg;
+    $('gaEmpty').classList.toggle('hide', rows.length > 0);
+    rows.forEach(function(a){
+      var tr = document.createElement('tr');
+      var badges = (a.namespace === "pn" ? " <span class='pill off' title='Places 新版模式寫入的網格鍵'>pn</span>" : "") +
+                   (a.scope === "grid" ? " <span class='pill off' title='只對這一帶的司機有效'>網格 "+esc(a.grid||"")+"</span>" : "");
+      var keyCell = "<b>"+esc(a.base_q || a.q)+"</b>"+badges+(a.base_q && a.base_q !== a.q ? "<br><small class='muted' style='word-break:break-all;'>"+esc(a.q)+"</small>" : "");
+      var srcCell = esc(GA_PROV[a.provider] || a.provider || "—")+
+        "<br><small class='muted'>via "+esc(a.source_via || "—")+(a.derived_from ? "・複製自 "+esc(a.derived_from) : "")+"</small>"+
+        "<br><small>精度 "+esc(GA_PREC[a.precision_class] || a.precision_class || "—")+"・"+esc(GA_ORIGIN[a.origin] || a.origin || "—")+"</small>";
+      var stCell = gaPill(a.status)+
+        (a.coord_revoked ? " <span class='pill bad' title='座標等於別的地址已撤回的點;定位時不採用,確認沒錯請按〔確認採用〕'>同座標已撤回・不服務</span>" : "")+
+        (a.status_reason ? "<br><small class='muted' style='word-break:break-all;'>"+esc(a.status_reason)+"</small>" : "")+
+        "<br><small class='muted'>變更 "+esc(gaT(a.status_changed_at))+"</small>";
+      var timeCell = "<small>rev "+esc(a.revision)+"・命中 "+gaNum(a.hits)+"</small>"+
+        "<br><small class='muted'>取得 "+(a.source_fetched_at ? esc(gaT(a.source_fetched_at)) : "未知(舊資料)")+"</small>"+
+        "<br><small class='muted'>驗證 "+esc(gaT(a.verified_at))+"</small>"+
+        "<br><small class='muted'>最後使用 "+(a.last_hit_at ? esc(rel(a.last_hit_at)) : "—")+"</small>"+
+        (a.legacy_created_at ? "<br><small class='muted'>舊快取最後寫入 "+esc(gaT(a.legacy_created_at))+(a.legacy_hits != null ? "(舊命中 "+gaNum(a.legacy_hits)+")" : "")+"</small>" : "");
+      var acts;
+      if(ROLE === "viewer"){
+        acts = "<span class='muted' style='font-size:12px;'>唯讀</span>";
+      } else {
+        acts = (a.status === "active"
+          ? (a.coord_revoked ? "<button data-a='confirm'>確認採用</button>" : "") +
+            "<button class='danger' data-a='revoke'>撤回</button><button data-a='suspect'>存疑</button>"
+          : "<button data-a='activate'>啟用</button>") +
+          (a.status === "revoked" ? "<button data-a='resweep' title='再掃一次:撤回之後才出現的同座標資產一併標存疑'>重新連帶</button>" : "") +
+          "<button data-a='fix'>改座標</button>";
+      }
+      tr.innerHTML =
+        "<td style='max-width:260px;'>"+keyCell+"</td>"+
+        "<td>"+gaMap(a.lat, a.lng, 5)+"</td>"+
+        "<td>"+srcCell+"</td>"+
+        "<td>"+stCell+"</td>"+
+        "<td>"+timeCell+"</td>"+
+        "<td><div class='act'>"+acts+"</div></td>";
+      if(ROLE !== "viewer"){
+        var b;
+        if((b = tr.querySelector("[data-a='revoke']")))   b.addEventListener('click', function(){ gaStatusForm(a, "revoked"); });
+        if((b = tr.querySelector("[data-a='suspect']")))  b.addEventListener('click', function(){ gaStatusForm(a, "suspect"); });
+        if((b = tr.querySelector("[data-a='activate']"))) b.addEventListener('click', function(){ gaActivate(a); });
+        if((b = tr.querySelector("[data-a='resweep']")))  b.addEventListener('click', function(){ gaStatusForm(a, "revoked"); });
+        if((b = tr.querySelector("[data-a='confirm']")))  b.addEventListener('click', function(){ gaActivate(a); });
+        tr.querySelector("[data-a='fix']").addEventListener('click', function(){ gaFixForm(a); });
+      }
+      tb.appendChild(tr);
+    });
+  }
+  /* 舊快取列只當參考:created_at 是「最後寫入或命中」,不是取得時間,別拿它判斷座標新舊 */
+  function gaRenderLegacy(list){
+    var box = $('gaLegacy');
+    if(!list.length){ box.innerHTML = ""; return; }
+    box.innerHTML = "<div class='muted' style='font-size:12px; font-weight:600;'>舊快取(created_at=最後寫入/命中,不是取得時間)</div>" +
+      list.map(function(g){
+        var miss = /^miss/.test(String(g.via||""));
+        return "<div class='muted' style='font-size:12px; line-height:1.8; word-break:break-all;'>"+esc(g.q)+" · "+
+          (miss ? "查無墓碑" : gaMap(g.lat, g.lng, 5))+" · via "+esc(g.via || "—")+" · 命中 "+gaNum(g.hits)+" · created_at "+esc(gaT(g.created_at))+"</div>";
+      }).join("");
+  }
+
+  function gaAfterWrite(){ gaReload(); loadGaStats(); }
+  /* 撤回 / 存疑:原因必填不強迫(急著止血時不該被表單卡住),但會記在資產上方便日後回查 */
+  function gaStatusForm(a, status){
+    var isRevoke = status === "revoked";
+    var fields = [{ id:"reason", label:"原因(記在這筆資產上,最多 200 字)", type:"textarea",
+      placeholder: isRevoke ? "例:司機回報定到隔壁巷,實際在…" : "例:座標看起來偏了,待查證",
+      hint: isRevoke ? "撤回後這個鍵不再服務;同鍵舊快取、座標相同的舊複製品、之後現查又回到同一點(30 公尺內)都不採用。不刪資料,可再按〔啟用〕恢復。⚠ 撤回只有新版定位服務認得,要連「回退舊版」也有效請用〔改座標〕。"
+                     : "存疑:暫停服務,同鍵舊快取也不採用。不刪資料,可再按〔啟用〕恢復;之後現查到明顯不同的點會自動當成修正。" }];
+    if(isRevoke) fields.push({ id:"cascade", label:"連帶處理", type:"checkbox", value:true, placeholder:"同座標的其他鍵一併標存疑(建議)",
+      hint:"舊資料的別名複製品沒有血緣紀錄,只能靠「座標完全相同」認出來。不勾:它們的狀態不變,但定位時照樣會因為座標相同而不採用。超過 50 筆會先問你。路段點被撤回不牽連門牌/地點。" });
+    openModal((isRevoke ? "撤回:" : "標存疑:") + a.q, fields, function(v){
+      var kind = "gaStatus|"+a.id+"|"+status;
+      var payload = { id:a.id, status:status, reason:String(v.reason||"").trim(),
+        cascade: isRevoke ? !!v.cascade : false, request_id:intentId(kind) };
+      function send(force){
+        api("geoAssetSetStatus", force ? Object.assign({ force:true }, payload) : payload).then(function(res){
+          // 連帶筆數太多:SQL 什麼都沒動,先問清楚(一次標幾千筆存疑 = 那幾千個地址改走付費查詢)
+          if(res && res.error === "cascade_too_large" && !force){
+            if(confirm("這個座標還有 "+gaNum(res.would_cascade)+" 個其他地址正在使用(沒有血緣的舊複製品常常是這樣)。\n\n"+
+              "全部標存疑後,這些地址會改走現查(含付費層),直到查到不同的點或你逐筆啟用。\n\n"+
+              "確定要全部標存疑?\n(按「取消」= 這次什麼都不做;可取消勾選「連帶處理」只撤回這一筆)")) send(true);
+            else settleIntent(kind, res);
+            return;
+          }
+          settleIntent(kind, res);
+          if(res && res.ok){
+            closeModal();
+            toast(res.unchanged && !Number(res.cascaded) ? "狀態沒變(本來就是「"+(GA_STATUS[res.status] ? GA_STATUS[res.status][1] : res.status)+"」)"
+              : isRevoke ? "已撤回" + (Number(res.cascaded) > 0 ? "(連帶 "+res.cascaded+" 筆標存疑)" : "")
+              : "已標存疑" + gaUndoNote(res));
+            gaAfterWrite();
+          } else toast(gaWriteMsg(res));
+        });
+      }
+      send(false);
+    }, isRevoke ? "撤回" : "標存疑");
+  }
+  function gaUndoNote(res){
+    var p = [];
+    if(Number(res.restored) > 0) p.push("還原 "+res.restored+" 筆連帶存疑");
+    if(Number(res.released_candidates) > 0) p.push("放行 "+res.released_candidates+" 筆待審");
+    return p.length ? "(撤回已解除:"+p.join("、")+")" : "";
+  }
+  function gaActivate(a){
+    if(!confirm("啟用這一版?\n\n"+a.q+"\n座標 "+Number(a.lat).toFixed(5)+", "+Number(a.lng).toFixed(5)+"(rev "+a.revision+")\n\n"+
+      "這個鍵目前服務中的版本(若有)會被取代成歷史紀錄,舊快取也會同步成這個座標,App 之後就用這一點。")) return;
+    var kind = "gaStatus|"+a.id+"|active";
+    api("geoAssetSetStatus", { id:a.id, status:"active", reason:"後台人工啟用", cascade:false, request_id:intentId(kind) }).then(function(res){
+      settleIntent(kind, res);
+      if(res && res.ok){ toast(res.confirmed ? "已確認採用(人工確認,不再被同座標的撤回擋)" : res.unchanged ? "狀態沒變(本來就是服務中)" : "已啟用" + gaUndoNote(res)); gaAfterWrite(); }
+      else toast(gaWriteMsg(res));
+    });
+  }
+  /* 改座標 = 建一個人工版本取代現行版本(舊版本留作歷史)。精度只在確定是門牌那一點才選門牌 —— 粗點標成門牌會讓下游誤信 */
+  var GA_PREC_OPTS = ["未知(unknown)", "門牌(door)", "地點(place)", "路段(road)", "區域(area)"];
+  function gaFixForm(a){
+    var cur = GA_PREC_OPTS.filter(function(o){ return o.indexOf("("+a.precision_class+")") >= 0; })[0] || GA_PREC_OPTS[0];
+    openModal("改座標:" + a.q, [
+      { id:"lat", label:"緯度", type:"number", value:a.lat, placeholder:"25.03300", hint:"Google 地圖右鍵點位置 → 點最上面的座標複製,前面是緯度、後面是經度" },
+      { id:"lng", label:"經度", type:"number", value:a.lng, placeholder:"121.56500" },
+      { id:"precision", label:"精度", type:"select", options:GA_PREC_OPTS, value:cur, hint:"只有確定是那個門牌的位置才選「門牌」" },
+      { id:"reason", label:"原因(最多 200 字)", type:"textarea", placeholder:"例:依司機回報改到社區大門口" }
+    ], function(v){
+      var lat = parseFloat(v.lat), lng = parseFloat(v.lng);
+      if(!isFinite(lat) || !isFinite(lng)){ toast("緯度/經度要填數字"); return; }
+      if(lat < 21.5 || lat > 26.5 || lng < 118 || lng > 122.5){ toast("座標不在台灣範圍(緯度 21.5–26.5、經度 118–122.5)"); return; }
+      var m = /\((\w+)\)$/.exec(String(v.precision||""));
+      api("geoAssetAdminSet", { q:a.q, lat:lat, lng:lng, precision:(m ? m[1] : "unknown"), reason:String(v.reason||"").trim() }).then(function(res){
+        if(res && res.ok){ closeModal(); toast("已改座標(人工版本 rev "+res.revision+")" + gaUndoNote(res)); gaAfterWrite(); }
+        // 改座標每送一次就多一個版本(不像改狀態可安全重送)→ 連線中斷時先重查,別直接重按
+        else if(res && (res.error === "network" || res.error === "bad_response")) toast("結果未確認(連線中斷):先按〔查資產〕重查看是否已生效,再決定要不要重送");
+        else toast(gaWriteMsg(res));
+      });
+    }, "存成人工版本");
+  }
+
+  /* ── 舊快取匯入迴圈:一次一批、前一批回來才送下一批(不平行 —— 0724 大表掃描把 DB 拖垮過)──
+     連線中斷/回應壞掉:同一批重試 3 次(2s/4s/8s);重送同一批是安全的(已有資產的鍵不會重複匯入)。
+     其他錯誤(DB 錯、SQL 沒跑)直接停,不跳過那一批 —— 跳過會留下沒掃到的洞。 */
+  function gaImportButtons(){
+    var running = !!GA_RUN;
+    $('gaDry').disabled = running; $('gaRun').disabled = running; $('gaBatch').disabled = running;
+    $('gaStop').disabled = !running || GA_RUN.stop;
+    $('gaStop').textContent = running && GA_RUN.stop ? "停止中…(等這批回來)" : "停止";
+  }
+  function gaImportRender(note){
+    var r = GA_VIEW; if(!r) return;
+    var secs = Math.round(((r.endedAt || Date.now()) - r.startedAt) / 1000);
+    var head = r.state === "running" ? (r.dry ? "試算中" : "匯入中")
+             : r.state === "done" ? (r.dry ? "試算完成" : "匯入完成")
+             : r.state === "stopped" ? "已停止" : "已中止";
+    $('gaProg').innerHTML =
+      "<b>"+head+"</b>・第 "+r.batches+" 批・已掃 "+gaNum(r.scanned)+" 列・耗時 "+Math.floor(secs/60)+" 分 "+(secs%60)+" 秒<br>"+
+      (r.dry ? "可匯入:服務中 "+gaNum(r.active)+" + 待審 "+gaNum(r.cand)+" + 存疑 "+gaNum(r.coordrev)+" = <b>"+gaNum(r.active + r.cand + r.coordrev)+"</b> 筆"
+             : "已匯入 <b>"+gaNum(r.imported)+"</b> 筆(其中可服務 "+gaNum(r.active)+"、待審 "+gaNum(r.cand)+"、存疑 "+gaNum(r.coordrev)+")")+"<br>"+
+      "跳過:路線快取 "+gaNum(r.route)+"、查無墓碑 "+gaNum(r.tomb)+"、無效座標 "+gaNum(r.bad)+"、已有資產 "+gaNum(r.already)+"、其他 "+gaNum(r.other)+
+      (r.retries ? "・連線重試 "+r.retries+" 次" : "")+
+      (r.uncertain ? "<br>⚠ 有批次重送過(伺服器可能早已匯入),數字以上方統計卡為準" : "")+
+      (note ? "<br>"+esc(note) : "");
+  }
+  function gaImportStart(dry){
+    if(ROLE === "viewer"){ toast("唯讀帳號不能匯入"); return; }
+    if(GA_RUN){ toast("已經在跑了,先等它跑完或按停止"); return; }
+    var limit = parseInt($('gaBatch').value, 10) || 5000;
+    var after = null;
+    if(!dry){
+      if(!GA_STATS){ toast("統計還沒載入成功,先按重新整理"); return; }
+      if(!confirm("開始把舊 geo_cache 匯入成永久座標資產?\n\n"+
+        "・只補「還沒有任何資產版本」的鍵,不覆蓋、不刪舊快取,可重跑\n"+
+        "・路線快取、查無墓碑自動跳過;來源不明的舊列只進待審\n"+
+        "・會一批一批跑到掃完,期間請不要關這個分頁(關了之後可從進度續跑)")) return;
+      var im = GA_STATS.import || {};
+      // 續跑 = 從上次最後一個鍵往後;從頭 = after 傳 null,SQL 會重設進度計數(已匯入的鍵不會重複)
+      if(im.last_q && !im.done) after = confirm("從上次進度(已掃 "+gaNum(im.scanned)+" 列)繼續?按「取消」則從頭重新掃") ? im.last_q : null;
+    }
+    GA_RUN = { dry:dry, stop:false, after:after };
+    GA_VIEW = { dry:dry, state:"running", startedAt:Date.now(), endedAt:0, batches:0, scanned:0, imported:0, active:0, cand:0,
+                route:0, tomb:0, bad:0, already:0, other:0, coordrev:0, retries:0 };
+    var run = GA_RUN, view = GA_VIEW;
+    gaImportButtons();
+    gaImportRender(after ? "從上次進度續跑…" : "從頭開始…");
+    function finish(state, note){
+      view.state = state; view.endedAt = Date.now();
+      GA_RUN = null; gaImportButtons();
+      gaImportRender(note);
+      loadGaStats();
+    }
+    function step(attempt){
+      if(run.stop){ finish("stopped", dry ? "" : "進度已存,下次按〔開始匯入〕可選擇續跑"); toast("已停止"); return; }
+      api("geoAssetsImportBatch", { after:run.after, limit:limit, dry_run:dry }).then(function(res){
+        if(!res || !res.ok){
+          var e = res && res.error;
+          if((e === "network" || e === "bad_response") && attempt < 3){
+            var wait = 2000 * Math.pow(2, attempt);   // 2s → 4s → 8s
+            view.retries++;
+            gaImportRender("連線中斷,"+(wait/1000)+" 秒後重試同一批(第 "+(attempt+1)+"/3 次)");
+            setTimeout(function(){ step(attempt + 1); }, wait);
+            return;
+          }
+          var why = (e === "network" || e === "bad_response") ? "連線一直失敗(已重試 3 次)" : gaWriteMsg(res);
+          finish("error", "中止:"+why+(dry ? "" : "。已完成的批次都有存,稍後按〔開始匯入〕可從進度續跑"));
+          toast("匯入中止:"+why);
+          return;
+        }
+        view.batches++;
+        view.scanned += Number(res.scanned)||0;
+        view.imported += Number(res.imported)||0;
+        view.active += Number(res.importable_active)||0;
+        view.cand += Number(res.importable_candidate)||0;
+        view.route += Number(res.route_cache)||0;
+        view.tomb += Number(res.tombstone)||0;
+        view.bad += Number(res.invalid_coords)||0;
+        if(attempt > 0 || res.state_synced === false) view.uncertain = true;   // 重送過:伺服器可能早已匯入這批,「已有資產」會被高估
+        else view.already += Number(res.already_asset)||0;
+        view.other += Number(res.other_skip)||0;
+        view.coordrev += Number(res.coord_revoked)||0;
+        run.after = res.next_after;
+        if(res.next_after == null){
+          finish("done", "");
+          toast(dry ? "試算完成:可匯入 "+gaNum(view.active + view.cand + view.coordrev)+" 筆(掃 "+gaNum(view.scanned)+" 列)"
+                    : "匯入完成:已匯入 "+gaNum(view.imported)+" 筆(掃 "+gaNum(view.scanned)+" 列)");
+          return;
+        }
+        gaImportRender("");
+        setTimeout(function(){ step(0); }, 300);   // 批次間喘口氣:匯入是背景工作,不跟派單定位搶資料庫
+      });
+    }
+    if(!dry && after === null){
+      (function reset(attempt){
+        gaImportRender("重設匯入進度中…");
+        api("geoAssetsImportReset").then(function(res){
+          if(res && res.ok){ step(0); return; }
+          var e = res && res.error;
+          if((e === "network" || e === "bad_response") && attempt < 3){
+            view.retries++;
+            setTimeout(function(){ reset(attempt + 1); }, 2000 * Math.pow(2, attempt));
+            return;
+          }
+          finish("error", "中止:重設匯入進度失敗(" + gaWriteMsg(res) + ")");
+          toast("匯入中止:重設進度失敗");
+        });
+      })(0);
+    } else step(0);
+  }
+  $('gaRefresh').addEventListener('click', function(){ loadGaStats(); gaReload(); });
+  $('gaSearch').addEventListener('click', function(){ gaSearch($('gaQ').value); });
+  $('gaQ').addEventListener('keydown', function(e){ if(e.key === 'Enter') gaSearch($('gaQ').value); });
+  $('gaReview').addEventListener('click', gaLoadReview);
+  $('gaDry').addEventListener('click', function(){ gaImportStart(true); });
+  $('gaRun').addEventListener('click', function(){ gaImportStart(false); });
+  $('gaStop').addEventListener('click', function(){ if(GA_RUN){ GA_RUN.stop = true; gaImportButtons(); } });
+  /* 正式匯入跑到一半關頁:進度有存、可續跑,但還是提醒一下(試算隨時可以關) */
+  window.addEventListener('beforeunload', function(e){ if(GA_RUN && !GA_RUN.dry){ e.preventDefault(); e.returnValue = ""; } });
+
   function parseCoord(s){
     var t = String(s||"").replace(/，/g, ",");
     var m = t.match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
@@ -3352,6 +3822,7 @@
   wireCollapse('candTgl', 'candBody', true);
   wireCollapse('missTgl', 'missBody', true);
   wireCollapse('batchTgl', 'batchBodyWrap', false);
+  wireCollapse('gaTgl', 'gaBody', true);
 
   /* ── 自動回填候選(Places 花錢換到的地名 → 一鍵收進位置庫) ──
      這張清單只是收集箱,完全不參與定位;按下「採用」才會走既有的「新增地點」流程(含重複別名檢查)。 */
