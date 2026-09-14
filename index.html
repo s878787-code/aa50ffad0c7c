@@ -1047,6 +1047,7 @@ html.has-overlay{ overflow:hidden; }
   function isNum(n){ return n != null && n !== '' && !isNaN(Number(n)); }
   TR.fmt = {
     num: function(n){ return isNum(n) ? Number(n).toLocaleString('zh-TW') : '—'; },
+    count: function(c){ return c ? TR.fmt.num(c.n) + (c.plus ? '+' : '') : '—'; },
     money: function(n, cur, dec){
       if (!isNum(n)) return '—';
       var us = cur === 'US';
@@ -1836,7 +1837,7 @@ html.has-overlay{ overflow:hidden; }
           if (map && Object.prototype.hasOwnProperty.call(map, k)) {
             var v = map[k];
             b._count.hidden = v == null;
-            b._count.textContent = v == null ? '' : TR.fmt.num(v);
+            b._count.textContent = v == null ? '' : typeof v === 'object' ? TR.fmt.count(v) : TR.fmt.num(v);
           }
         });
       }
@@ -2242,16 +2243,21 @@ html.has-overlay{ overflow:hidden; }
   /* ---------- data store ---------- */
   function pickRows(res){ return Array.isArray(res.rows) ? res.rows : undefined; }
   function pickOk(res){ return res.ok ? res : undefined; }
+  // 候選(後端只列 300 筆)與查無地標(40 筆)是截過的清單:新後端附 total;舊後端沒有 total 時,滿額只能算「N+」
+  function pickCapped(res, cap){
+    if (!Array.isArray(res.rows)) return undefined;
+    return { rows: res.rows, summary: res.summary || {}, total: isNum(res.total) ? Number(res.total) : null, cap: cap };
+  }
   var STORE_DEFS = {
     licenses:   { action: 'list',            payload: {},            ttl: 20000,  pick: pickRows },
     reports:    { action: 'reports',         payload: {},            ttl: 60000,  pick: pickRows },
     geoUsage:   { action: 'geoUsage',        payload: {},            ttl: 60000,  pick: pickOk },
-    placeCands: { action: 'placeCandidates', payload: {},            ttl: 300000, pick: pickRows },
-    missQueue:  { action: 'missQueue',       payload: { all: false }, ttl: 300000, pick: function(res){ return Array.isArray(res.rows) ? { rows: res.rows, summary: res.summary || {} } : undefined; } },
+    placeCands: { action: 'placeCandidates', payload: {},            ttl: 300000, pick: function(res){ return pickCapped(res, 300); } },
+    missQueue:  { action: 'missQueue',       payload: { all: false }, ttl: 300000, pick: function(res){ return pickCapped(res, 40); } },
     devStatus:  { action: 'devStatus',       payload: {},            ttl: 120000, pick: pickOk }
   };
   var STORES = {};
-  Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [] }; });
+  Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [], fails: 0 }; });
 
   function storeHooks(name, st){
     if (name === 'licenses' && loggedIn) TR.page.updateHeader();
@@ -2296,10 +2302,15 @@ html.has-overlay{ overflow:hidden; }
         st.applied = mySeq;
         var v = res && !res.error ? def.pick(res) : undefined;
         if (v !== undefined) {
-          st.value = v; st.error = null; st.loadedAt = Date.now();
+          st.value = v; st.error = null; st.loadedAt = Date.now(); st.fails = 0; st.firstFailAt = 0;
           if (name === 'licenses' && res.role) TR.role = res.role === 'viewer' ? 'viewer' : 'admin';
         } else {
           st.error = TR.err(res);
+          // 登入過期/密碼錯不算健康檢查失敗,重新登入後才不會帶著舊的失敗次數
+          if (!res || (res.error !== 'unauthorized' && res.error !== 'locked_out')) {
+            if (!st.fails) st.firstFailAt = Date.now();
+            st.fails = (st.fails || 0) + 1;
+          }
         }
         st.loading = false; st.inflight = null;
         if (res && res.error === 'unauthorized') return st.value;
@@ -2317,8 +2328,14 @@ html.has-overlay{ overflow:hidden; }
     set: function(name, value){
       var st = STORES[name];
       if (!st) return;
-      st.value = value; st.error = null; st.loadedAt = Date.now();
+      st.value = value; st.error = null; st.loadedAt = Date.now(); st.fails = 0; st.firstFailAt = 0;
       notify(name);
+    },
+    pickCapped: pickCapped,
+    count: function(v){
+      if (!v || !Array.isArray(v.rows)) return null;
+      if (v.total != null) return { n: v.total, plus: false };
+      return { n: v.rows.length, plus: v.rows.length >= v.cap };
     }
   };
 
@@ -2402,6 +2419,16 @@ html.has-overlay{ overflow:hidden; }
     get: function(page){ return COUNTS[page] || 0; }
   };
   if (!TR.health) TR.health = { compute: null, last: null };
+  // 用量連續失敗 2 次以上、且上次成功(從沒成功過就看第一次失敗)已超過 3 分鐘才算過時;單次失敗不示警,免得提醒一閃一閃
+  var HEALTH_STALE_MS = 3 * 60 * 1000;
+  function healthStale(){
+    var st = STORES.geoUsage;
+    if (!st || !st.error || (st.fails || 0) < 2) return null;
+    var since = st.loadedAt || st.firstFailAt || Date.now();
+    if (Date.now() - since < HEALTH_STALE_MS) return null;
+    return { lastOk: st.loadedAt, firstFailAt: st.firstFailAt || 0, error: st.error };
+  }
+  TR.health.stale = healthStale;
 
   function actWarns(){
     var H = TR.health;
@@ -2420,23 +2447,32 @@ html.has-overlay{ overflow:hidden; }
   }
   var bannerEl = document.getElementById('health-banner');
   var bannerKey = '';
+  var bannerDismiss = null;
   function healthSig(act){ return act.map(function(w){ return String(w.title || '').replace(/[\d,.%]+/g, '#'); }).join('|'); }
   function updateBanner(){
     var act = actWarns();
-    var dismissed = null;
-    try { dismissed = sessionStorage.getItem('tr_health_dismiss'); } catch (e) {}
+    var stale = healthStale();
+    var dismissed = null, staleDismissed = null;
+    try { dismissed = sessionStorage.getItem('tr_health_dismiss'); staleDismissed = sessionStorage.getItem('tr_health_stale_dismiss'); } catch (e) {}
     var sig = healthSig(act);
-    if (!loggedIn || shownPage === 'system' || !act.length || sig === dismissed) {
-      bannerEl.hidden = true; bannerKey = ''; return;
+    // 用上次成功時間識別這一段失敗:關掉後同一段不再跳,恢復後再壞會重新提醒
+    var staleSig = stale ? 'stale@' + (stale.lastOk || 'f' + stale.firstFailAt) : '';
+    var showStale = !!stale && staleSig !== staleDismissed;
+    var showAct = act.length > 0 && sig !== dismissed;
+    if (!loggedIn || shownPage === 'system' || (!showStale && !showAct)) {
+      bannerEl.hidden = true; bannerKey = ''; bannerDismiss = null; return;
     }
-    var text = '⚠ 有 ' + act.length + ' 項需要處理・' + String(act[0].title || '');
+    bannerDismiss = showStale ? { k: 'tr_health_stale_dismiss', v: staleSig } : { k: 'tr_health_dismiss', v: sig };
+    var text = showStale
+      ? '⚠ 健康檢查暫時失敗・' + (stale.lastOk ? '最後成功 ' + TR.fmt.rel(stale.lastOk) : '還沒取得檢查結果')
+      : '⚠ 有 ' + act.length + ' 項需要處理・' + String(act[0].title || '');
     if (bannerKey !== text) {
       bannerKey = text;
       bannerEl.textContent = '';
       bannerEl.appendChild(h('span', { class: 'grow truncate', text: text }));
       bannerEl.appendChild(h('a', { class: 'link', href: TR.router.href('system', { s: 'health' }), text: '查看 ›' }));
       bannerEl.appendChild(iconButton('close', '關閉提醒', function(){
-        try { sessionStorage.setItem('tr_health_dismiss', healthSig(actWarns())); } catch (e) {}
+        try { if (bannerDismiss) sessionStorage.setItem(bannerDismiss.k, bannerDismiss.v); } catch (e) {}
         bannerEl.hidden = true; bannerKey = '';
       }));
     }
@@ -2878,6 +2914,24 @@ html.has-overlay{ overflow:hidden; }
   function num0(n){ var v = Number(n); return isFinite(v) ? v : 0; }
   function daysLeft(iso){ return Math.floor((new Date(iso) - new Date()) / 86400000); }
   function tpDay(off){ return new Date(Date.now() + 8 * 3600000 - (off || 0) * 86400000).toISOString().slice(0, 10); }
+  // geo_usage_stats 的 day 是 'MM/DD' 沒年份,字串排序在 1 月初會把 01/02 排到 12/31 前;
+  // 轉成完整日期再比:月份比本月(台北)大的一定是去年。YYYY-MM-DD 原樣接受。
+  function dayIso(key){
+    var s = String(key == null ? '' : key);
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (m) return m[1] + '-' + m[2] + '-' + m[3];
+    m = /^(\d{1,2})\/(\d{1,2})$/.exec(s);
+    if (!m) return s;
+    var t = tpDay(0), y = Number(t.slice(0, 4)), mo = Number(m[1]), d = Number(m[2]);
+    if (mo > Number(t.slice(5, 7))) y -= 1;
+    return y + '-' + (mo < 10 ? '0' : '') + mo + '-' + (d < 10 ? '0' : '') + d;
+  }
+  function sortDayKeys(keys){
+    return (keys || []).slice().sort(function(a, b){ var x = dayIso(a), y = dayIso(b); return x < y ? -1 : (x > y ? 1 : 0); });
+  }
+  M.dayIso = dayIso;
+  M.sortDayKeys = sortDayKeys;
+  M.todayIso = function(){ return tpDay(0); };
   function loc(n){ return num0(n).toLocaleString('zh-TW'); }
 
   M.PLANS = ['月繳', '季繳', '年繳', '測試'];
@@ -3053,7 +3107,7 @@ html.has-overlay{ overflow:hidden; }
       } else if (M.FREE_HIT_APIS.indexOf(r.api) >= 0) m.free += n;
       else if (M.AI_RESCUE_APIS.indexOf(r.api) >= 0) m.rescue += n;
     });
-    return order.map(function(d){
+    return sortDayKeys(order).map(function(d){
       var m = map[d];
       m.geo = m.google - m.places;
       m.rate = (m.free + m.google) > 0 ? Math.round(m.free * 100 / (m.free + m.google)) : 0;
@@ -3101,6 +3155,13 @@ html.has-overlay{ overflow:hidden; }
     return maskKey(lic);
   }
   M.driverName = nameOfLic;
+
+  // 測試機以伺服器白名單為準;baseline.exclude 只列統計排除的一台,舊版伺服器沒回 testers 才退回用它
+  M.testerKeys = function(geoRes){
+    if (geoRes && Array.isArray(geoRes.testers)) return geoRes.testers;
+    var s = (geoRes && geoRes.stats) || {};
+    return (s.baseline && Array.isArray(s.baseline.exclude)) ? s.baseline.exclude : [];
+  };
 
   M.adviceTips = function(geoRes, licenseRows){
     if (!geoRes || !geoRes.ok) return [];
@@ -3153,7 +3214,7 @@ html.has-overlay{ overflow:hidden; }
     if (blockedT > 0) {
       tips.push({ id: 'blocked', s: 2, title: '今天有 ' + loc(blockedT) + ' 次因每日上限被擋', detail: '被擋的卡片會少了距離或位置。如果是正常成長就調高上限;如果不正常,先看是哪位司機查詢特別多。', route: 'system?s=caps' });
     }
-    var testers = (s.baseline && Array.isArray(s.baseline.exclude)) ? s.baseline.exclude : [];
+    var testers = M.testerKeys(geoRes);
     var dr = (Array.isArray(s.today_by_driver) ? s.today_by_driver : []).filter(function(r){ return r && testers.indexOf(r.lic) < 0; });
     if (dr.length >= 2 && num0(dr[0].n) > 200 && num0(dr[0].n) > num0(dr[1].n) * 3) {
       tips.push({ id: 'driver-spike', s: 2, title: '司機「' + nameOfLic(licenseRows, dr[0].lic) + '」今天查詢 ' + loc(dr[0].n) + ' 次,遠高於其他人', detail: '可能一直查不到而重複查詢,值得看看他收到的單。', route: 'drivers?f=all&q=' + encodeURIComponent(driverQuery(licenseRows, dr[0].lic)) });
@@ -3482,7 +3543,7 @@ html.has-overlay{ overflow:hidden; }
     var ui = S.ui;
     ui.itemTable.update(M.costDetailRows(geo));
     var s = geo.stats || {};
-    var testers = (s.baseline && Array.isArray(s.baseline.exclude)) ? s.baseline.exclude : [];
+    var testers = M.testerKeys(geo);
     var lic = TR.data.value('licenses') || [];
     var rows = (Array.isArray(s.today_by_driver) ? s.today_by_driver : []).filter(function(r){ return r && r.lic != null; }).slice(0, 20).map(function(r){
       return { lic: String(r.lic), name: nameOfLic(lic, r.lic), tester: testers.indexOf(r.lic) >= 0, n: num0(r.n) };
@@ -3731,8 +3792,10 @@ html.has-overlay{ overflow:hidden; }
       }
     })();
 
-    var rawRows = num(s.raw_rows);
-    if (rawRows > 1000000) push('watch', '用量紀錄異常增加(' + (Math.round(rawRows / 10000) / 100) + ' 百萬筆)', '正常應少於 50 萬筆。請工程師檢查自動清理是否正常執行。', 'raw_rows=' + rawRows, 'system?s=storage');
+    // 資料庫大小與用量紀錄筆數由伺服器另外帶(db_size,60 秒快取);geo_usage_stats 自 v13 起已不帶這兩欄
+    var dbs = res.db_size || {};
+    var rawRows = Number(dbs.usage_rows != null ? dbs.usage_rows : s.raw_rows);
+    if (rawRows > 1000000) push('watch', '用量紀錄異常增加(' + (Math.round(rawRows / 10000) / 100) + ' 百萬筆)', '正常應少於 50 萬筆。請工程師檢查自動清理是否正常執行。', 'raw_rows=' + rawRows + (dbs.at ? ' at=' + dbs.at : ''), 'system?s=storage');
 
     (function(){
       var FAIL_APIS = ['miss', 'cache_hit_miss', 'budget_blocked', 'driver_cap_blocked', 'miss_throttled',
@@ -3767,13 +3830,15 @@ html.has-overlay{ overflow:hidden; }
       if (tpHour < 20) return;
       var byDay = {};
       (s.days || []).forEach(function(r){ if (r && r.api === 'geocode') byDay[r.day] = (byDay[r.day] || 0) + num(r.n); });
-      var ds = Object.keys(byDay).sort();
-      if (ds.length < 4) return;
-      var todayKey = ds[ds.length - 1];
-      var prev = ds.slice(0, -1).slice(-7).map(function(d){ return byDay[d]; }).sort(function(a, b){ return a - b; });
-      if (!prev.length) return;
+      var TM = TR.metrics, tIso = TM.todayIso();
+      var ds = TM.sortDayKeys(Object.keys(byDay));
+      // 今天用日期比對,不假設最後一個 key 就是今天(跨年排序、或今天還沒有列)
+      var prevKeys = ds.filter(function(d){ return TM.dayIso(d) < tIso; }).slice(-7);
+      if (prevKeys.length < 3) return;
+      var prev = prevKeys.map(function(d){ return byDay[d]; }).sort(function(a, b){ return a - b; });
       var med = prev[Math.floor(prev.length / 2)];
-      var cur = byDay[todayKey] || 0;
+      var cur = 0;
+      ds.forEach(function(d){ if (TM.dayIso(d) === tIso) cur = byDay[d]; });
       if (med >= 100 && cur < med * 0.4) push('watch', '今天定位量異常偏低(只有平常的 ' + Math.round(cur * 100 / med) + '%)', '今天 ' + fmtN(cur) + ' 次,近 7 日中位數 ' + fmtN(med) + ' 次。可能服務中斷或司機收不到單,請確認。', 'geocode today=' + cur + ' median7=' + med, 'system?s=health');
     })();
 
@@ -3786,8 +3851,10 @@ html.has-overlay{ overflow:hidden; }
     var nomDown = lastRow(today, 'nominatim_timeout');
     if (nomDown && num(nomDown.n) >= 150) push('watch', '自有定位伺服器今天逾時 ' + fmtN(nomDown.n) + ' 次', '偶爾變慢屬正常,持續增加代表伺服器過載;逾時的查詢會改用 Google 查詢。', 'nominatim_timeout=' + nomDown.n, 'system?s=health');
 
-    var dbBytes = num(s.db_bytes);
-    if (dbBytes > 6 * 1024 * 1024 * 1024) push('act', '資料庫已用 ' + (dbBytes / 1024 / 1024 / 1024).toFixed(1) + ' GB(上限 8GB)', '已接近方案上限,請清理舊用量紀錄或升級方案。', 'db_bytes=' + dbBytes, 'system?s=storage');
+    var dbBytes = Number(dbs.db_bytes != null ? dbs.db_bytes : s.db_bytes);
+    // 讀不到大小不能當作正常:DB 滿了是全隊停擺,至少提示「無法確認」(watch 級,不亮橫幅)
+    if (!(dbBytes > 0)) push('watch', '暫時無法確認資料庫空間', '讀不到資料庫大小,所以「資料庫快滿」的提醒目前不會出現。持續出現請通知工程師。', 'db_size ' + (res.db_size ? 'error=' + String(dbs.error || 'no db_bytes') : 'missing(admin 函式尚未更新到帶 db_size 的版本)'), 'system?s=storage');
+    else if (dbBytes > 6 * 1024 * 1024 * 1024) push('act', '資料庫已用 ' + (dbBytes / 1024 / 1024 / 1024).toFixed(1) + ' GB(上限 8GB)', '已接近方案上限,請清理舊用量紀錄或升級方案。', 'db_bytes=' + dbBytes + (dbs.at ? ' at=' + dbs.at + (dbs.stale ? ' (stale)' : '') : ''), 'system?s=storage');
 
     (function(){
       var GCAP = num(res.places_global_cap) > 0 ? num(res.places_global_cap) : 2000;
@@ -3804,8 +3871,8 @@ html.has-overlay{ overflow:hidden; }
       } else {
         var byDay = {};
         (s.days || []).forEach(function(r){ if (r && r.api === 'places') byDay[r.day] = (byDay[r.day] || 0) + num(r.n); });
-        var ds = Object.keys(byDay).sort();
-        var pToday = ds.length ? byDay[ds[ds.length - 1]] : 0;
+        var TM = TR.metrics, tIso = TM.todayIso(), pToday = 0;
+        Object.keys(byDay).forEach(function(d){ if (TM.dayIso(d) === tIso) pToday = byDay[d]; });
         if (pToday >= GCAP * 0.6) push('watch', 'Google 地標搜尋今日 ' + fmtN(pToday) + '/上限 ' + fmtN(GCAP), '這個數字含測試機。每位司機每日上限 ' + fmtN(DCAP) + ' 次,用滿後只有地標名稱的單會查不到位置。', 'places(days, legacy)=' + pToday, 'system?s=caps');
       }
     })();
@@ -4073,7 +4140,7 @@ html.has-overlay{ overflow:hidden; }
       return;
     }
     if (st.error) {
-      HS.status.appendChild(h('div', { class: 'stack-1 sys-note' }, h('p', { text: '最近一次檢查沒有成功,以下是上一次的結果。' }), TR.ui.tech(st.error.tech)));
+      HS.status.appendChild(h('div', { class: 'stack-1 sys-note' }, h('p', { text: '最近一次檢查沒有成功,以下是 ' + TR.fmt.rel(st.loadedAt) + ' 的結果。' }), TR.ui.tech(st.error.tech)));
     }
     var list = last || [];
     var act = list.filter(function(w){ return w && w.level === 'act'; });
@@ -4925,10 +4992,12 @@ html.has-overlay{ overflow:hidden; }
 
     var geo = TR.data.get('geoUsage');
     var last = TR.health && Array.isArray(TR.health.last) ? TR.health.last : null;
+    var geoStale = TR.health && typeof TR.health.stale === 'function' ? TR.health.stale() : null;
     if (last) {
       var act = last.filter(function(w){ return w && w.level === 'act'; }).length;
       if (act > 0) items.push({ key: 'health', label: '系統需要處理', n: act, unit: '項', tone: 'danger', href: TR.router.href('system', { s: 'health' }) });
-    } else if (geo.error) errs.push(geo.error); else pending = true;
+    } else if (geo.error) { if (!geoStale) errs.push(geo.error); } else pending = true;
+    if (geoStale) items.push({ key: 'healthStale', label: '健康檢查暫時失敗', badge: geoStale.lastOk ? '最後成功 ' + TR.fmt.rel(geoStale.lastOk) : '尚未成功', tone: 'warn', href: TR.router.href('system', { s: 'health' }) });
 
     var rep = TR.data.get('reports');
     if (Array.isArray(rep.value)) {
@@ -4943,9 +5012,10 @@ html.has-overlay{ overflow:hidden; }
     } else if (lic.error) errs.push(lic.error); else pending = true;
 
     var pc = TR.data.get('placeCands'), mq = TR.data.get('missQueue');
-    if (Array.isArray(pc.value) && mq.value && Array.isArray(mq.value.rows)) {
-      var np = pc.value.length + mq.value.rows.length;
-      if (np > 0) items.push({ key: 'places', label: '位置庫待處理', n: np, unit: '筆', tone: 'neutral', href: TR.router.href('places', { tab: 'cands' }) });
+    var pcn = TR.data.count(pc.value), mqn = TR.data.count(mq.value);
+    if (pcn && mqn) {
+      var np = pcn.n + mqn.n;
+      if (np > 0) items.push({ key: 'places', label: '位置庫待處理', n: np, plus: pcn.plus || mqn.plus, unit: '筆', tone: 'neutral', href: TR.router.href('places', { tab: 'cands' }) });
     } else if (pc.error || mq.error) errs.push(pc.error || mq.error); else pending = true;
 
     return { items: items, pending: pending, errs: errs };
@@ -4959,9 +5029,10 @@ html.has-overlay{ overflow:hidden; }
     a.href = it.href;
     a.textContent = '';
     a.appendChild(h('span', { class: 'grow ovw-todo-label', text: it.label }));
-    a.appendChild(TR.ui.badge(TR.fmt.num(it.n) + ' ' + it.unit, it.tone));
+    var badgeText = it.badge != null ? it.badge : TR.fmt.count(it) + ' ' + it.unit;
+    a.appendChild(TR.ui.badge(badgeText, it.tone));
     a.appendChild(h('span', { class: 'ovw-chev', attrs: { 'aria-hidden': 'true' }, text: '›' }));
-    a.setAttribute('aria-label', it.label + ' ' + it.n + ' ' + it.unit);
+    a.setAttribute('aria-label', it.label + ' ' + badgeText);
     return a;
   }
   function renderTodo(){
@@ -5001,9 +5072,13 @@ html.has-overlay{ overflow:hidden; }
       var cost = m.monthlyCost(geo.value);
       var g = m.googleToday(geo.value);
       var hit = m.freeHitRate(geo.value);
+      var geoStale = TR.health && typeof TR.health.stale === 'function' ? TR.health.stale() : null;
+      // 讀不到最新用量時「今日次數」已過時,改標資料時間
       var sub = h('span', { class: 'ovw-cost-sub' },
         h('span', { class: 'num', text: TR.fmt.money(cost.totalUsd, 'US') }),
-        h('span', { class: 'ovw-cost-extra num', text: '今日 Google ' + TR.fmt.num(g.calls) + ' 次・免費命中 ' + TR.fmt.pct(hit.rate) }));
+        geoStale
+          ? h('span', { class: 'ovw-cost-extra', text: '最後更新 ' + TR.fmt.rel(geo.loadedAt) })
+          : h('span', { class: 'ovw-cost-extra num', text: '今日 Google ' + TR.fmt.num(g.calls) + ' 次・免費命中 ' + TR.fmt.pct(hit.rate) }));
       ui.sCost.set({ value: TR.fmt.money(cost.totalTwd, 'NT'), sub: sub });
     } else if (geo.error) {
       ui.sCost.set({ value: '—', sub: '暫時讀不到用量' });
@@ -6965,7 +7040,8 @@ html.has-overlay{ overflow:hidden; }
 
   var S = {
     mounted: false, section: null, stale: false,
-    places: null, placesErr: null, placesAt: 0, placesSeq: 0,
+    places: null, placesErr: null, placesAt: 0, placesSeq: 0, placesTotal: null,
+    srch: null, srchErr: null, srchSeq: 0, srchTimer: null,
     query: '', tab: 'cands',
     candSel: {},
     missAll: false, missAllData: null, missAllErr: null, missAllSeq: 0, missOpen: {},
@@ -6993,11 +7069,11 @@ html.has-overlay{ overflow:hidden; }
   function errorState(title, errObj){
     return TR.ui.emptyState({ title: title, text: errObj ? errObj.text : '', action: errObj && errObj.tech ? TR.ui.tech(errObj.tech) : null });
   }
-  function setInlineErr(el, errObj){
+  function setInlineErr(el, errObj, text){
     el.textContent = '';
     el.hidden = !errObj;
     if (!errObj) return;
-    el.appendChild(h('span', { text: '這次更新失敗,顯示的是上次的資料。' }));
+    el.appendChild(h('span', { text: text || '這次更新失敗,顯示的是上次的資料。' }));
     if (errObj.tech) el.appendChild(TR.ui.tech(errObj.tech));
   }
   function setBtnLabel(btn, text){
@@ -7024,12 +7100,19 @@ html.has-overlay{ overflow:hidden; }
   }
 
   /* ---------- places data ---------- */
-  function loadPlaces(){
+  function loadPlaces(opts){
     if (!TR.can('read', 'places')) return Promise.resolve();
+    var research = !!(opts && opts.research === true);
     var seq = ++S.placesSeq;
     return TR.api('places', {}).then(function(res){
       if (seq !== S.placesSeq) return;
-      if (res && !res.error && Array.isArray(res.rows)) { S.places = res.rows; S.placesErr = null; S.placesAt = Date.now(); }
+      if (res && !res.error && Array.isArray(res.rows)) {
+        S.places = res.rows; S.placesErr = null; S.placesAt = Date.now();
+        // 舊版伺服器沒回 total:當作沒截斷,照舊只在本機篩
+        S.placesTotal = typeof res.total === 'number' ? res.total : null;
+        // 驗證/刪除已就地更新搜尋結果,不必每次重掃全庫;新增/編輯可能改變符合結果,由呼叫端帶 research
+        if (research || !S.srch || S.srch.q !== S.query.trim() || !isTruncated()) syncSearch(true);
+      }
       else if (!silentErr(res)) S.placesErr = TR.err(res);
       if (S.section && TR.busy.isInteracting(S.section)) TR.busy.whenIdle(S.section, renderPlaces);
       else renderPlaces();
@@ -7038,7 +7121,9 @@ html.has-overlay{ overflow:hidden; }
   }
   function patchPlace(id, patch){
     if (!S.places) return;
-    S.places = S.places.map(function(p){ return p.id === id ? Object.assign({}, p, patch) : p; });
+    function upd(p){ return p.id === id ? Object.assign({}, p, patch) : p; }
+    S.places = S.places.map(upd);
+    if (S.srch) S.srch.rows = S.srch.rows.map(upd);
     renderPlaces();
   }
   function filteredPlaces(){
@@ -7049,6 +7134,30 @@ html.has-overlay{ overflow:hidden; }
       return String(p.name || '').toLowerCase().indexOf(q) >= 0 ||
         (p.aliases || []).join(',').toLowerCase().indexOf(q) >= 0 ||
         String(p.city || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  // 清單只有熱門前 N 筆(< 全庫)時,搜尋要交給伺服器,否則前 N 筆以外的地點找不到
+  function isTruncated(){ return S.places != null && S.placesTotal != null && S.places.length < S.placesTotal; }
+  function syncSearch(now){
+    if (S.srchTimer) { clearTimeout(S.srchTimer); S.srchTimer = null; }
+    var q = S.query.trim();
+    if (!q || !isTruncated()) { S.srchSeq++; S.srch = null; S.srchErr = null; return; }
+    if (now) runSearch(q);
+    else S.srchTimer = setTimeout(function(){ S.srchTimer = null; runSearch(q); }, 300);
+  }
+  function runSearch(q){
+    var seq = ++S.srchSeq;
+    return TR.api('places', { q: q }).then(function(res){
+      if (seq !== S.srchSeq || q !== S.query.trim()) return;
+      if (res && !res.error && Array.isArray(res.rows)) {
+        S.srch = { q: q, rows: res.rows, matched: typeof res.matched === 'number' ? res.matched : res.rows.length, partial: !!res.partial };
+        S.srchErr = null;
+      } else if (silentErr(res)) return;
+      else S.srchErr = { q: q, err: TR.err(res) };
+      // 焦點在搜尋框也算「操作中」,但使用者正在等這個結果,要直接畫
+      var typing = !!UI.placeSearch && document.activeElement === UI.placeSearch.input;
+      if (!S.section || typing || !TR.busy.isInteracting(S.section)) renderPlaces();
+      else TR.busy.whenIdle(S.section, renderPlaces);
     });
   }
 
@@ -7089,15 +7198,38 @@ html.has-overlay{ overflow:hidden; }
       UI.placeTable = null;
       return;
     }
-    setInlineErr(UI.placeErr, S.placesErr);
-    var list = filteredPlaces();
     var q = S.query.trim();
-    UI.placeCount.textContent = '共 ' + num(S.places.length) + ' 筆' + (q ? '・符合 ' + num(list.length) + ' 筆' : '');
+    var total = S.placesTotal != null ? S.placesTotal : S.places.length;
+    var label = '共 ' + num(total) + ' 筆', errObj = S.placesErr, errText = null, pending = false, list;
+    if (!q) {
+      list = S.places;
+      if (isTruncated()) label += '・依熱門度前 ' + num(list.length) + ' 筆';
+    } else if (!isTruncated()) {
+      list = filteredPlaces();
+      label += '・符合 ' + num(list.length) + ' 筆';
+    } else if (S.srch && S.srch.q === q) {
+      list = S.srch.rows;
+      label += '・符合 ' + num(S.srch.matched) + ' 筆';
+      if (list.length < S.srch.matched) label += '・依熱門度前 ' + num(list.length) + ' 筆';
+      if (S.srch.partial) label += '・結果可能不完整';
+    } else if (S.srchErr && S.srchErr.q === q) {
+      list = filteredPlaces();
+      label += '・熱門前 ' + num(S.places.length) + ' 筆中符合 ' + num(list.length) + ' 筆';
+      errObj = S.srchErr.err;
+      errText = '全部地點搜尋失敗,下面只列熱門前 ' + num(S.places.length) + ' 筆裡符合的。';
+    } else {
+      // 伺服器搜尋還沒回來:先列熱門前 N 筆裡符合的
+      list = filteredPlaces();
+      label += '・搜尋全部地點中…';
+      pending = true;
+    }
+    setInlineErr(UI.placeErr, errObj, errText);
+    UI.placeCount.textContent = label;
     if (!list.length) {
       UI.placeTableHost.hidden = true;
       UI.placeEmpty.hidden = false;
       UI.placeEmpty.textContent = '';
-      UI.placeEmpty.appendChild(TR.ui.emptyState({ title: S.places.length ? '沒有符合的地點' : '還沒有任何地點' }));
+      UI.placeEmpty.appendChild(TR.ui.emptyState({ title: pending ? '搜尋中…' : (total ? '沒有符合的地點' : '還沒有任何地點') }));
       return;
     }
     UI.placeEmpty.hidden = true;
@@ -7136,7 +7268,12 @@ html.has-overlay{ overflow:hidden; }
         return TR.api('deletePlace', { id: p.id }).then(function(res){
           if (!res || !res.ok) { var e = TR.err(res); ctl.setError(e.text, e.tech); return false; }
           TR.toast({ type: 'ok', text: '已刪除「' + name + '」' });
-          if (S.places) { S.places = S.places.filter(function(x){ return x.id !== p.id; }); renderPlaces(); }
+          if (S.places) {
+            S.places = S.places.filter(function(x){ return x.id !== p.id; });
+            if (S.srch) S.srch.rows = S.srch.rows.filter(function(x){ return x.id !== p.id; });
+            if (S.placesTotal != null) S.placesTotal = Math.max(0, S.placesTotal - 1);
+            renderPlaces();
+          }
           loadPlaces();
           TR.data.load('missQueue', { force: true });
           return true;
@@ -7147,7 +7284,7 @@ html.has-overlay{ overflow:hidden; }
 
   /* ---------- place form (shared) ---------- */
   function afterPlaceWrite(onSaved){
-    if (S.mounted) loadPlaces();
+    if (S.mounted) loadPlaces({ research: true });
     var pr = Promise.resolve();
     if (typeof onSaved === 'function') {
       try { pr = Promise.resolve(onSaved()); } catch (e) { TR.reportError(e); }
@@ -7262,7 +7399,13 @@ html.has-overlay{ overflow:hidden; }
   TR.places = { openForm: openForm };
 
   /* ---------- candidates ---------- */
-  function candRows(){ var v = TR.data.value('placeCands'); return Array.isArray(v) ? v : null; }
+  // 清單被後端截過時說清楚只列了幾筆,免得跟分頁上的總數對不起來
+  function setMore(el, shown, cnt){
+    var more = !!cnt && (cnt.plus || cnt.n > shown);
+    el.hidden = !more;
+    el.textContent = more ? '只列出前 ' + num(shown) + ' 筆,共 ' + TR.fmt.count(cnt) + ' 筆' : '';
+  }
+  function candRows(){ var v = TR.data.value('placeCands'); return v && Array.isArray(v.rows) ? v.rows : null; }
   function spreadBadge(c){
     var sp = Number(c.spread_m) | 0;
     if ((Number(c.n) || 0) <= 1) return TR.ui.badge('只查過 1 次', 'neutral');
@@ -7315,9 +7458,12 @@ html.has-overlay{ overflow:hidden; }
     return TR.api('dismissCandidate', payload).then(function(res){
       if (!res || !res.ok) { failToast(undo ? '復原失敗' : '忽略失敗', TR.err(res), res); return; }
       if (!undo) {
-        var rows = candRows();
+        var v = TR.data.value('placeCands'), rows = candRows();
         delete S.candSel[c.norm_key];
-        if (rows) TR.data.set('placeCands', rows.filter(function(x){ return x.norm_key !== c.norm_key; }));
+        if (rows) {
+          var left = rows.filter(function(x){ return x.norm_key !== c.norm_key; });
+          TR.data.set('placeCands', Object.assign({}, v, { rows: left, total: v.total != null ? Math.max(0, v.total - (rows.length - left.length)) : null }));
+        }
         TR.toast({ type: 'ok', text: '已忽略「' + name + '」', action: { label: '復原', onClick: function(){ return dismissCand(c, true); } } });
       } else {
         TR.toast({ type: 'ok', text: '已復原「' + name + '」' });
@@ -7391,7 +7537,9 @@ html.has-overlay{ overflow:hidden; }
     UI.candTableHost = h('div');
     UI.candEmpty = h('div', { hidden: true }, TR.ui.emptyState({ title: '目前沒有候選', text: '付費查到的新地名會出現在這裡。' }));
     UI.candContent.appendChild(h('p', { class: 'plc-summary only-mobile' }, '座標一致度 ', TR.ui.info(SPREAD_INFO)));
+    UI.candMore = h('p', { class: 'plc-summary', hidden: true });
     UI.candContent.appendChild(UI.candErr);
+    UI.candContent.appendChild(UI.candMore);
     if (UI.candBatch) UI.candContent.appendChild(UI.candBatch);
     UI.candContent.appendChild(UI.candTableHost);
     UI.candContent.appendChild(UI.candEmpty);
@@ -7402,7 +7550,7 @@ html.has-overlay{ overflow:hidden; }
   function renderCands(){
     if (!UI.candState) return;
     var st = TR.data.get('placeCands');
-    var rows = Array.isArray(st.value) ? st.value : null;
+    var rows = candRows();
     if (!rows) {
       UI.candContent.hidden = true;
       UI.candState.hidden = false;
@@ -7414,6 +7562,7 @@ html.has-overlay{ overflow:hidden; }
     UI.candState.textContent = '';
     UI.candContent.hidden = false;
     setInlineErr(UI.candErr, st.error);
+    setMore(UI.candMore, rows.length, TR.data.count(st.value));
     var keep = {};
     rows.forEach(function(r){ if (S.candSel[r.norm_key]) keep[r.norm_key] = true; });
     S.candSel = keep;
@@ -7448,7 +7597,8 @@ html.has-overlay{ overflow:hidden; }
     var seq = ++S.missAllSeq;
     return TR.api('missQueue', { all: true }).then(function(res){
       if (seq !== S.missAllSeq) return;
-      if (res && !res.error && Array.isArray(res.rows)) { S.missAllData = { rows: res.rows, summary: res.summary || {} }; S.missAllErr = null; }
+      var v = res && !res.error ? TR.data.pickCapped(res, 40) : undefined;
+      if (v) { S.missAllData = v; S.missAllErr = null; }
       else if (!silentErr(res)) S.missAllErr = TR.err(res);
       if (S.missAll) { renderMiss(); updateCounts(); }
     });
@@ -7511,12 +7661,14 @@ html.has-overlay{ overflow:hidden; }
       updateCounts();
     });
     UI.missSummary = h('p', { class: 'plc-summary' });
+    UI.missMore = h('p', { class: 'plc-summary', hidden: true });
     UI.missState = h('div');
     UI.missErr = h('div', { class: 'plc-inline-err', hidden: true });
     UI.missList = h('div', { class: 'plc-miss-list' });
     UI.missEmpty = h('div', { hidden: true });
     pane.appendChild(h('div', { class: 'toolbar' }, UI.missAllChk.el));
     pane.appendChild(UI.missSummary);
+    pane.appendChild(UI.missMore);
     pane.appendChild(UI.missState);
     pane.appendChild(UI.missErr);
     pane.appendChild(UI.missList);
@@ -7527,6 +7679,7 @@ html.has-overlay{ overflow:hidden; }
     var d = missData();
     if (!d.value) {
       UI.missSummary.textContent = '';
+      UI.missMore.hidden = true;
       UI.missErr.hidden = true;
       UI.missList.hidden = true;
       UI.missEmpty.hidden = true;
@@ -7541,6 +7694,7 @@ html.has-overlay{ overflow:hidden; }
     var sm = d.value.summary || {};
     UI.missSummary.textContent = '近 30 天:地標 ' + num(sm.landmark || 0) + '(建議補)・地址 ' + num(sm.address || 0) + '(不用補)・殘段 ' + num(sm.fragment || 0) + '(缺路名)';
     var rows = d.value.rows || [];
+    setMore(UI.missMore, rows.length, TR.data.count(d.value));
     if (!rows.length) {
       UI.missList.hidden = true;
       UI.missEmpty.hidden = false;
@@ -7558,9 +7712,7 @@ html.has-overlay{ overflow:hidden; }
   /* ---------- pending card ---------- */
   function updateCounts(){
     if (!UI.tabs) return;
-    var c = candRows();
-    var md = missData().value;
-    UI.tabs.setCounts({ cands: c ? c.length : null, miss: md ? (md.rows || []).length : null });
+    UI.tabs.setCounts({ cands: TR.data.count(TR.data.value('placeCands')), miss: TR.data.count(missData().value) });
     TR.page.updateHeader(NAME);
   }
   function showTab(){
@@ -7599,6 +7751,7 @@ html.has-overlay{ overflow:hidden; }
     var card = TR.ui.card({ title: '地點' });
     UI.placeSearch = TR.ui.searchInput({ placeholder: '搜尋名稱、別名或縣市', value: S.query, onInput: function(v){
       S.query = v;
+      syncSearch(false);
       renderPlaces();
       TR.router.setParams({ q: v.trim() });
     } });
@@ -8172,7 +8325,7 @@ html.has-overlay{ overflow:hidden; }
         if (!cancelled) TR.toast({ type: failN ? 'err' : 'ok', text: summary });
         setLookup();
         render();
-        if (S.mounted) loadPlaces();
+        if (S.mounted) loadPlaces({ research: true });
         TR.data.load('placeCands', { force: true });
         TR.data.load('missQueue', { force: true });
       }).catch(function(e){ writing = false; TR.reportError(e); });
@@ -8214,11 +8367,11 @@ html.has-overlay{ overflow:hidden; }
 
   /* ---------- page ---------- */
   function subtitle(){
-    var c = candRows();
-    var m = TR.data.value('missQueue');
+    var c = TR.data.count(TR.data.value('placeCands'));
+    var m = TR.data.count(TR.data.value('missQueue'));
     if (!S.places && !c && !m) return '';
-    var pending = (c ? c.length : 0) + (m && m.rows ? m.rows.length : 0);
-    return (S.places ? num(S.places.length) : '—') + ' 個地點・' + num(pending) + ' 筆待處理';
+    var pending = { n: (c ? c.n : 0) + (m ? m.n : 0), plus: !!(c && c.plus) || !!(m && m.plus) };
+    return (S.places ? num(S.placesTotal != null ? S.placesTotal : S.places.length) : '—') + ' 個地點・' + TR.fmt.count(pending) + ' 筆待處理';
   }
   function onStore(){
     if (!S.mounted) return;
@@ -8229,7 +8382,7 @@ html.has-overlay{ overflow:hidden; }
   }
   function loadAll(force){
     var ps = [
-      loadPlaces(),
+      loadPlaces({ research: !!force }),
       TR.data.load('placeCands', { force: force }),
       TR.data.load('missQueue', { force: force }),
       loadGaStats()
@@ -8283,7 +8436,7 @@ html.has-overlay{ overflow:hidden; }
     var tab = p.tab === 'miss' ? 'miss' : 'cands';
     if (tab !== S.tab) { S.tab = tab; UI.tabs.set(tab); showTab(); }
     var q = p.q || '';
-    if (q !== S.query.trim()) { S.query = q; UI.placeSearch.set(q); renderPlaces(); }
+    if (q !== S.query.trim()) { S.query = q; UI.placeSearch.set(q); syncSearch(true); renderPlaces(); }
     applyGaParam(p.ga || '', true);
   }
 
