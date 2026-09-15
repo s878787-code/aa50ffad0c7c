@@ -711,6 +711,7 @@ html.has-overlay{ overflow:hidden; }
 [data-page="money"] .mny-chart{ min-height:64px; }
 [data-page="money"] .mny-note{ margin:0; font-size:var(--fs-xs); color:var(--ink-2); font-variant-numeric:tabular-nums; }
 [data-page="money"] .mny-note.is-warn{ color:var(--warn-fg); font-weight:var(--fw-semibold); }
+[data-page="money"] .mny-cell-sub{ display:block; font-size:var(--fs-xs); color:var(--ink-2); font-weight:var(--fw-regular); line-height:var(--lh-tight); }
 [data-page="money"] .mny-total{ display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-5); padding-top:var(--sp-3); border-top:1px solid var(--line); }
 [data-page="money"] .mny-total-item{ display:inline-flex; align-items:baseline; gap:var(--sp-2); font-size:var(--fs-sm); color:var(--ink-2); }
 [data-page="money"] .mny-total-item strong{ font-size:var(--fs-lg); font-weight:var(--fw-bold); color:var(--ink); }
@@ -869,7 +870,7 @@ html.has-overlay{ overflow:hidden; }
   TR.URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
   TR.role = 'admin';
 
-  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview'];
+  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview','costBaseline'];
   TR.can = function(kind, action){
     if (TR.role === 'admin') return true;
     if (kind === 'read') return VIEWER_READ.indexOf(action) >= 0;
@@ -1011,7 +1012,7 @@ html.has-overlay{ overflow:hidden; }
     else if (e === 'partial_write') text = '只完成一部分,請重新整理確認';
     else if (e === 'forbidden_viewer') text = '唯讀帳號無法執行這個動作';
     else if (e === 'locked_out') text = '密碼錯誤次數太多,請確認密碼再試';
-    else if (e === 'not_ready' || e === 'need_migration_v7') text = '這項功能還沒啟用,請聯絡工程人員';
+    else if (e === 'not_ready' || e === 'need_migration_v7' || e === 'need_migration_v51') text = '這項功能還沒啟用,請聯絡工程人員';
     else text = '伺服器暫時無法處理,請稍後再試';
     return { text: text, tech: techOf(res) };
   };
@@ -2254,7 +2255,9 @@ html.has-overlay{ overflow:hidden; }
     geoUsage:   { action: 'geoUsage',        payload: {},            ttl: 60000,  pick: pickOk },
     placeCands: { action: 'placeCandidates', payload: {},            ttl: 300000, pick: function(res){ return pickCapped(res, 300); } },
     missQueue:  { action: 'missQueue',       payload: { all: false }, ttl: 300000, pick: function(res){ return pickCapped(res, 40); } },
-    devStatus:  { action: 'devStatus',       payload: {},            ttl: 120000, pick: pickOk }
+    devStatus:  { action: 'devStatus',       payload: {},            ttl: 120000, pick: pickOk },
+    // 每 100 張有效卡:近 7 天欄由同一份 30 天資料在前端算,只打一次
+    costBaseline: { action: 'costBaseline',  payload: { days: 30 },  ttl: 300000, pick: pickOk }
   };
   var STORES = {};
   Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [], fails: 0 }; });
@@ -2284,12 +2287,14 @@ html.has-overlay{ overflow:hidden; }
       var st = STORES[name], def = STORE_DEFS[name];
       if (!st) return Promise.resolve(null);
       var force = !!(opts && opts.force);
+      // opts.payload:這一次額外帶給伺服器的欄位(例如使用者按「重新整理」時的 force:true,讓伺服器端快取也重算)
+      var extra = (opts && opts.payload) || null;
       if (!force && st.value != null && Date.now() - st.loadedAt < def.ttl) return Promise.resolve(st.value);
       if (st.inflight) {
         if (!force) return st.inflight;
         // a write happened after this request was sent: queue one fresh request behind it
         if (!st.forceNext) {
-          st.forceNext = st.inflight.then(function(){ st.forceNext = null; return TR.data.load(name, { force: true }); });
+          st.forceNext = st.inflight.then(function(){ st.forceNext = null; return TR.data.load(name, { force: true, payload: extra }); });
         }
         return st.forceNext;
       }
@@ -2297,7 +2302,7 @@ html.has-overlay{ overflow:hidden; }
       st.loading = true;
       st.seq = (st.seq || 0) + 1;
       var mySeq = st.seq;
-      st.inflight = TR.api(def.action, Object.assign({}, def.payload)).then(function(res){
+      st.inflight = TR.api(def.action, Object.assign({}, def.payload, extra || {})).then(function(res){
         if (mySeq < (st.applied || 0)) { if (st.seq === mySeq) { st.loading = false; st.inflight = null; } return st.value; }
         st.applied = mySeq;
         var v = res && !res.error ? def.pick(res) : undefined;
@@ -3136,6 +3141,77 @@ html.has-overlay{ overflow:hidden; }
     return out;
   };
 
+  // 每 100 張有效卡(0915 總報告 §8.6):資料來源 admin costBaseline(v51 RPC,只讀 geo_usage_daily)。
+  //   有效卡 = req_pickup 的 ok_n(上車地址查到座標);dropoff/home 請求不是卡。
+  M.BASELINE_REQ_APIS = ['req_pickup', 'req_dropoff', 'req_home', 'req_other'];
+  M.AI_EXTRACT_APIS = ['ai_parse', 'ai_err', 'aiparse'];   // = geocode 的抓址層
+  // AI 費用:與「AI 出手」計數同一群(救援+抓址),US$ 才能從「救援 X・抓址 Y」對得回來;
+  //   查無分類器 ai_cls_*(每筆查無一發、US$0.05/千)不在計數裡,費用也不算進這一列(0915 審查)
+  M.AI_PRICED_APIS = M.AI_RESCUE_APIS.concat(M.AI_EXTRACT_APIS);
+  // 牌價:Σ n × 每千次單價;不扣每月免費額(視窗不是月曆月,卡片上有註明)
+  M.listPriceUsd = function(byApi, apis){
+    var s = 0;
+    (apis || []).forEach(function(k){
+      var p = hasOwn(M.GEO_PRICING, k) ? M.GEO_PRICING[k] : null;
+      if (p && p.per1000 && hasOwn(byApi, k)) s += num0(byApi[k].n) * p.per1000 / 1000;
+    });
+    return s;
+  };
+  function shiftDay(iso, off){
+    var t = Date.parse(String(iso) + 'T00:00:00Z');
+    return isNaN(t) ? tpDay(-off) : new Date(t + off * 86400000).toISOString().slice(0, 10);
+  }
+  // 逐日整理;只留 since(真正的第一天)之後的日子;沒有任何 req_pickup 列 → null(空狀態)
+  M.baselineDaily = function(res){
+    if (!res || !res.ok || !Array.isArray(res.rows)) return null;
+    var since = res.since ? dayIso(res.since) : null;
+    var map = {}, order = [], anyPickup = false;
+    res.rows.forEach(function(r){
+      if (!r || r.day == null || !r.api) return;
+      var d = dayIso(r.day);
+      if (since && d < since) return;
+      if (!hasOwn(map, d)) { map[d] = { byApi: {} }; order.push(d); }
+      map[d].byApi[r.api] = { n: num0(r.n), ok_n: num0(r.ok_n), drivers: num0(r.drivers) };
+      if (r.api === 'req_pickup') anyPickup = true;
+    });
+    if (!anyPickup) return null;
+    function sum(byApi, apis){ var s = 0; apis.forEach(function(k){ if (hasOwn(byApi, k)) s += byApi[k].n; }); return s; }
+    var days = sortDayKeys(order).map(function(d){
+      var b = map[d].byApi, pk = hasOwn(b, 'req_pickup') ? b.req_pickup : { n: 0, ok_n: 0, drivers: 0 };
+      return {
+        day: d, partial: d === since,
+        cards: pk.ok_n, pickups: pk.n, drivers: pk.drivers,
+        reqs: sum(b, M.BASELINE_REQ_APIS),
+        google: sum(b, M.GOOGLE_APIS), googleUsd: M.listPriceUsd(b, M.GOOGLE_APIS),
+        free: sum(b, M.FREE_HIT_APIS),
+        aiRescue: sum(b, M.AI_RESCUE_APIS), aiExtract: sum(b, M.AI_EXTRACT_APIS), aiUsd: M.listPriceUsd(b, M.AI_PRICED_APIS),
+        cityWrong: sum(b, ['city_wrong']), scopedZero: sum(b, ['scoped_zero'])
+      };
+    });
+    return { since: since, today: res.today ? dayIso(res.today) : tpDay(0), days: days };
+  };
+  // 近 N 天(含今天)加總;上線首日只記到半天,只要有別的日子就不計(Google 列是整天的,直接除會高估)
+  M.baselineWindow = function(daily, nDays){
+    if (!daily || !daily.days.length) return null;
+    var from = shiftDay(daily.today, -(Math.max(1, nDays) - 1));
+    var all = daily.days.filter(function(d){ return d.day >= from && d.day <= daily.today; });
+    var full = all.filter(function(d){ return !d.partial; });
+    var used = full.length ? full : all;
+    if (!used.length) return null;
+    var t = { cards: 0, pickups: 0, drivers: 0, reqs: 0, google: 0, googleUsd: 0, free: 0, aiRescue: 0, aiExtract: 0, aiUsd: 0, cityWrong: 0, scopedZero: 0 };
+    used.forEach(function(d){ Object.keys(t).forEach(function(k){ t[k] += num0(d[k]); }); });
+    if (!t.cards) return null;
+    function per100(x){ return x / t.cards * 100; }
+    return {
+      days: used.length, cards: t.cards, cardsPerDay: t.cards / used.length, driversAvg: t.drivers / used.length,
+      per100: { reqs: per100(t.reqs), google: per100(t.google), free: per100(t.free), ai: per100(t.aiRescue + t.aiExtract),
+                aiRescue: per100(t.aiRescue), aiExtract: per100(t.aiExtract), cityWrong: per100(t.cityWrong), scopedZero: per100(t.scopedZero) },
+      usd100: { google: per100(t.googleUsd), ai: per100(t.aiUsd) },
+      missRate: t.pickups ? (t.pickups - t.cards) / t.pickups : null,
+      usedFirstDay: !full.length
+    };
+  };
+
   function maskKey(k){ return TR.fmt.maskKey(k); }
   function driverQuery(rows, lic){
     var list = rows || [];
@@ -3233,7 +3309,7 @@ html.has-overlay{ overflow:hidden; }
   var TIP_TONE = { 3: 'danger', 2: 'warn', 1: 'info', 0: 'ok' };
   var S = {
     mounted: false, stale: false, sec: null,
-    growthMetric: 'drivers', usageMetric: 'google', detailTab: 'items',
+    growthMetric: 'drivers', usageMetric: 'google', detailTab: 'items', blMetric: 'google100',
     sigs: {}, siteSeq: 0, ui: {}
   };
 
@@ -3401,6 +3477,52 @@ html.has-overlay{ overflow:hidden; }
     ui.adviceList = h('div', { class: 'mny-tips' });
     card.body.appendChild(ui.adviceHolder);
     card.body.appendChild(ui.adviceList);
+    return card.el;
+  }
+
+  // 每 100 張有效卡(0915 §8.6):成本與品質都除以同期有效卡數,不同天、不同人數可以直接比
+  var BL_METRICS = {
+    google100: { label: '付費查詢/100 張', fmt: function(v){ return per100Txt(v) + ' 次'; }, max: 0 },
+    miss:      { label: '查無率',          fmt: function(v){ return v.toFixed(1) + '%'; }, max: 100 },
+    cards:     { label: '有效卡',          fmt: function(v){ return TR.fmt.num(v) + ' 張'; }, max: 0 }
+  };
+  function per100Txt(x){ return x != null && isFinite(Number(x)) ? Number(x).toLocaleString('zh-TW', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'; }
+  function usdTxt(x){ return money(x, 'US', x > 0 && x < 0.01 ? 3 : 2); }
+  function blCell(v, sub){
+    return [h('span', { class: 'num', text: v == null ? '—' : String(v) }), sub ? h('span', { class: 'mny-cell-sub num', text: sub }) : null];
+  }
+  function buildBaseline(){
+    var ui = S.ui;
+    var card = TR.ui.card({ title: '每 100 張有效卡', info: '有效卡 = 上車地址查到座標的一張單。每一項都除以同期有效卡數再乘 100,不同天、不同人數可以直接比。' });
+    ui.blHolder = h('div', { class: 'mny-holder' });
+    ui.blTable = TR.ui.table({
+      columns: [
+        { key: 'label', label: '指標', mobile: 'title' },
+        { key: 'w7', label: '近 7 天', align: 'right', mobile: 'meta', render: function(r){ return blCell(r.w7.v, r.w7.sub); } },
+        { key: 'w30', label: '近 30 天', align: 'right', mobile: 'meta', render: function(r){ return blCell(r.w30.v, r.w30.sub); } }
+      ],
+      rows: [], rowKey: function(r){ return r.key; }, empty: '還沒有資料'
+    });
+    ui.blScope = h('p', { class: 'mny-note', hidden: true });
+    ui.blSeg = TR.ui.segmented({
+      items: Object.keys(BL_METRICS).map(function(k){ return { value: k, label: BL_METRICS[k].label }; }),
+      value: S.blMetric, ariaLabel: '每 100 張趨勢指標',
+      onChange: function(v){ S.blMetric = v; renderBaselineChart(M.baselineDaily(TR.data.value('costBaseline'))); }
+    });
+    ui.blValue = h('span', { class: 'chart-value' }, '—');
+    ui.blSub = h('span', { class: 'mny-readout-sub' });
+    ui.blChart = h('div', { class: 'chart mny-chart' });
+    ui.blNote = h('p', { class: 'mny-note', text: '量不到:資料庫讀寫與傳輸量、AI token 數、首次建卡 P95 —— 目前沒有逐請求的時間與 token 記錄。費用以牌價計、未扣每月免費額,實際以 Google 帳單為準。' });
+    ui.blContent = h('div', { class: 'mny-block-body', hidden: true },
+      h('div', { class: 'mny-block' }, ui.blTable.el, ui.blScope),
+      h('div', { class: 'mny-block' },
+        h('div', { class: 'mny-toolbar' }, subHead('每日趨勢', '每點是一天。上線首日只記到半天,表格不計、趨勢照畫。')),
+        ui.blSeg.el,
+        h('div', { class: 'chart-readout' }, ui.blValue, ui.blSub),
+        ui.blChart),
+      ui.blNote);
+    card.body.appendChild(ui.blHolder);
+    card.body.appendChild(ui.blContent);
     return card.el;
   }
 
@@ -3614,12 +3736,85 @@ html.has-overlay{ overflow:hidden; }
     renderAdvice(geo);
   }
 
+  function baselineRows(w7, w30){
+    function pick(w, fn){ return w ? fn(w) : { v: '—' }; }
+    function row(key, label, fn){ return { key: key, label: label, w7: pick(w7, fn), w30: pick(w30, fn) }; }
+    return [
+      row('cards', '有效卡', function(w){ return { v: TR.fmt.num(w.cards), sub: '每天 ' + TR.fmt.num(Math.round(w.cardsPerDay)) + ' 張・活躍司機 ' + w.driversAvg.toFixed(1) + ' 位/天' }; }),
+      row('reqs', '定位請求/100', function(w){ return { v: per100Txt(w.per100.reqs) }; }),
+      // US$ 是牌價(不扣每月免費額,與上方「本月預估成本」的算法不同),格子上直接標明
+      row('google', '付費查詢 Google/100', function(w){ return { v: per100Txt(w.per100.google), sub: '牌價 ' + usdTxt(w.usd100.google) }; }),
+      row('free', '免費命中/100', function(w){ return { v: per100Txt(w.per100.free) }; }),
+      row('ai', 'AI 出手/100', function(w){ return { v: per100Txt(w.per100.ai), sub: '救援 ' + per100Txt(w.per100.aiRescue) + '・抓址 ' + per100Txt(w.per100.aiExtract) + '・牌價 ' + usdTxt(w.usd100.ai) }; }),
+      row('miss', '查無率', function(w){ return { v: TR.fmt.pct(w.missRate, 1) }; }),
+      row('cityWrong', '補錯城市/100', function(w){ return { v: per100Txt(w.per100.cityWrong) }; }),
+      row('scopedZero', '補區查無/100', function(w){ return { v: per100Txt(w.per100.scopedZero) }; })
+    ];
+  }
+  function renderBaselineChart(daily){
+    var ui = S.ui;
+    if (!daily) return;
+    var def = BL_METRICS[S.blMetric] || BL_METRICS.google100;
+    var days = daily.days;
+    if (days.length < 2) {
+      chartMessage('baseline', ui.blChart, '每日資料累積中(需要跨兩天以上才畫得出)');
+      ui.blValue.textContent = '—';
+      ui.blSub.textContent = '';
+      return;
+    }
+    var vals = days.map(function(d){
+      if (S.blMetric === 'miss') return d.pickups ? Math.round((d.pickups - d.cards) / d.pickups * 1000) / 10 : 0;
+      if (S.blMetric === 'cards') return d.cards;
+      return d.cards ? Math.round(d.google / d.cards * 1000) / 10 : 0;
+    });
+    var labels = days.map(function(d){ return fmtDayLabel(d.day); });
+    drawChart('baseline', ui.blChart, labels, vals, def.fmt, def.max);
+    var li = vals.length - 1, total = vals.reduce(function(a, b){ return a + b; }, 0);
+    ui.blValue.textContent = def.fmt(vals[li]);
+    ui.blSub.textContent = S.blMetric === 'cards'
+      ? '最新一天・近 ' + days.length + ' 天共 ' + TR.fmt.num(total) + ' 張'
+      : '最新一天・近 ' + days.length + ' 天平均 ' + def.fmt(total / vals.length);
+  }
+  function renderBaseline(){
+    var ui = S.ui;
+    if (!ui.blHolder) return;
+    var st = TR.data.get('costBaseline');
+    var res = st.value;
+    if (!res) {
+      setHolder(ui.blHolder, st.error
+        ? TR.ui.emptyState({ title: '暫時讀不到基準資料', text: st.error.text, action: TR.ui.tech(st.error.tech) })
+        : TR.ui.skeleton({ variant: 'table', lines: 4 }));
+      ui.blContent.hidden = true;
+      return;
+    }
+    var daily = M.baselineDaily(res);
+    if (!daily) {
+      // 上線前的日子沒有「這一次查詢是上車/下車/家」的紀錄,無法回推;since 為 null = 還沒開始記
+      setHolder(ui.blHolder, TR.ui.emptyState({
+        title: '資料從 ' + fmtDayLabel(res.since || res.today || tpDay(0)) + ' 開始累積',
+        text: '這張卡要靠新版定位服務記下每次查詢的角色,上線前的日子沒有這筆資料,無法回推。'
+      }));
+      ui.blContent.hidden = true;
+      return;
+    }
+    setHolder(ui.blHolder, null);
+    ui.blContent.hidden = false;
+    var w7 = M.baselineWindow(daily, 7), w30 = M.baselineWindow(daily, 30);
+    ui.blTable.update(baselineRows(w7, w30));
+    if (w30 && daily.since && daily.since >= shiftDay(daily.today, -29) && w30.days < 30) {
+      ui.blScope.hidden = false;
+      ui.blScope.textContent = '近 30 天欄目前只有 ' + w30.days + ' 天資料(自 ' + fmtDayLabel(daily.since) + ' 起' + (w30.usedFirstDay ? ',只有上線首日的半天' : ',上線首日不計') + ')';
+    } else ui.blScope.hidden = true;
+    renderBaselineChart(daily);
+  }
+
   function renderAll(){
     if (!S.mounted) return;
     S.stale = false;
     renderStats();
     renderRevenue();
     renderCost();
+    renderBaseline();
     TR.page.updateHeader('money');
   }
 
@@ -3715,6 +3910,7 @@ html.has-overlay{ overflow:hidden; }
       sec.appendChild(buildStats());
       sec.appendChild(buildRevenue());
       sec.appendChild(buildCost());
+      if (TR.can('read', 'costBaseline')) sec.appendChild(buildBaseline());
       sec.appendChild(buildAdvice());
       if (TR.can('read', 'siteViews')) sec.appendChild(buildSite());
       paintDetailTab();
@@ -3724,11 +3920,13 @@ html.has-overlay{ overflow:hidden; }
         if (st && st.loadedAt && !st.error) TR.page.markUpdated('money', st.loadedAt);
         guardedRender();
       });
+      TR.data.subscribe('costBaseline', guardedRender);
       renderAll();
       var g = TR.data.get('geoUsage');
       if (g.loadedAt) TR.page.markUpdated('money', g.loadedAt);
       TR.data.load('licenses');
       TR.data.load('geoUsage');
+      if (S.ui.blHolder) TR.data.load('costBaseline');
       loadSite();
     },
     refresh: function(opts){
@@ -3737,6 +3935,8 @@ html.has-overlay{ overflow:hidden; }
         return Promise.all([
           TR.data.load('licenses', { force: true }),
           TR.data.load('geoUsage', { force: true }),
+          // 使用者按的重新整理才叫伺服器連 5 分鐘快取一起重算(payload.force),定時載入照用快取
+          S.ui.blHolder ? TR.data.load('costBaseline', { force: true, payload: { force: true } }) : null,
           loadSite()
         ]).then(function(){
           TR.page.markUpdated('money');
@@ -3745,6 +3945,7 @@ html.has-overlay{ overflow:hidden; }
       }
       if (S.stale) guardedRender();
       TR.data.load('geoUsage');
+      if (S.ui.blHolder) TR.data.load('costBaseline');
     }
   });
 })();
@@ -3805,10 +4006,12 @@ html.has-overlay{ overflow:hidden; }
       var failN = 0, allN = 0, graveN = 0;
       frRows.forEach(function(r){
         var api = String((r && r.api) || '');
+        // req_*(每筆請求一列的記帳列)與 near_skip_explicit(純計數)不是「一層查詢」:算進分母會把失敗率沖淡一半、警示假綠
         if (api === 'db_layer_error' || api.indexOf('map8_') === 0 || api === 'places_new_shadow'
           || api.indexOf('ai_cls_') === 0 || api === 'ai_assist'
           || api === 'ai_err' || api === 'ai_capped' || api === 'ai_err_why' || api === 'ai_break' || api === 'ai_ratelimit' || api === 'ai_cut_glued'
-          || api.indexOf('ai_rescue') === 0 || api === 'door_fuzzy_why') return;
+          || api.indexOf('ai_rescue') === 0 || api === 'door_fuzzy_why'
+          || api.indexOf('req_') === 0 || api === 'near_skip_explicit') return;
         var n = num(r.n);
         allN += n;
         if (api === 'cache_hit_miss') graveN += n;
