@@ -870,7 +870,7 @@ html.has-overlay{ overflow:hidden; }
   TR.URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
   TR.role = 'admin';
 
-  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview','costBaseline'];
+  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview','costBaseline','seedPack'];
   TR.can = function(kind, action){
     if (TR.role === 'admin') return true;
     if (kind === 'read') return VIEWER_READ.indexOf(action) >= 0;
@@ -1012,7 +1012,14 @@ html.has-overlay{ overflow:hidden; }
     else if (e === 'partial_write') text = '只完成一部分,請重新整理確認';
     else if (e === 'forbidden_viewer') text = '唯讀帳號無法執行這個動作';
     else if (e === 'locked_out') text = '密碼錯誤次數太多,請確認密碼再試';
-    else if (e === 'not_ready' || e === 'need_migration_v7' || e === 'need_migration_v51') text = '這項功能還沒啟用,請聯絡工程人員';
+    else if (e === 'not_ready' || e === 'need_migration_v7' || e === 'need_migration_v51' || e === 'need_migration_v53') text = '這項功能還沒啟用,請聯絡工程人員';
+    // 座標種子包(0915)
+    else if (e === 'version_conflict') text = '剛有人發佈過新版,請重新整理再發';
+    else if (e === 'seed_mismatch') text = '線上與紀錄不一致,請先重新發佈一次';
+    else if (e === 'seed_invalid' || e === 'seed_reject') text = '種子包檢查沒過,請看清單裡的紅字';
+    else if (e === 'seed_too_large') text = '種子包超過 100 KB,請先移除一些地點再發佈';
+    else if (e === 'seed_sha_mismatch') text = '舊版檔案和紀錄對不上,不能回退到這一版';
+    else if (e === 'storage_error') text = '檔案上傳失敗,線上版本沒有變,請稍後再試';
     else text = '伺服器暫時無法處理,請稍後再試';
     return { text: text, tech: techOf(res) };
   };
@@ -2257,7 +2264,9 @@ html.has-overlay{ overflow:hidden; }
     missQueue:  { action: 'missQueue',       payload: { all: false }, ttl: 300000, pick: function(res){ return pickCapped(res, 40); } },
     devStatus:  { action: 'devStatus',       payload: {},            ttl: 120000, pick: pickOk },
     // 每 100 張有效卡:近 7 天欄由同一份 30 天資料在前端算,只打一次
-    costBaseline: { action: 'costBaseline',  payload: { days: 30 },  ttl: 300000, pick: pickOk }
+    costBaseline: { action: 'costBaseline',  payload: { days: 30 },  ttl: 300000, pick: pickOk },
+    // 座標種子包(0915):線上版本/紀錄/清單/發佈預覽一次帶回;唯讀角色也可讀
+    seedPack:   { action: 'seedPack',        payload: {},            ttl: 60000,  pick: pickOk }
   };
   var STORES = {};
   Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [], fails: 0 }; });
@@ -3036,6 +3045,9 @@ html.has-overlay{ overflow:hidden; }
   function P(free, per1000, show, label){ return { free: free, per1000: per1000, show: show, label: label }; }
   M.GEO_PRICING = {
     community_hit:     P(0, 0, true, '位置庫命中'),
+    // 座標種子包(0915):司機手機本機命中,沒到伺服器 → 不在 FREE_HIT_APIS(那是伺服器層命中率的分子),只列用量、費用 0
+    req_seed_pickup:   P(0, 0, true, '種子包命中(上車,手機本機)'),
+    req_seed_dropoff:  P(0, 0, true, '種子包命中(下車,手機本機)'),
     door_hit:          P(0, 0, true, '門牌資料命中'),
     door_fuzzy:        P(0, 0, true, '門牌錯字自動修正命中'),
     cache_hit_miss:    P(0, 0, true, '已知查無,直接略過'),
@@ -3142,7 +3154,8 @@ html.has-overlay{ overflow:hidden; }
   };
 
   // 每 100 張有效卡(0915 總報告 §8.6):資料來源 admin costBaseline(v51 RPC,只讀 geo_usage_daily)。
-  //   有效卡 = req_pickup 的 ok_n(上車地址查到座標);dropoff/home 請求不是卡。
+  //   有效卡 = req_pickup 的 ok_n(上車地址查到座標)+ req_seed_pickup 的 n(種子包本機命中,0915;沒到伺服器所以不在 req_pickup 裡);
+  //   dropoff/home 請求不是卡。
   M.BASELINE_REQ_APIS = ['req_pickup', 'req_dropoff', 'req_home', 'req_other'];
   M.AI_EXTRACT_APIS = ['ai_parse', 'ai_err', 'aiparse'];   // = geocode 的抓址層
   // AI 費用:與「AI 出手」計數同一群(救援+抓址),US$ 才能從「救援 X・抓址 Y」對得回來;
@@ -3178,9 +3191,10 @@ html.has-overlay{ overflow:hidden; }
     function sum(byApi, apis){ var s = 0; apis.forEach(function(k){ if (hasOwn(byApi, k)) s += byApi[k].n; }); return s; }
     var days = sortDayKeys(order).map(function(d){
       var b = map[d].byApi, pk = hasOwn(b, 'req_pickup') ? b.req_pickup : { n: 0, ok_n: 0, drivers: 0 };
+      var sp = hasOwn(b, 'req_seed_pickup') ? b.req_seed_pickup.n : 0;   // 種子包本機命中(上車)= 也是一張有效卡
       return {
         day: d, partial: d === since,
-        cards: pk.ok_n, pickups: pk.n, drivers: pk.drivers,
+        cards: pk.ok_n + sp, pickups: pk.n + sp, drivers: pk.drivers,
         reqs: sum(b, M.BASELINE_REQ_APIS),
         google: sum(b, M.GOOGLE_APIS), googleUsd: M.listPriceUsd(b, M.GOOGLE_APIS),
         free: sum(b, M.FREE_HIT_APIS),
@@ -3493,7 +3507,7 @@ html.has-overlay{ overflow:hidden; }
   }
   function buildBaseline(){
     var ui = S.ui;
-    var card = TR.ui.card({ title: '每 100 張有效卡', info: '有效卡 = 上車地址查到座標的一張單。每一項都除以同期有效卡數再乘 100,不同天、不同人數可以直接比。' });
+    var card = TR.ui.card({ title: '每 100 張有效卡', info: '有效卡 = 伺服器查到上車座標,或種子包在手機本機命中的一張單。每一項都除以同期有效卡數再乘 100,不同天、不同人數可以直接比。' });
     ui.blHolder = h('div', { class: 'mny-holder' });
     ui.blTable = TR.ui.table({
       columns: [
@@ -6163,7 +6177,9 @@ html.has-overlay{ overflow:hidden; }
     return h('div', { class: 'drv-cell' },
       a ? TR.ui.statusDot(a.tone, a.label) : null,
       h('span', { class: 'drv-sub', text: r.last_seen_at ? '上線 ' + TR.fmt.rel(r.last_seen_at) : '尚未上線' }),
-      r.last_app_version ? h('span', { class: 'drv-sub num', text: 'App 版本 ' + String(r.last_app_version) }) : null);
+      r.last_app_version ? h('span', { class: 'drv-sub num', text: 'App 版本 ' + String(r.last_app_version) }) : null,
+      // 座標種子包(0915):null = 舊版 App 未回報(不顯示)、0 = 新版但沒有包、N = 手機上的包版本
+      r.seed_pack_version != null ? h('span', { class: 'drv-sub num', text: Number(r.seed_pack_version) > 0 ? '種子包 v' + String(r.seed_pack_version) : '無種子包' }) : null);
   }
   function cellAuth(r){
     var st = mf('status')(r);
@@ -7382,6 +7398,11 @@ html.has-overlay{ overflow:hidden; }
           TR.ui.button({ label: p.verified ? '取消驗證' : '驗證', size: 'sm', variant: 'secondary', onClick: function(){ return setVerified(p, !p.verified, true); } }),
           TR.ui.menuButton([
             { label: '編輯', onClick: function(){ openForm(p); } },
+            // 座標種子包(0915):只有已驗證才能加;未驗證按了只提示,不開表單
+            { label: p.verified ? '加入種子包' : '加入種子包(要先驗證)', onClick: function(){
+              if (!p.verified) { TR.toast({ type: 'info', text: '「' + (p.name || '') + '」要先驗證,才能加入種子包' }); return; }
+              return seedAddForm(p);
+            } },
             { label: '刪除', danger: true, onClick: function(){ deletePlace(p); } }
           ], { label: '「' + (p.name || '') + '」的更多動作' }));
       } });
@@ -8568,6 +8589,354 @@ html.has-overlay{ overflow:hidden; }
     });
   }
 
+  /* ---------- seed pack(座標種子包,總報告 8.4 / 0915)---------- */
+  // 資料:TR.data 'seedPack'(admin seedPack;唯讀角色也可讀)+ 'licenses'(司機端心跳回報的包版本)。
+  // 五個寫入動作的按鈕只在管理角色出現,真正的牆在 admin/index.ts 白名單(唯讀角色打了會 forbidden_viewer)。
+  var SEED_ROLE_ITEMS = [{ value: 'pickup', label: '上車' }, { value: 'dropoff', label: '下車' }, { value: 'both', label: '兩者' }];
+  var SEED_ROLE_LABEL = { pickup: '上車', dropoff: '下車', both: '兩者' };
+  var SEED_REASON = {
+    dup_key: '和另一筆撞名', bare_road: '路名不能當地標', bare_region: '縣市/行政區名不能當地標', deny_word: '太籠統,請用完整分店/院區名',
+    short: '別名太短', numeric: '別名是純數字', door: '含門牌號', bounds: '座標不在台灣', unverified: '要先驗證',
+    full: '種子包已滿 400 筆', too_large: '種子包超過 100 KB', role: '用途不正確', need_precise: '要先勾「座標是精確點位」'
+  };
+  var SEED_STATUS = { published: ['已發佈', 'ok'], pending: ['待發佈', 'warn'], pending_remove: ['待移除', 'neutral'] };
+  var SEED_INFO = '把最常用的大地標(車站、機場航廈、醫院院區、百貨)連座標打包進每位司機的手機:派單寫到就直接算距離,離線也行、不花查詢費。' +
+    '只放公開地標,不放客人住處或私人社區;有「號」的門牌地址不受影響、照原本方式查。加入或移除後都要按「發佈」才會送到司機手機。' +
+    '「伺服器命中」是加入前累計的次數,加入後司機手機自己命中、不再累計。';
+  var SEED_PRECISE_LABEL = '座標是精確點位(門口/大門),不是區域中心或路段';
+
+  function seedReason(e){
+    if (!e) return '';
+    var t = SEED_REASON[e.code] || ('檢查未過(' + String(e.code || '') + ')');
+    if (e.code === 'dup_key' && e.conflict) t += ':和「' + (e.conflict.name || ('#' + e.conflict.id)) + '」的名稱/別名撞名 ' + ((e.conflict.keys || []).join('、'));
+    else if (e.key) t += ':' + e.key;
+    return t;
+  }
+  function seedErr(res){
+    var tech = TR.err(res).tech;
+    if (res && res.error === 'seed_reject') return { text: seedReason(res), tech: tech };
+    if (res && res.error === 'seed_invalid') {
+      return { text: '種子包檢查沒過:' + (res.errors || []).map(function(e){ return (e.id != null ? '「' + (e.name || ('#' + e.id)) + '」' : '整包') + seedReason(e); }).join(';'), tech: tech };
+    }
+    return TR.err(res);
+  }
+  function seedData(){ var v = TR.data.value('seedPack'); return v && v.ok ? v : null; }
+  // expect_version = max(紀錄最新版, 線上 manifest 版):伺服器對同一個數字檢查,兩個管理者同時操作後按的會被擋
+  function seedExpect(d){ return Math.max(d.current ? (Number(d.current.version) || 0) : 0, d.online ? (Number(d.online.version) || 0) : 0); }
+  function seedNameOf(d, id){
+    var e = (d.entries || []).filter(function(r){ return r.id === id; })[0];
+    return e ? (e.name || ('#' + id)) : ('#' + id);
+  }
+  function seedErrorsById(d){
+    var m = {};
+    ((d.preview && d.preview.errors) || []).forEach(function(e){ if (e.id != null) (m[e.id] = m[e.id] || []).push(e); });
+    return m;
+  }
+  // 司機更新狀況:licenses.seed_pack_version(null = 舊版 App 未回報、0 = 新版但沒有包、N = 用 vN);只算使用中且未到期的司機
+  function seedDriverSummary(){
+    var rows = TR.data.value('licenses');
+    if (!Array.isArray(rows)) return null;
+    var MX = TR.metrics;
+    var by = {}, none = 0, unknown = 0, total = 0;
+    rows.forEach(function(r){
+      var active = (MX && typeof MX.isActive === 'function') ? MX.isActive(r) : (!!r.active && new Date(r.expires_at) > new Date());
+      if (!active) return;
+      total++;
+      if (r.seed_pack_version == null) unknown++;
+      else if (Number(r.seed_pack_version) > 0) by[Number(r.seed_pack_version)] = (by[Number(r.seed_pack_version)] || 0) + 1;
+      else none++;
+    });
+    var vers = Object.keys(by).map(Number).sort(function(a, b){ return b - a; });
+    return { by: by, vers: vers, none: none, unknown: unknown, total: total };
+  }
+
+  function buildSeedPack(section){
+    var actions = [];
+    if (isAdmin()) {
+      UI.seedPublishBtn = TR.ui.button({ label: '發佈', variant: 'primary', size: 'sm', onClick: seedPublish });
+      UI.seedMenuBtn = TR.ui.menuButton(function(){
+        var d = seedData(), cur = d && d.current, off = !!(cur && cur.enabled === false);
+        return [
+          { label: '從位置庫加入', onClick: function(){ return seedAddFromLibrary(); } },
+          { label: off ? '啟用種子包' : '停用種子包', danger: !off, hidden: !cur, onClick: function(){ return seedToggle(); } },
+          { label: '回退到上一版', hidden: !(d && d.history && d.history.length > 1), onClick: function(){ return seedRollback(); } }
+        ];
+      }, { label: '種子包更多動作' });
+      actions = [UI.seedPublishBtn, UI.seedMenuBtn];
+    }
+    var card = TR.ui.card({ title: '座標種子包', collapsible: true, open: true, persistKey: 'plc-seed', info: SEED_INFO, actions: actions });
+    UI.seedCard = card;
+    UI.seedVer = TR.ui.statCard({ label: '線上版本', value: '—' });
+    UI.seedCount = TR.ui.statCard({ label: '已發佈', value: '—' });
+    UI.seedDrivers = TR.ui.statCard({ label: '司機更新狀況', value: '—', info: '由每位司機的 App 心跳回報。「未回報」= App 還是舊版,更新 App 就會出現;「無種子包」= 新版 App 但還沒拿到包。' });
+    UI.seedDiff = TR.ui.statCard({ label: '待發佈', value: '—', info: '目前勾選的內容和線上版本的差異,以及發佈前檢查的結果。按「發佈」才會送到司機手機。' });
+    UI.seedStats = h('div', { class: 'stat-grid' }, UI.seedVer.el, UI.seedCount.el, UI.seedDrivers.el, UI.seedDiff.el);
+    UI.seedNote = h('p', { class: 'plc-note', hidden: true });
+    UI.seedErr = h('div', { class: 'plc-inline-err', hidden: true });
+    UI.seedTableHost = h('div');
+    UI.seedTable = null;
+    card.body.appendChild(h('div', { class: 'stack-3' }, UI.seedStats, UI.seedNote, UI.seedErr, UI.seedTableHost));
+    section.appendChild(card.el);
+  }
+
+  function seedColumns(){
+    var cols = [
+      { key: 'name', label: '名稱', mobile: 'title', render: function(r){
+        return h('div', { class: 'plc-cell' },
+          h('span', { class: 'plc-name', text: r.name || '—' }),
+          (r.aliases && r.aliases.length) ? h('span', { class: 'plc-sub', text: r.aliases.join(' / ') }) : null);
+      } },
+      { key: 'city', label: '縣市', mobile: 'hide', render: function(r){ return r.city || '—'; } },
+      { key: 'coord', label: '座標', mobile: 'meta', render: function(r){ return mapLink(r.lat, r.lng, 4); } },
+      { key: 'role', label: '用途', mobile: 'meta', render: function(r){
+        if (!isAdmin() || r.status === 'pending_remove') return SEED_ROLE_LABEL[r.seed_role] || '—';
+        return TR.ui.segmented({ items: SEED_ROLE_ITEMS, value: r.seed_role || 'both', ariaLabel: '「' + (r.name || '') + '」的用途', onChange: function(v){ seedSetRole(r, v); } }).el;
+      } },
+      { key: 'hits', label: '伺服器命中', align: 'right', mobile: 'meta', render: function(r){ return h('span', { class: 'num', text: num(r.hits || 0) }); } },
+      { key: 'status', label: '狀態', mobile: 'meta', render: function(r){
+        var s = SEED_STATUS[r.status] || ['—', 'neutral'];
+        return h('div', { class: 'plc-cell' }, TR.ui.badge(s[0], s[1]), r._errs ? h('span', { class: 'plc-sub', text: '檢查未過:' + r._errs }) : null);
+      } }
+    ];
+    if (isAdmin()) {
+      cols.push({ key: 'act', label: '動作', align: 'right', mobile: 'actions', render: function(r){
+        if (r.status === 'pending_remove') {
+          return TR.ui.button({ label: '復原', size: 'sm', variant: 'secondary', onClick: function(){ return seedAdd(r, r.seed_role || 'both', '已復原「' + (r.name || '') + '」,按「發佈」才會送到司機手機'); } });
+        }
+        return TR.ui.button({ label: '移除', size: 'sm', variant: 'secondary', onClick: function(){ return seedRemove(r); } });
+      } });
+    }
+    return cols;
+  }
+
+  function renderSeedPack(){
+    if (!UI.seedTableHost) return;
+    var st = TR.data.get('seedPack');
+    var d = st.value && st.value.ok ? st.value : null;
+    if (!d) {
+      UI.seedTableHost.textContent = ''; UI.seedTable = null;
+      UI.seedNote.hidden = true; UI.seedErr.hidden = true;
+      UI.seedVer.set({ value: '—', sub: '', tone: null }); UI.seedCount.set({ value: '—', sub: '' });
+      UI.seedDrivers.set({ value: '—', sub: '', href: null }); UI.seedDiff.set({ value: '—', sub: '', tone: null });
+      if (st.error) UI.seedTableHost.appendChild(errorState('種子包讀取失敗', st.error));
+      else UI.seedTableHost.appendChild(TR.ui.skeleton({ variant: 'table' }));
+      if (UI.seedPublishBtn) UI.seedPublishBtn.disabled = true;
+      return;
+    }
+    var cur = d.current, pv = d.preview || {}, errs = pv.errors || [], byId = seedErrorsById(d);
+    var off = !!cur && cur.enabled === false;
+    UI.seedVer.set({
+      value: cur ? 'v' + cur.version : '尚未發佈',
+      sub: cur ? h('span', null, off ? TR.ui.badge('已停用', 'danger') : null, (off ? ' ' : '') + '發佈於 ' + TR.fmt.rel(cur.published_at)) : '按「發佈」送出第一版',
+      tone: off ? 'danger' : null
+    });
+    UI.seedCount.set({ value: cur ? num(cur.count) + ' 筆' : '—', sub: cur ? TR.fmt.bytes(cur.size) : '' });
+    var ds = seedDriverSummary();
+    if (ds) {
+      var parts = ds.vers.map(function(v){ return 'v' + v + ':' + ds.by[v] + ' 位'; });
+      if (ds.none) parts.push('無種子包:' + ds.none + ' 位');
+      if (ds.unknown) parts.push('未回報:' + ds.unknown + ' 位');
+      var headTxt = parts.shift() || (ds.total ? '尚無回報' : '沒有使用中的司機');
+      UI.seedDrivers.set({ value: headTxt, sub: parts.join('・'), href: TR.router.href('drivers', { f: 'active' }) });
+    } else {
+      UI.seedDrivers.set({ value: '—', sub: '', href: null });
+    }
+    var nAdd = (pv.added || []).length, nRem = (pv.removed || []).length;
+    UI.seedDiff.set({
+      value: '+' + nAdd + ' 新增・−' + nRem + ' 移除',
+      sub: '預估 ' + TR.fmt.bytes(pv.size || 0) + '・檢查:' + (errs.length ? errs.length + ' 筆問題' : '通過'),
+      tone: errs.length ? 'danger' : ((nAdd || nRem) ? 'warn' : null)
+    });
+    var noteTxt = d.mismatch ? '線上與紀錄不一致,請再發佈一次。' : '';
+    UI.seedNote.textContent = noteTxt; UI.seedNote.hidden = !noteTxt;
+    UI.seedErr.textContent = ''; UI.seedErr.hidden = !errs.length;
+    errs.forEach(function(e){ UI.seedErr.appendChild(h('span', { text: (e.id != null ? '「' + seedNameOf(d, e.id) + '」' : '整包') + seedReason(e) })); });
+    var rows = (d.entries || []).map(function(r){ return Object.assign({}, r, { _errs: (byId[r.id] || []).map(seedReason).join(';') }); });
+    if (UI.seedPublishBtn) UI.seedPublishBtn.disabled = false;
+    if (!UI.seedTable) {
+      UI.seedTableHost.textContent = '';
+      UI.seedTable = TR.ui.table({ columns: seedColumns(), rows: rows, rowKey: function(r){ return r.id; }, empty: '還沒有任何地點加入種子包。在「地點」表格的更多動作按「加入種子包」,或用右上角「從位置庫加入」。' });
+      UI.seedTableHost.appendChild(UI.seedTable.el);
+    } else {
+      UI.seedTable.update(rows);
+    }
+  }
+  function onSeedStore(){
+    if (!S.mounted) return;
+    if (TR.busy.isInteracting(S.section)) TR.busy.whenIdle(S.section, renderSeedPack);
+    else renderSeedPack();
+  }
+
+  function seedSubmitAdd(p, vals, ctl){
+    return TR.api('seedPackAdd', { id: p.id, role: vals.role, precise: vals.precise === true }).then(function(res){
+      if (!res || !res.ok) { if (silentErr(res)) return false; var e = seedErr(res); ctl.setError(e.text, e.tech); return false; }
+      TR.toast({ type: 'ok', text: '已加入「' + (p.name || '') + '」,按「發佈」才會送到司機手機' });
+      TR.data.load('seedPack', { force: true });
+      return true;
+    });
+  }
+  // 地點表格「加入種子包」:用途 + 必勾精確點位(沒有 precision 欄,靠勾選保證點級;沒勾送不出去)
+  function seedAddForm(p){
+    if (!isAdmin()) return Promise.resolve({ submitted: false });
+    return TR.dialog.form({
+      title: '把「' + (p.name || '') + '」加入種子包', level: 'B', submitText: '加入',
+      description: '加入並發佈後,全隊司機的手機會直接用這個座標算距離(離線也用),請先在地圖上對過。',
+      fields: [
+        { id: 'role', label: '用途', type: 'segmented', options: SEED_ROLE_ITEMS, value: 'both' },
+        { id: 'precise', label: SEED_PRECISE_LABEL, type: 'checkbox', value: false, required: true }
+      ],
+      onSubmit: function(vals, ctl){ return seedSubmitAdd(p, vals, ctl); }
+    });
+  }
+  // 卡片「從位置庫加入」:只列已驗證且尚未加入的地點(目前清單內;清單是熱門前 N 筆,找不到的請用地點搜尋)
+  function seedAddFromLibrary(){
+    if (!isAdmin()) return Promise.resolve();
+    var d = seedData(), inPack = {};
+    ((d && d.entries) || []).forEach(function(r){ if (r.seed) inPack[r.id] = true; });
+    var cands = (S.places || []).filter(function(p){ return p.verified && !inPack[p.id]; }).slice(0, 300);
+    if (!cands.length) { TR.toast({ type: 'info', text: '沒有可加入的地點:要先在「地點」驗證過,而且還沒加入種子包' }); return Promise.resolve(); }
+    return TR.dialog.form({
+      title: '從位置庫加入種子包', level: 'B', submitText: '加入',
+      description: '只列已驗證、還沒加入的地點(' + cands.length + ' 筆);找不到的請在「地點」搜尋後用更多動作加入。',
+      fields: [
+        { id: 'id', label: '地點', type: 'select', options: cands.map(function(p){ return { value: String(p.id), label: (p.name || '') + (p.city ? '(' + p.city + ')' : '') }; }), value: String(cands[0].id) },
+        { id: 'role', label: '用途', type: 'segmented', options: SEED_ROLE_ITEMS, value: 'both' },
+        { id: 'precise', label: SEED_PRECISE_LABEL, type: 'checkbox', value: false, required: true }
+      ],
+      onSubmit: function(vals, ctl){
+        var p = cands.filter(function(x){ return String(x.id) === String(vals.id); })[0];
+        if (!p) { ctl.setError('請選擇地點'); return false; }
+        return seedSubmitAdd(p, vals, ctl);
+      }
+    });
+  }
+  function seedAdd(r, role, okText){
+    return TR.api('seedPackAdd', { id: r.id, role: role, precise: true }).then(function(res){
+      if (!res || !res.ok) { failToast('加入種子包失敗', seedErr(res), res); return; }
+      TR.toast({ type: 'ok', text: okText || ('已加入「' + (r.name || '') + '」,按「發佈」才會送到司機手機') });
+      TR.data.load('seedPack', { force: true });
+    });
+  }
+  // 改用途 = 再 seedPackAdd(同一支;伺服器重新整包試算)
+  function seedSetRole(r, role){
+    TR.api('seedPackAdd', { id: r.id, role: role, precise: true }).then(function(res){
+      if (!res || !res.ok) failToast('用途沒有改成功', seedErr(res), res);
+      else TR.toast({ type: 'ok', text: '「' + (r.name || '') + '」用途改為' + (SEED_ROLE_LABEL[role] || role) + ',按「發佈」才會生效' });
+      TR.data.load('seedPack', { force: true });
+    });
+  }
+  function seedRemove(r){
+    var name = r.name || '';
+    return TR.dialog.confirm({
+      level: 'B',
+      title: '從種子包移除「' + name + '」?',
+      body: '移除後要再按「發佈」,司機手機才會拿掉。位置庫裡的地點不會被刪。',
+      confirmText: '移除',
+      onConfirm: function(ctl){
+        return TR.api('seedPackRemove', { id: r.id }).then(function(res){
+          if (!res || !res.ok) { var e = TR.err(res); ctl.setError(e.text, e.tech); return false; }
+          TR.toast({
+            type: 'ok',
+            text: '已移除「' + name + '」' + (res.published_before ? ',按「發佈」司機手機才會拿掉' : ''),
+            action: { label: '復原', onClick: function(){ return seedAdd(r, r.seed_role || 'both', '已復原「' + name + '」'); } }
+          });
+          TR.data.load('seedPack', { force: true });
+          return true;
+        });
+      }
+    });
+  }
+  // 發佈:先強制重讀取最新預覽(筆數/大小/新增/移除/檢查),level C + 輸入「發佈」;伺服器再驗一次、擋 version_conflict
+  function seedPublish(){
+    if (!isAdmin()) return;
+    return TR.data.load('seedPack', { force: true }).then(function(){
+      var st = TR.data.get('seedPack');
+      if (st.error) { failToast('讀取種子包失敗', st.error, null); return; }
+      var d = st.value && st.value.ok ? st.value : null;
+      if (!d) return;
+      var pv = d.preview || {}, cur = d.current, errs = pv.errors || [];
+      var next = pv.next_version || (seedExpect(d) + 1), expect = seedExpect(d);
+      function listNames(ids){ return (ids || []).length ? ids.map(function(id){ return seedNameOf(d, id); }).join('、') : '—'; }
+      return TR.dialog.confirm({
+        level: 'C',
+        title: '發佈種子包 v' + next + '?',
+        body: errs.length ? '檢查沒過,伺服器會擋下來;請先處理清單裡的紅字。' : '發佈後全隊司機手機 5 分鐘內開始更新(離線者最慢 6 小時)。',
+        rows: [
+          { label: '版本', from: cur ? 'v' + cur.version : '無', to: 'v' + next },
+          { label: '筆數', from: cur ? num(cur.count) : '0', to: num(pv.count || 0) },
+          { label: '新增 ' + (pv.added || []).length, to: listNames(pv.added) },
+          { label: '移除 ' + (pv.removed || []).length, to: listNames(pv.removed) },
+          { label: '大小', to: TR.fmt.bytes(pv.size || 0) },
+          { label: '檢查', to: errs.length ? errs.length + ' 筆問題' : '通過' }
+        ],
+        requireType: '發佈',
+        confirmText: '發佈到全隊',
+        onConfirm: function(ctl){
+          return TR.api('seedPackPublish', { expect_version: expect }).then(function(res){
+            if (!res || !res.ok) { if (silentErr(res)) return false; var e = seedErr(res); ctl.setError(e.text, e.tech); return false; }
+            TR.toast({
+              type: res.warning ? 'info' : 'ok',
+              text: '已發佈 v' + res.version + ',司機 5 分鐘內開始更新(離線者最慢 6 小時)' + (res.warning === 'record_missing' ? ';發佈紀錄沒寫成,請再發佈一次' : '')
+            });
+            TR.data.load('seedPack', { force: true });
+            return true;
+          });
+        }
+      });
+    });
+  }
+  // 停用 / 啟用:一鍵止血,資料不刪
+  function seedToggle(){
+    var d = seedData();
+    if (!d || !d.current || !isAdmin()) return Promise.resolve();
+    var cur = d.current, turnOn = cur.enabled === false;
+    return TR.dialog.confirm({
+      level: 'C',
+      title: turnOn ? '啟用種子包 v' + cur.version + '?' : '停用種子包?',
+      body: turnOn ? '全隊 5 分鐘內恢復使用手機上的種子包(離線者最慢 6 小時)。' : '全隊 5 分鐘內停止使用種子包,改回原本查伺服器;資料不刪,隨時可以再啟用。',
+      confirmText: turnOn ? '啟用' : '停用',
+      onConfirm: function(ctl){
+        // 先強制重讀(同「發佈」):expect_version 用最新的,縮小「別人剛發佈新版、這裡還拿舊版號」的窗口(0915 審查);伺服器端也會再對一次
+        return TR.data.load('seedPack', { force: true }).then(function(){
+          var fresh = seedData() || d;
+          return TR.api('seedPackSetEnabled', { enabled: turnOn, expect_version: seedExpect(fresh) }).then(function(res){
+            if (!res || !res.ok) { if (silentErr(res)) return false; var e = TR.err(res); ctl.setError(e.text, e.tech); return false; }
+            TR.toast({ type: 'ok', text: turnOn ? '已啟用種子包' : '已停用種子包,全隊 5 分鐘內生效' });
+            TR.data.load('seedPack', { force: true });
+            return true;
+          });
+        });
+      }
+    });
+  }
+  // 回退:舊版內容重發成新版號(版本永遠遞增);位置庫的勾選不動,卡片會顯示差異提醒這是暫時措施
+  function seedRollback(){
+    var d = seedData();
+    if (!d || !d.current || !isAdmin()) return Promise.resolve();
+    var cur = d.current;
+    var opts = (d.history || []).filter(function(v){ return Number(v.version) !== Number(cur.version); }).map(function(v){
+      return { value: String(v.version), label: 'v' + v.version + '・' + num(v.count) + ' 筆・' + TR.fmt.rel(v.published_at) + (v.note ? '・' + v.note : '') };
+    });
+    if (!opts.length) { TR.toast({ type: 'info', text: '沒有可回退的舊版' }); return Promise.resolve(); }
+    var next = (d.preview && d.preview.next_version) || (seedExpect(d) + 1);
+    return TR.dialog.form({
+      title: '回退種子包', level: 'C', submitText: '回退',
+      description: '會把選的舊版內容重新發佈成新版號 v' + next + '。位置庫裡的勾選不會改,之後再按「發佈」仍是目前勾選的內容。',
+      fields: [{ id: 'to', label: '回退到', type: 'select', options: opts, value: opts[0].value }],
+      review: function(vals){
+        return { title: '確認回退', rows: [{ label: '線上版本', from: 'v' + cur.version, to: 'v' + next + '(內容 = v' + vals.to + ')' }], requireType: String(vals.to), note: '請輸入要回退到的版本號以確認。' };
+      },
+      onSubmit: function(vals, ctl){
+        return TR.api('seedPackRollback', { to_version: parseInt(vals.to, 10), expect_version: seedExpect(d) }).then(function(res){
+          if (!res || !res.ok) { if (silentErr(res)) return false; var e = seedErr(res); ctl.setError(e.text, e.tech); return false; }
+          TR.toast({ type: 'ok', text: '已回退:發佈 v' + res.version + '(內容 = v' + vals.to + '),司機 5 分鐘內開始更新' });
+          TR.data.load('seedPack', { force: true });
+          return true;
+        });
+      }
+    });
+  }
+
   /* ---------- page ---------- */
   function subtitle(){
     var c = TR.data.count(TR.data.value('placeCands'));
@@ -8588,6 +8957,7 @@ html.has-overlay{ overflow:hidden; }
       loadPlaces({ research: !!force }),
       TR.data.load('placeCands', { force: force }),
       TR.data.load('missQueue', { force: force }),
+      TR.data.load('seedPack', { force: force }),
       loadGaStats()
     ];
     if (S.missAll && (force || !S.missAllData)) ps.push(loadMissAll());
@@ -8610,14 +8980,18 @@ html.has-overlay{ overflow:hidden; }
     S.query = params.q || '';
     section.textContent = '';
     buildGaStats(section);
+    buildSeedPack(section);
     buildPending(section);
     buildPlaces(section);
     buildGa(section);
     TR.data.subscribe('placeCands', onStore);
     TR.data.subscribe('missQueue', onStore);
+    TR.data.subscribe('seedPack', onSeedStore);
+    TR.data.subscribe('licenses', onSeedStore);   // 司機更新狀況由 licenses 就地聚合
     renderPending();
     renderPlaces();
     renderGaStats();
+    renderSeedPack();
     applyGaParam(params.ga || '', true);
     return loadAll(false).then(function(){ TR.page.markUpdated(NAME); });
   }
@@ -8628,7 +9002,7 @@ html.has-overlay{ overflow:hidden; }
     if (src === 'show') {
       if (S.stale) { S.stale = false; renderPending(); }
       renderPlaces();
-      var ps = [TR.data.load('placeCands'), TR.data.load('missQueue')];
+      var ps = [TR.data.load('placeCands'), TR.data.load('missQueue'), TR.data.load('seedPack')];
       if (Date.now() - S.placesAt > 300000) ps.push(loadPlaces());
       return Promise.all(ps);
     }
