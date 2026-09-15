@@ -329,6 +329,7 @@ html.has-overlay{ overflow:hidden; }
 .dialog-body{ display:flex; flex-direction:column; gap:var(--sp-3); padding:0 var(--sp-5) var(--sp-4); overflow:auto; min-height:0; }
 .dialog-desc{ color:var(--ink-2); }
 .dialog-form{ display:flex; flex-direction:column; gap:var(--sp-3); }
+.cx-range{ display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:var(--sp-3); }
 .dialog-foot,.drawer-foot{ display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:var(--sp-2); padding:var(--sp-3) var(--sp-5); border-top:1px solid var(--line); }
 .dialog-foot .dialog-foot-extra{ margin-right:auto; }
 .drawer-foot:empty{ display:none; }
@@ -757,6 +758,8 @@ html.has-overlay{ overflow:hidden; }
 [data-page="system"] .sys-hbody{ display:flex; flex-direction:column; gap:var(--sp-2); padding:0 var(--sp-3) var(--sp-3) calc(var(--sp-3) + 16px); color:var(--ink-2); }
 [data-page="system"] .sys-hbody .link{ align-self:flex-start; min-height:32px; }
 [data-page="system"] .sys-note{ font-size:var(--fs-sm); color:var(--ink-2); }
+[data-page="system"] .sys-note.is-warn{ color:var(--warn-fg); font-weight:var(--fw-semibold); }
+.cx-secret{ -webkit-text-security:disc; }
 
 [data-page="system"] .sys-kv-label{ display:inline-flex; align-items:center; gap:var(--sp-1); }
 [data-page="system"] .sys-kv-val{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--sp-2); }
@@ -1016,6 +1019,17 @@ html.has-overlay{ overflow:hidden; }
     // 派單語料蒐集(0915)
     else if (e === 'confirm_required') text = '確認字不對,沒有清除任何檔案';
     else if (e === 'bad_days') text = '保留天數要是 1 到 30 的整數';
+    // 語料下載(0916;v55)
+    else if (e === 'need_migration_v55') text = '這項功能還沒啟用(需先執行 v55 SQL)';
+    else if (e === 'export_disabled') text = '尚未啟用:請到 Supabase 設定 CORPUS_EXPORT_PASSWORD';
+    else if (e === 'export_weak_secret') text = '下載密碼太短(至少 12 個字):請到 Supabase 把 CORPUS_EXPORT_PASSWORD 改長,再重新部署 admin';
+    else if (e === 'export_secret_reuse') text = '下載密碼不可與登入密碼相同,請到 Supabase 改 CORPUS_EXPORT_PASSWORD,再重新部署 admin';
+    else if (e === 'export_forbidden') text = '下載密碼不對,沒有下載任何檔案';
+    else if (e === 'sign_failed') text = '無法產生下載網址,請稍後再試(已記一筆下載紀錄)';
+    else if (e === 'bad_date') text = '日期格式不對';
+    else if (e === 'bad_range') text = '開始日期要早於或等於結束日期';
+    else if (e === 'range_too_long') text = '一次最多下載 31 天,請縮短日期範圍';
+    else if (e === 'too_large') text = '這段日期的檔案太多或太大(一次最多 3000 個檔 / 80 MB),請縮短日期範圍';
     // 座標種子包(0915)
     else if (e === 'version_conflict') text = '剛有人發佈過新版,請重新整理再發';
     else if (e === 'seed_mismatch') text = '線上與紀錄不一致,請先重新發佈一次';
@@ -2271,7 +2285,9 @@ html.has-overlay{ overflow:hidden; }
     // 座標種子包(0915):線上版本/紀錄/清單/發佈預覽一次帶回;唯讀角色也可讀
     seedPack:   { action: 'seedPack',        payload: {},            ttl: 60000,  pick: pickOk },
     // 派單語料蒐集(0915,v54):誰在蒐集/保留天數/每日檔數(只有數量);系統頁卡片與司機頁開關共用,唯讀角色也可讀
-    corpus:     { action: 'corpusStatus',    payload: {},            ttl: 60000,  pick: pickOk }
+    corpus:     { action: 'corpusStatus',    payload: {},            ttl: 60000,  pick: pickOk },
+    // 語料下載紀錄(0916,v55):最近 10 次;只有可寫角色會載(唯讀角色伺服器回 forbidden_viewer)
+    corpusExportLog: { action: 'corpusExportLog', payload: {},       ttl: 60000,  pick: pickOk }
   };
   var STORES = {};
   Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [], fails: 0 }; });
@@ -4030,7 +4046,8 @@ html.has-overlay{ overflow:hidden; }
           || api.indexOf('ai_cls_') === 0 || api === 'ai_assist'
           || api === 'ai_err' || api === 'ai_capped' || api === 'ai_err_why' || api === 'ai_break' || api === 'ai_ratelimit' || api === 'ai_cut_glued'
           || api.indexOf('ai_rescue') === 0 || api === 'door_fuzzy_why'
-          || api.indexOf('req_') === 0 || api === 'near_skip_explicit') return;
+          || api.indexOf('req_') === 0 || api === 'near_skip_explicit'
+          || api.indexOf('bare_') === 0) return;   // 0916 裸地名就近(bare_far_defer / bare_near_hit / bare_far_fallback…)純計數
         var n = num(r.n);
         allN += n;
         if (api === 'cache_hit_miss') graveN += n;
@@ -4873,16 +4890,19 @@ html.has-overlay{ overflow:hidden; }
   }
 
   // ----- 6b. 派單語料蒐集(0915;SQL v54)-----
-  // 後台只看得到數量與時間,看不到任何訊息內容;唯讀角色看得到狀態/保留天數/每日統計,沒有任何按鈕。
+  // 卡片只看得到數量與時間,看不到任何訊息內容;唯讀角色看得到狀態/保留天數/每日統計,沒有任何按鈕。
+  // 0916:可寫角色多了「下載語料…」(要另輸入下載密碼,伺服器核)與「最近下載」紀錄、清除可選「只清除某天以前」。
   var CORPUS_CLEAR_WORD = '清除語料';
   var cpSig = null;
   function buildCorpus(){
-    var card = TR.ui.card({ id: 'sys-corpus', title: '派單語料蒐集', info: '只蒐集後台指定司機的群組派單訊息,手機端先遮蔽個資。後台看不到訊息內容,只顯示數量。' });
+    var card = TR.ui.card({ id: 'sys-corpus', title: '派單語料蒐集', info: '只蒐集後台指定司機的群組派單訊息,手機端先遮蔽個資。一般管理與唯讀帳號看不到訊息內容,只顯示數量;只有持下載密碼的擁有者可以下載。' });
     card.body.appendChild(TR.ui.skeleton({ lines: 5 }));
     return card;
   }
   function loadCorpus(force){
     if (!S.cards.corpus) return Promise.resolve();
+    // 最近下載(0916):只有可寫角色讀得到(唯讀角色伺服器回 forbidden_viewer),和狀態一起載
+    if (TR.can('write')) TR.data.load('corpusExportLog', { force: !!force });
     return TR.data.load('corpus', { force: !!force });
   }
   function renderCorpus(){
@@ -4890,8 +4910,9 @@ html.has-overlay{ overflow:hidden; }
     var st = TR.data.get('corpus');
     var d = st.value;
     var canW = TR.can('write');
+    var lg = canW ? TR.data.get('corpusExportLog') : null;
     var sig;
-    try { sig = JSON.stringify([d, st.error, canW]); } catch (e) { sig = null; }
+    try { sig = JSON.stringify([d, st.error, canW, lg ? [lg.value, lg.error] : null]); } catch (e) { sig = null; }
     if (sig != null && sig === cpSig && card.body.firstChild) return;
     cpSig = sig;
     card.body.textContent = '';
@@ -4904,6 +4925,7 @@ html.has-overlay{ overflow:hidden; }
     card.body.appendChild(corpusDrivers(d));
     card.body.appendChild(corpusRetention(d, canW));
     card.body.appendChild(corpusDays(d, canW));
+    if (canW) card.body.appendChild(corpusExportLogBox());
   }
   function corpusDrivers(d){
     var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '誰在蒐集' }));
@@ -4992,22 +5014,513 @@ html.has-overlay{ overflow:hidden; }
     if (d.overdue) box.appendChild(h('p', { class: 'sys-note' }, TR.ui.badge('注意', 'warn'), ' 有超過保留天數的檔案尚未清掉' + (canW ? ',按「立即清除語料」或稍後再看' : '')));
     if (num(d.unknown_owner_files) > 0) box.appendChild(h('p', { class: 'sys-note', text: '其中 ' + fmtN(d.unknown_owner_files) + ' 個檔來自已刪除的金鑰' }));
     if (canW && num(t.files) > 0) {
-      box.appendChild(h('div', { class: 'sys-actions' }, TR.ui.button({ label: '立即清除語料', variant: 'danger', onClick: function(){ return corpusClear(t); } })));
+      box.appendChild(h('div', { class: 'sys-actions' },
+        TR.ui.button({ label: '下載語料…', onClick: function(){ return corpusExportDialog(d); } }),
+        TR.ui.button({ label: '立即清除語料', variant: 'danger', onClick: function(){ return corpusClear(t, d); } })));
     }
     return box;
   }
-  function corpusClear(t){
+
+  // ----- 6c. 語料下載(0916;SQL v55)-----
+  // 只給可寫角色,且要另輸入【下載密碼】(伺服器 secret CORPUS_EXPORT_PASSWORD,只有擁有者知道)。流程:
+  //   日期範圍 + 下載密碼 → corpusExport(伺服器先記下載紀錄、再核密碼、發依大小 5–30 分鐘有效的簽章網址)→
+  //   同時 4 個下載(已下載未合併最多 8 個、單檔 60 秒逾時、可按「停止下載」、解壓後合計有上限)→ 解壓 →
+  //   依檔名順序逐行驗證、重算 id、依紀錄 id 去重(與 scripts/corpus_pull.mjs mergeInbox 同規則;tests/corpus_export_test.ts 在 Deno 裡跑下面這段對拍)→
+  //   依台灣日升冪存成一個 .jsonl(= CLI 拉回的每天檔依日期接起來)。
+  // 下載密碼只在對話框的輸入欄:讀出後立刻清空、送出後丟掉,不進 TR 狀態、不進瀏覽器儲存。簽章網址也只在這次下載的區域變數裡。
+  // >>> PURE-TEST-BLOCK corpus_export_merge
+  var CX_MAX_DAYS = 31;                         // = admin CORPUS_EXPORT_MAX_DAYS
+  var CX_MAX_RAW = 16 * 1024 * 1024;            // = corpus_pull.mjs gunzip maxOutputLength(超過算壞檔)
+  var CX_ID_RE = /^[0-9a-f]{32}$/;
+  var CX_SENDER_RE = /^s_[0-9a-f]{10}$/;
+  var CX_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+  var CX_TOP_KEYS = ['v', 'id', 'day', 'ts', 'tq', 'g', 's', 't', 'tr', 'ac', 'st', 'rs', 'p'];
+  var CX_P_KEYS = ['n', 'u', 'e', 'x', 'm', 'sg', 'nm', 'mk'];
+  function cxIsInt(v, lo, hi){ return typeof v === 'number' && isFinite(v) && Math.floor(v) === v && v >= lo && v <= hi; }
+  function cxTrimAscii(s){ return String(s == null ? '' : s).replace(/^[ \t\r\n]+/, '').replace(/[ \t\r\n]+$/, ''); }
+  function cxTaipeiDay(ms){ return new Date(ms + 8 * 3600000).toISOString().slice(0, 10); }
+  // 逐條同 corpus_pull.mjs validateRecord(回傳同一組原因碼)
+  function cxValidateRecord(o){
+    if (!o || typeof o !== 'object' || Array.isArray(o)) return 'bad_json';
+    if (o.v !== 1) return 'bad_v';
+    if (typeof o.id !== 'string' || !CX_ID_RE.test(o.id)) return 'bad_id';
+    if (typeof o.day !== 'string' || !CX_DAY_RE.test(o.day)) return 'bad_day';
+    if (!cxIsInt(o.ts, 0, 9007199254740991)) return 'bad_ts';
+    if (o.tq !== 'm' && o.tq !== 'p') return 'bad_tq';
+    if (typeof o.g !== 'string' || !cxTrimAscii(o.g) || o.g.length > 100) return 'bad_g';
+    if (o.s !== null && o.s !== undefined && (typeof o.s !== 'string' || !CX_SENDER_RE.test(o.s))) return 'bad_s';
+    if (typeof o.t !== 'string' || o.t.length < 1 || o.t.length > 8000) return 'bad_t';
+    if (!cxIsInt(o.ac, 0, 1000000)) return 'bad_ac';
+    if (['M', 'I', 'B', 'T'].indexOf(o.st) < 0) return 'bad_st';
+    var p = o.p;
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return 'bad_p';
+    if (p.n !== null && p.n !== undefined && !cxIsInt(p.n, -1, 200)) return 'bad_p_n';
+    if (!cxIsInt(p.u, 0, 200)) return 'bad_p_u';
+    if (p.e !== 'v1' && p.e !== 'v2') return 'bad_p_e';
+    if (p.m !== 0 && p.m !== 1) return 'bad_p_m';
+    if (Object.keys(o).some(function(k){ return CX_TOP_KEYS.indexOf(k) < 0; })) return 'unknown_key';
+    if (Object.keys(p).some(function(k){ return CX_P_KEYS.indexOf(k) < 0; })) return 'unknown_key';
+    return null;
+  }
+  function cxHex(buf){
+    var b = new Uint8Array(buf), out = '';
+    for (var i = 0; i < b.length; i++) out += (b[i] < 16 ? '0' : '') + b[i].toString(16);
+    return out;
+  }
+  // 同 corpus_pull.mjs recordId:sha256('c1␁' + 群組 + '␁' + 去頭尾 ASCII 空白的內文) 前 32 hex
+  function cxRecordId(g, t){
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode('c1' + g + '' + cxTrimAscii(t))).then(function(d){ return cxHex(d).slice(0, 32); });
+  }
+  function cxMergeNew(){
+    return { seen: Object.create(null), days: Object.create(null), sum: { objects: 0, records: 0, 'new': 0, duplicate: 0, invalid: 0, id_fixed: 0, bad_file: 0, reasons: {} } };
+  }
+  function cxInvalid(acc, why){ acc.sum.invalid++; acc.sum.reasons[why] = (acc.sum.reasons[why] || 0) + 1; }
+  // 一個檔(已解壓的文字)併進 acc。呼叫端必須【依檔名順序】一個接一個呼叫(去重先到先贏,結果才和 CLI 一樣)。
+  //   0916 審查:每個檔每一天的新紀錄合成【一個 Blob 片段】放進 acc.days[day](不再留每筆 JSON 字串到最後、也不 join 成整天大字串)
+  function cxMergeText(acc, text){
+    acc.sum.objects++;
+    var lines = String(text).split('\n');
+    var recs = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!line.trim()) continue;
+      acc.sum.records++;
+      var o;
+      try { o = JSON.parse(line); } catch (e) { cxInvalid(acc, 'bad_json'); continue; }
+      var bad = cxValidateRecord(o);
+      if (bad) { cxInvalid(acc, bad); continue; }
+      recs.push(o);
+    }
+    lines = null;
+    return Promise.all(recs.map(function(r){ return cxRecordId(r.g, r.t); })).then(function(ids){
+      var byDay = Object.create(null);
+      for (var j = 0; j < recs.length; j++) {
+        var r = recs[j], id = ids[j];
+        if (id !== r.id) { r.id = id; acc.sum.id_fixed++; }
+        var day;
+        try { day = cxTaipeiDay(r.ts); } catch (e) { cxInvalid(acc, 'bad_ts'); continue; }   // ts 超出 Date 範圍(伺服器已擋,保險)
+        if (day !== r.day) r.day = day;
+        var k16 = id.slice(0, 16);
+        if (acc.seen[k16]) { acc.sum.duplicate++; continue; }
+        acc.seen[k16] = true;
+        acc.sum['new']++;
+        if (!byDay[day]) byDay[day] = [];
+        byDay[day].push(JSON.stringify(r));
+      }
+      Object.keys(byDay).forEach(function(day){
+        if (!acc.days[day]) acc.days[day] = [];
+        acc.days[day].push(new Blob([byDay[day].join('\n') + '\n']));
+      });
+      return acc;
+    });
+  }
+  // 輸出(Blob 片段):台灣日升冪;同一天的片段依合併順序接起來 = lines.join('\n') + '\n'(同 CLI 每天檔的追加格式)
+  function cxMergeParts(acc){
+    var parts = [];
+    Object.keys(acc.days).sort().forEach(function(day){ var l = acc.days[day]; for (var i = 0; i < l.length; i++) parts.push(l[i]); });
+    return parts;
+  }
+  // gzip → 文字。沒有 gzip 開頭:可能被瀏覽器依 Content-Encoding 自動解開了 → 看起來像 JSON 行才收(紀錄仍逐筆驗證),否則算壞檔
+  //   info(可省略):回填 info.bytes = 解壓後位元組數(呼叫端累計總量上限用)
+  function cxGunzipText(buf, info){
+    var u = new Uint8Array(buf);
+    var dec = new TextDecoder('utf-8');
+    if (!(u.length >= 2 && u[0] === 0x1f && u[1] === 0x8b)) {
+      var plain = dec.decode(u);
+      if (info) info.bytes = u.length;
+      return /^\s*\{/.test(plain) ? Promise.resolve(plain) : Promise.reject(new Error('not_gzip'));
+    }
+    if (typeof DecompressionStream !== 'function') return Promise.reject(new Error('no_decompression_stream'));
+    return new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer().then(function(ab){
+      if (ab.byteLength > CX_MAX_RAW) throw new Error('too_big');
+      if (info) info.bytes = ab.byteLength;
+      return dec.decode(ab);
+    });
+  }
+  // 真實存在的 YYYY-MM-DD → UTC 毫秒;否則 NaN(同 admin isCorpusDay)
+  function cxDayMs(s){
+    if (typeof s !== 'string' || !CX_DAY_RE.test(s)) return NaN;
+    var ms = Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10)));
+    return isFinite(ms) && new Date(ms).toISOString().slice(0, 10) === s ? ms : NaN;
+  }
+  // 同 admin parseExportRange 的錯誤碼(null = 可以)
+  function cxRangeError(from, to){
+    var a = cxDayMs(from), b = cxDayMs(to);
+    if (isNaN(a) || isNaN(b)) return 'bad_date';
+    var days = Math.round((b - a) / 86400000) + 1;
+    if (days < 1) return 'bad_range';
+    if (days > CX_MAX_DAYS) return 'range_too_long';
+    return null;
+  }
+  // <<< PURE-TEST-BLOCK corpus_export_merge
+
+  var CX_CONCURRENCY = 4;
+  var CX_BACKLOG = 8;                          // 已下載、還沒合併的檔最多 8 個;滿了先不開新下載(背壓:下載比合併快時記憶體不會一直堆)
+  var CX_FETCH_TIMEOUT_MS = 60000;             // 單檔 60 秒沒下載完算失敗(網路卡住時不會永遠等,對話框也關得掉)
+  var CX_MAX_TOTAL_RAW = 640 * 1024 * 1024;    // 解壓後合計上限;超過就停、不存檔,請縮短日期(admin 一次上限 80 MB gzip)
+  var cxUid = 0;
+  function cxDayStr(ms){ return new Date(ms).toISOString().slice(0, 10); }
+  function cxTodayTw(){ return cxDayStr(Date.now() + 8 * 3600000); }
+  function cxMd(day){ return String(day || '').slice(5).replace('-', '/'); }
+  // 預設範圍:最近 N 天(N = 保留天數),夾在伺服器上實際有檔的日期內
+  function corpusDefaultRange(d){
+    var have = (Array.isArray(d.days) ? d.days : [])
+      .filter(function(x){ return num(x.files) > 0 && !isNaN(cxDayMs(x.day)); })
+      .map(function(x){ return String(x.day); }).sort();
+    var to = have.length ? have[have.length - 1] : cxTodayTw();
+    var n = Math.min(CX_MAX_DAYS, Math.max(1, num(d.retention_days) || 7));
+    var from = cxDayStr(cxDayMs(to) - (n - 1) * 86400000);
+    if (have.length && have[0] > from) from = have[0];
+    return { from: from, to: to, earliest: have.length ? have[0] : null, latest: have.length ? to : null };
+  }
+  // run = { stopped, seq, ctrls, kick }:這次下載的控制(停止下載 → stopped = true + 中斷進行中的 fetch)
+  function cxNewRun(){ return { stopped: false, seq: 0, ctrls: {}, kick: null }; }
+  function cxAbortAll(run){
+    Object.keys(run.ctrls).forEach(function(k){ try { run.ctrls[k].abort(); } catch (e) {} });
+  }
+  // 下載一個簽章網址 → ArrayBuffer。逾時(含讀 body)會中斷;錯誤帶 kind:timeout / stopped / http(帶 status)/ network
+  function cxFetchBuf(url, run){
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timedOut = false, timer = null, key = String(++run.seq);
+    var opts = { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer' };
+    if (ctrl) {
+      run.ctrls[key] = ctrl;
+      opts.signal = ctrl.signal;
+      timer = setTimeout(function(){ timedOut = true; try { ctrl.abort(); } catch (e) {} }, CX_FETCH_TIMEOUT_MS);
+    }
+    function cleanup(){ if (timer) clearTimeout(timer); delete run.ctrls[key]; }
+    return fetch(url, opts).then(function(r){
+      if (!r.ok) { var he = new Error('http_' + r.status); he.status = r.status; throw he; }
+      return r.arrayBuffer();
+    }).then(function(buf){ cleanup(); return buf; }, function(err){
+      cleanup();
+      var e = new Error(timedOut ? 'timeout' : run.stopped ? 'stopped' : String((err && err.message) || err));
+      e.kind = timedOut ? 'timeout' : run.stopped ? 'stopped' : (err && err.status) ? 'http' : 'network';
+      e.status = err && err.status;
+      throw e;
+    });
+  }
+  // 同時 CX_CONCURRENCY 個下載、已下載未合併最多 CX_BACKLOG 個(背壓);合併照檔名順序一個一個來,合併完就放掉那個檔的文字。
+  //   只有網路錯重試 1 次(4xx 多半是網址過期,重試也沒用);單檔逾時算失敗;解壓後合計超過 CX_MAX_TOTAL_RAW → over,停止。
+  //   回傳 { acc, failed, expired(4xx 的檔數), timeouts, stopped, over }
+  function corpusDownloadMerge(files, run, onProgress){
+    return new Promise(function(resolve){
+      var acc = cxMergeNew();
+      var n = files.length, next = 0, done = 0, inflight = 0, held = 0, mergeAt = 0, merging = false, finished = false;
+      var failed = 0, expired = 0, timeouts = 0, rawTotal = 0, over = false;
+      var ready = [];
+      function halted(){ return run.stopped || over; }
+      function finish(){
+        if (finished) return;
+        finished = true;
+        run.kick = null;
+        resolve({ acc: acc, failed: failed, expired: expired, timeouts: timeouts, stopped: !!run.stopped, over: over });
+      }
+      function pump(){
+        if (finished) return;
+        if (halted()) {
+          cxAbortAll(run);
+          if (!inflight && !merging) finish();
+          return;
+        }
+        if (!merging && mergeAt < n && ready[mergeAt]) mergeOne();
+        while (!halted() && inflight < CX_CONCURRENCY && next < n && held + inflight < CX_BACKLOG) startOne();
+        if (mergeAt === n && !merging && !inflight) finish();
+      }
+      function mergeOne(){
+        var item = ready[mergeAt];
+        ready[mergeAt] = null;   // 陣列不再抓著這個檔;文字只在這次合併裡用,合併完就可回收
+        mergeAt++;
+        merging = true;
+        var p;
+        if (item.failed) p = Promise.resolve();
+        else if (item.bad) { acc.sum.objects++; acc.sum.bad_file++; p = Promise.resolve(); }
+        else { var text = item.text; item.text = null; p = cxMergeText(acc, text); text = null; }
+        p.then(null, function(){ acc.sum.bad_file++; }).then(function(){
+          merging = false;
+          held--;
+          pump();
+        });
+      }
+      function startOne(){
+        var idx = next++;
+        var url = files[idx].url;
+        inflight++;
+        cxFetchBuf(url, run).then(null, function(err){
+          if (err && err.kind === 'network' && !halted()) return cxFetchBuf(url, run);
+          throw err;
+        }).then(function(buf){
+          var info = {};
+          return cxGunzipText(buf, info).then(function(text){
+            rawTotal += info.bytes || 0;
+            if (rawTotal > CX_MAX_TOTAL_RAW) { over = true; return { failed: true }; }
+            return { text: text };
+          }, function(){ return { bad: true }; });
+        }, function(err){
+          failed++;
+          if (err && err.kind === 'timeout') timeouts++;
+          else if (err && err.kind === 'http' && err.status >= 400 && err.status < 500) expired++;
+          return { failed: true };
+        }).then(null, function(){ return { bad: true }; }).then(function(item){
+          inflight--;
+          done++;
+          ready[idx] = item;
+          held++;
+          if (onProgress) { try { onProgress(done, n); } catch (e) {} }
+          pump();
+        });
+      }
+      run.kick = pump;
+      if (!n) { finish(); return; }
+      pump();
+    });
+  }
+  function corpusSaveJsonl(parts, filename){
+    var url = URL.createObjectURL(new Blob(parts, { type: 'application/x-ndjson' }));
+    var a = h('a', { href: url, class: 'sr-only', attrs: { download: filename } });
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+  }
+  function corpusExportDialog(d){
     if (!TR.can('write')) return Promise.resolve();
+    var def = corpusDefaultRange(d);
+    cxUid += 1;
+    var idF = 'cx-from-' + cxUid, idT = 'cx-to-' + cxUid, idP = 'cx-pw-' + cxUid;
+    var fromIn = h('input', { class: 'input', id: idF, type: 'date', value: def.from });
+    var toIn = h('input', { class: 'input', id: idT, type: 'date', value: def.to });
+    // 下載密碼欄【不當成密碼欄】給瀏覽器 / 密碼管理器看(0916 審查):原本的「新密碼」autocomplete 會跳「建議高強度密碼」、成功後問「要儲存密碼嗎」,
+    //   存進同步的瀏覽器設定檔 = 第二組密碼形同虛設。桌機用 type=text + -webkit-text-security 遮字(沒有密碼欄就不會問);
+    //   不支援遮字、或觸控裝置(手機鍵盤會學 text 欄的字)才退回 type=password。一律 autocomplete=off + 各家密碼管理器的忽略屬性、不自動聚焦。
+    var cssMask = false;
+    try { cssMask = !!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc')) && !(window.matchMedia && matchMedia('(pointer: coarse)').matches); } catch (e) { cssMask = false; }
+    var pwIn = h('input', { class: 'input' + (cssMask ? ' cx-secret' : ''), id: idP, type: cssMask ? 'text' : 'password',
+      attrs: { autocomplete: 'off', spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off', 'data-1p-ignore': 'true', 'data-lpignore': 'true', 'data-bwignore': 'true', 'data-form-type': 'other' } });
+    var progress = h('p', { class: 'field-hint', hidden: true, attrs: { 'aria-live': 'polite' } });
+    var run = null;
+    var closed = false;   // 0916:對話框被強制關閉(登入過期)時一併停止下載、不存檔
+    var stopBtn = TR.ui.button({ label: '停止下載', variant: 'ghost', size: 'sm', onClick: function(){
+      if (!run) return;
+      run.stopped = true;
+      cxAbortAll(run);
+      stopBtn.disabled = true;
+      progress.textContent = '正在停止…';
+      if (run.kick) run.kick();
+    } });
+    var stopRow = h('div', { class: 'sys-actions', hidden: true }, stopBtn);
+    var body = h('div', { class: 'dialog-form' },
+      h('p', { class: 'dialog-desc', text: '選擇要下載的上傳日期(台灣時間,含頭尾),一次最多 ' + CX_MAX_DAYS + ' 天。多位司機收到同一則訊息只會留一筆,存成一個 .jsonl 檔。' }),
+      h('div', { class: 'cx-range' },
+        h('div', { class: 'field' }, h('label', { class: 'field-label', for: idF, text: '開始日期' }), fromIn),
+        h('div', { class: 'field' }, h('label', { class: 'field-label', for: idT, text: '結束日期' }), toIn)),
+      def.earliest ? h('p', { class: 'field-hint', text: '伺服器上有 ' + def.earliest + ' 到 ' + def.latest + ' 的檔' }) : null,
+      h('div', { class: 'field' },
+        h('label', { class: 'field-label', for: idP, text: '下載密碼' }), pwIn,
+        h('p', { class: 'field-hint', text: '不是後台登入密碼。請不要讓瀏覽器儲存這組密碼。每次下載都會記錄時間與 IP;錯太多次會暫時被鎖住。' })),
+      h('p', { class: 'dialog-note', text: '只有擁有者知道下載密碼;下載的內容已遮蔽電話等個資,但仍含群組名與門牌,請勿外流' }),
+      progress, stopRow);
+    function setInputs(dis){ fromIn.disabled = dis; toIn.disabled = dis; pwIn.disabled = dis; }
+    function idle(){ setInputs(false); progress.hidden = true; progress.textContent = ''; }
+    pwIn.addEventListener('keydown', function(ev){
+      if (ev.key !== 'Enter' || ev.isComposing) return;
+      ev.preventDefault();
+      var dlg = pwIn.closest ? pwIn.closest('.dialog') : null;
+      var btn = dlg ? dlg.querySelector('.dialog-foot .btn-primary') : null;
+      if (btn && !btn.disabled) btn.click();
+    });
+    var p = TR.dialog.confirm({
+      title: '下載語料',
+      body: body,
+      level: 'B',
+      confirmText: '下載',
+      onConfirm: function(ctl){
+        var from = fromIn.value, to = toIn.value;
+        var rangeErr = cxRangeError(from, to);
+        if (rangeErr) { ctl.setError(TR.err({ error: rangeErr }).text); return false; }
+        // 先確認瀏覽器做得到,才去跟伺服器要網址(否則白記一筆下載紀錄)
+        if (typeof DecompressionStream !== 'function' || !(window.crypto && crypto.subtle) || typeof TextDecoder !== 'function') {
+          ctl.setError('這個瀏覽器不支援解壓縮,請改用新版 Chrome、Edge、Safari 或 Firefox');
+          return false;
+        }
+        var pw = pwIn.value;
+        pwIn.value = '';
+        if (!pw) { ctl.setError('請輸入下載密碼'); return false; }
+        setInputs(true);
+        progress.hidden = false;
+        progress.textContent = '向伺服器確認下載密碼…';
+        // auth: 'login' = 下載密碼錯 / 被鎖時不要把整個後台登出(錯誤就顯示在這個對話框)
+        return TR.api('corpusExport', { from: from, to: to, export_password: pw }, { auth: 'login' }).then(function(res){
+          pw = null;
+          if (closed) return false;   // 0916:等伺服器回應時對話框已被強制關閉 → 不開始下載
+          if (res && res.error === 'unauthorized') { idle(); TR.session.expire(); return false; }
+          if (!res || !res.ok) {
+            idle();
+            var e = TR.err(res), text = e.text;
+            if (res && res.error === 'too_large') text = '這段日期有 ' + fmtN(res.files) + ' 個檔(' + TR.fmt.bytes(res.bytes) + '),超過一次上限 ' + fmtN(res.max_files) + ' 個檔 / ' + TR.fmt.bytes(res.max_bytes) + ',請縮短日期範圍';
+            else if (res && res.error === 'locked_out' && res.scope === 'global') text = '最近 1 小時下載密碼錯太多次,已暫停下載。如果不是你,請立刻更換後台登入密碼(ADMIN_PASSWORD)';
+            else if (res && res.error === 'locked_out') text = '錯誤次數太多,這個網路暫時被鎖住,請 15 分鐘後再試';
+            ctl.setError(text, e.tech);
+            if (res && (res.error === 'export_forbidden' || res.error === 'too_large' || res.error === 'sign_failed')) TR.data.load('corpusExportLog', { force: true });
+            if (res && res.error === 'export_forbidden') setTimeout(function(){ try { pwIn.focus(); } catch (x) {} }, 0);
+            return false;
+          }
+          TR.data.load('corpusExportLog', { force: true });   // 伺服器比對密碼前已記一筆
+          var files = Array.isArray(res.files) ? res.files : [];
+          if (!files.length) {
+            idle();
+            TR.toast({ type: 'info', text: res.from + ' 到 ' + res.to + ' 沒有語料檔' });
+            return true;
+          }
+          var expected = files.length + num(res.unsigned);
+          progress.textContent = '下載中 0/' + fmtN(files.length) + ' 個檔';
+          run = cxNewRun();
+          stopBtn.disabled = false;
+          stopRow.hidden = false;
+          return corpusDownloadMerge(files, run, function(doneN, total){
+            if (run && !run.stopped) progress.textContent = '下載中 ' + fmtN(doneN) + '/' + fmtN(total) + ' 個檔';
+          }).then(function(r){
+            files = null;
+            run = null;
+            stopRow.hidden = true;
+            if (closed) return false;   // 0916:下載中對話框被強制關閉 → 不存檔、不再開「只存成功的部分」
+            if (r.stopped) { idle(); ctl.setError('已停止,沒有存檔'); return false; }
+            if (r.over) {
+              idle();
+              ctl.setError('這段日期解壓後超過 ' + TR.fmt.bytes(CX_MAX_TOTAL_RAW) + ',瀏覽器放不下,沒有存檔。請縮短日期範圍,分幾次下載');
+              return false;
+            }
+            var sum = r.acc.sum;
+            var lost = r.failed + sum.bad_file + num(res.unsigned);
+            var okFiles = expected - lost;
+            var parts = cxMergeParts(r.acc);
+            var base = 'tripradar-corpus_' + res.from + '_' + res.to;
+            // 沒拿到的原因:4xx 多半是網址過期(網路太慢)→ 叫他縮短日期;逾時另外講
+            var why = r.expired ? '其中 ' + fmtN(r.expired) + ' 個是下載網址過期或被拒(多半是網路太慢),請縮短日期範圍再下載。' :
+              r.timeouts ? '其中 ' + fmtN(r.timeouts) + ' 個超過 60 秒沒下載完。' : '';
+            if (!lost) {
+              idle();
+              if (!parts.length) {
+                TR.toast({ type: 'info', text: '下載完成,但沒有有效紀錄' + (sum.invalid ? '(' + fmtN(sum.invalid) + ' 筆格式不對)' : '') });
+                return true;
+              }
+              corpusSaveJsonl(parts, base + '.jsonl');
+              TR.toast({ type: 'ok', text: '已下載 ' + fmtN(sum['new']) + ' 筆紀錄(' + fmtN(expected) + ' 個檔' +
+                (sum.duplicate ? ',去掉重複 ' + fmtN(sum.duplicate) + ' 筆' : '') + (sum.invalid ? ',略過格式不對 ' + fmtN(sum.invalid) + ' 筆' : '') + ')' });
+              return true;
+            }
+            // 有檔沒拿到:不自動存(寧可標記失敗,不假裝完整)→ 問要不要只存成功的部分,檔名標 _partial
+            progress.textContent = '有 ' + fmtN(lost) + ' 個檔沒拿到';
+            if (!parts.length) {
+              idle();
+              ctl.setError('有 ' + fmtN(lost) + ' 個檔沒下載到,沒有可存的紀錄。' + why + '請再按一次下載(會重新確認密碼、再記一筆)');
+              return false;
+            }
+            return TR.dialog.confirm({
+              title: '有檔案沒下載到',
+              body: '共 ' + fmtN(expected) + ' 個檔,有 ' + fmtN(lost) + ' 個沒拿到(網路中斷、網址過期或檔案損壞)。' + why + '要只存成功的 ' + fmtN(okFiles) + ' 個檔(' + fmtN(sum['new']) + ' 筆紀錄)嗎?檔名會多 _partial,內容不完整;要完整的請選「不要存」後再下載一次。',
+              level: 'B',
+              confirmText: '只存成功的部分',
+              cancelText: '不要存'
+            }).then(function(yes){
+              idle();
+              if (!yes) { ctl.setError('沒有存檔:有 ' + fmtN(lost) + ' 個檔沒下載到。' + why + '請再按一次下載(會重新確認密碼、再記一筆)'); return false; }
+              corpusSaveJsonl(parts, base + '_partial.jsonl');
+              TR.toast({ type: 'info', text: '已存不完整的語料:' + fmtN(sum['new']) + ' 筆(少了 ' + fmtN(lost) + ' 個檔)' });
+              return true;
+            });
+          });
+        }).then(null, function(err){ run = null; stopRow.hidden = true; idle(); throw err; });
+      }
+    });
+    // 不自動聚焦密碼欄(聚焦會引出瀏覽器的密碼建議);取消 / X / Esc / 下載完關掉,一律清空欄位
+    //   0916:被強制關閉(登入過期 closeAll 不看 busy)時下載可能還在跑 → 標記 closed 並中止所有請求
+    function onClosed(){
+      closed = true;
+      pwIn.value = '';
+      if (run) { run.stopped = true; cxAbortAll(run); if (run.kick) run.kick(); }
+    }
+    p.then(onClosed, onClosed);
+    return p;
+  }
+  function corpusExportLogBox(){
+    var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '最近下載' }));
+    var st = TR.data.get('corpusExportLog');
+    var v = st.value;
+    if (!v) {
+      if (st.error && /need_migration_v55/.test(String(st.error.tech || ''))) box.appendChild(h('p', { class: 'sys-note', text: '需先執行 v55 SQL 才能下載與記錄' }));
+      else if (st.error) box.appendChild(h('p', { class: 'sys-note', text: '暫時讀不到下載紀錄' }));
+      else box.appendChild(h('p', { class: 'sys-note', text: '讀取中…' }));
+      return box;
+    }
+    // 最近 24 小時下載密碼錯誤 / 被鎖(伺服器 failed):有人在猜要看得到
+    var f = v.failed || {};
+    if (num(f.count) > 0) {
+      // 0916:unfinished = 比對途中出錯、沒寫到結果的次數(伺服器已併進 count)
+      box.appendChild(h('p', { class: 'sys-note is-warn', text: '最近 24 小時下載密碼錯誤或被鎖 ' + fmtN(f.count) + ' 次' +
+        (num(f.unfinished) > 0 ? '(其中 ' + fmtN(f.unfinished) + ' 次沒有寫到結果)' : '') + '(最後一次 ' +
+        (f.last_at ? TR.fmt.dateTimeFull(f.last_at) : '—') + '・IP ' + String(f.last_ip || 'unknown') + ')。如果不是你,請立刻更換後台登入密碼' }));
+    }
+    var rows = (Array.isArray(v.rows) ? v.rows : []).slice(0, 5);
+    if (!rows.length) {
+      box.appendChild(h('p', { class: 'sys-note', text: '還沒有人從後台下載過' }));
+      return box;
+    }
+    var CX_STATUS_TXT = { too_large: '超過上限,沒有發網址', list_error: '列檔失敗,沒有發網址', sign_failed: '產生網址失敗' };
+    var list = h('div', { class: 'list' });
+    rows.forEach(function(r){
+      var st = CX_STATUS_TXT[r.status] || '';
+      list.appendChild(h('div', { class: 'list-row sys-corpus-row' },
+        h('span', { class: 'grow' },
+          h('span', { text: (r.from ? cxMd(r.from) : '—') + ' – ' + (r.to ? cxMd(r.to) : '—') + '・' + fmtN(r.files) + ' 個檔・' + TR.fmt.bytes(r.bytes) + (st ? '・' + st : '') }),
+          h('span', { class: 'sys-tool-sub', text: TR.fmt.dateTimeFull(r.at) + '・IP ' + String(r.ip || 'unknown') }))));
+    });
+    box.appendChild(list);
+    box.appendChild(h('p', { class: 'sys-note', text: '密碼正確的每一次都會記一筆(比對密碼前就先記;超過上限、失敗也記);IP 只顯示前幾碼' }));
+    return box;
+  }
+
+  function corpusClear(t, d){
+    if (!TR.can('write')) return Promise.resolve();
+    var dayRows = (d && Array.isArray(d.days)) ? d.days : [];
+    var mode = 'all';
+    cxUid += 1;
+    var idD = 'cx-before-' + cxUid;
+    var dayIn = h('input', { class: 'input', id: idD, type: 'date', value: cxTodayTw() });
+    var desc = h('p', { class: 'dialog-desc' });
+    var dayField = h('div', { class: 'field', hidden: true },
+      h('label', { class: 'field-label', for: idD, text: '刪除這天以前的檔(這天不刪)' }), dayIn);
+    // 預估數量只看卡片上的每日統計(最近 30 天);伺服器照資料夾日期實際刪
+    function estimate(day){ var n = 0; dayRows.forEach(function(x){ if (String(x.day) < day) n += num(x.files); }); return n; }
+    function sync(){
+      var day = dayIn.value;
+      dayField.hidden = mode !== 'before';
+      if (mode !== 'before') desc.textContent = '刪除伺服器上全部 ' + fmtN(t.files) + ' 個語料檔(' + TR.fmt.bytes(t.bytes) + '),無法復原。';
+      else if (isNaN(cxDayMs(day))) desc.textContent = '請選擇日期。';
+      else desc.textContent = '只刪除上傳日期(台灣時間)在 ' + day + ' 以前的語料檔,' + day + ' 當天和之後的都保留。依目前統計約 ' + fmtN(estimate(day)) + ' 個檔,無法復原。';
+    }
+    var seg = TR.ui.segmented({
+      items: [{ value: 'all', label: '全部' }, { value: 'before', label: '只清除某天以前' }],
+      value: 'all', ariaLabel: '清除範圍',
+      onChange: function(v){ mode = v === 'before' ? 'before' : 'all'; sync(); }
+    });
+    dayIn.addEventListener('input', sync);
+    dayIn.addEventListener('change', sync);
+    sync();
+    var body = h('div', { class: 'dialog-form' }, seg.el, desc, dayField,
+      h('p', { class: 'dialog-desc', text: '司機手機若仍開著蒐集,之後還會繼續上傳新的;開發者電腦上已下載的副本不受影響。' }));
     return TR.dialog.confirm({
-      title: '立即清除全部語料?',
-      body: '刪除伺服器上全部 ' + fmtN(t.files) + ' 個語料檔(' + TR.fmt.bytes(t.bytes) + '),無法復原。司機手機若仍開著蒐集,之後還會繼續上傳新的;開發者電腦上已下載的副本不受影響。',
+      title: '立即清除語料?',
+      body: body,
       level: 'C',
       requireType: CORPUS_CLEAR_WORD,
-      confirmText: '刪除全部語料檔',
+      confirmText: '刪除語料檔',
       onConfirm: function(ctl){
-        return TR.api('corpusClear', { confirm: CORPUS_CLEAR_WORD }).then(function(res){
+        var day = dayIn.value;
+        if (mode === 'before' && isNaN(cxDayMs(day))) { ctl.setError('請選擇日期'); return false; }
+        return TR.api('corpusClear', { confirm: CORPUS_CLEAR_WORD, before_date: mode === 'before' ? day : null }).then(function(res){
           if (res && res.ok) {
-            TR.toast({ type: 'ok', text: '已清除 ' + fmtN(res.deleted) + ' 個檔' + (num(res.remaining) > 0 ? ',還有 ' + fmtN(res.remaining) + ' 個,請再按一次' : '') });
+            TR.toast({ type: 'ok', text: '已清除 ' + fmtN(res.deleted) + ' 個檔' + (mode === 'before' ? '(' + day + ' 以前)' : '') + (num(res.remaining) > 0 ? ',還有 ' + fmtN(res.remaining) + ' 個,請再按一次' : '') });
             loadCorpus(true);
             return true;
           }
@@ -5164,6 +5677,7 @@ html.has-overlay{ overflow:hidden; }
     TR.data.subscribe('geoUsage', onGeo);
     TR.data.subscribe('devStatus', function(){ if (S.mounted) guard(S.cards.version, renderVersion); });
     TR.data.subscribe('corpus', function(){ if (S.mounted) guard(S.cards.corpus, renderCorpus); });
+    TR.data.subscribe('corpusExportLog', function(){ if (S.mounted) guard(S.cards.corpus, renderCorpus); });   // 0916 最近下載
 
     renderHealth();
     renderCaps();
