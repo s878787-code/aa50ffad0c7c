@@ -870,7 +870,7 @@ html.has-overlay{ overflow:hidden; }
   TR.URL_BASE = "https://wnzvbbqaikzxsajqyggg.supabase.co/functions/v1/admin";
   TR.role = 'admin';
 
-  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview','costBaseline','seedPack'];
+  var VIEWER_READ = ['list','reports','geoUsage','places','missQueue','siteViews','placeCandidates','aiLoop','getAiPrompt','devStatus','serverStatus','geoAssetStats','geoAssetLookup','geoAssetReview','costBaseline','seedPack','corpusStatus'];
   TR.can = function(kind, action){
     if (TR.role === 'admin') return true;
     if (kind === 'read') return VIEWER_READ.indexOf(action) >= 0;
@@ -1012,7 +1012,10 @@ html.has-overlay{ overflow:hidden; }
     else if (e === 'partial_write') text = '只完成一部分,請重新整理確認';
     else if (e === 'forbidden_viewer') text = '唯讀帳號無法執行這個動作';
     else if (e === 'locked_out') text = '密碼錯誤次數太多,請確認密碼再試';
-    else if (e === 'not_ready' || e === 'need_migration_v7' || e === 'need_migration_v51' || e === 'need_migration_v53') text = '這項功能還沒啟用,請聯絡工程人員';
+    else if (e === 'not_ready' || e === 'need_migration_v7' || e === 'need_migration_v51' || e === 'need_migration_v53' || e === 'need_migration_v54') text = '這項功能還沒啟用,請聯絡工程人員';
+    // 派單語料蒐集(0915)
+    else if (e === 'confirm_required') text = '確認字不對,沒有清除任何檔案';
+    else if (e === 'bad_days') text = '保留天數要是 1 到 30 的整數';
     // 座標種子包(0915)
     else if (e === 'version_conflict') text = '剛有人發佈過新版,請重新整理再發';
     else if (e === 'seed_mismatch') text = '線上與紀錄不一致,請先重新發佈一次';
@@ -2266,7 +2269,9 @@ html.has-overlay{ overflow:hidden; }
     // 每 100 張有效卡:近 7 天欄由同一份 30 天資料在前端算,只打一次
     costBaseline: { action: 'costBaseline',  payload: { days: 30 },  ttl: 300000, pick: pickOk },
     // 座標種子包(0915):線上版本/紀錄/清單/發佈預覽一次帶回;唯讀角色也可讀
-    seedPack:   { action: 'seedPack',        payload: {},            ttl: 60000,  pick: pickOk }
+    seedPack:   { action: 'seedPack',        payload: {},            ttl: 60000,  pick: pickOk },
+    // 派單語料蒐集(0915,v54):誰在蒐集/保留天數/每日檔數(只有數量);系統頁卡片與司機頁開關共用,唯讀角色也可讀
+    corpus:     { action: 'corpusStatus',    payload: {},            ttl: 60000,  pick: pickOk }
   };
   var STORES = {};
   Object.keys(STORE_DEFS).forEach(function(k){ STORES[k] = { value: null, error: null, loadedAt: 0, loading: false, inflight: null, subs: [], fails: 0 }; });
@@ -4867,6 +4872,152 @@ html.has-overlay{ overflow:hidden; }
     });
   }
 
+  // ----- 6b. 派單語料蒐集(0915;SQL v54)-----
+  // 後台只看得到數量與時間,看不到任何訊息內容;唯讀角色看得到狀態/保留天數/每日統計,沒有任何按鈕。
+  var CORPUS_CLEAR_WORD = '清除語料';
+  var cpSig = null;
+  function buildCorpus(){
+    var card = TR.ui.card({ id: 'sys-corpus', title: '派單語料蒐集', info: '只蒐集後台指定司機的群組派單訊息,手機端先遮蔽個資。後台看不到訊息內容,只顯示數量。' });
+    card.body.appendChild(TR.ui.skeleton({ lines: 5 }));
+    return card;
+  }
+  function loadCorpus(force){
+    if (!S.cards.corpus) return Promise.resolve();
+    return TR.data.load('corpus', { force: !!force });
+  }
+  function renderCorpus(){
+    var card = S.cards.corpus; if (!card) return;
+    var st = TR.data.get('corpus');
+    var d = st.value;
+    var canW = TR.can('write');
+    var sig;
+    try { sig = JSON.stringify([d, st.error, canW]); } catch (e) { sig = null; }
+    if (sig != null && sig === cpSig && card.body.firstChild) return;
+    cpSig = sig;
+    card.body.textContent = '';
+    if (!d) {
+      if (st.error && /need_migration_v54/.test(String(st.error.tech || ''))) card.body.appendChild(TR.ui.emptyState({ title: '這項功能還沒啟用', text: '需先執行 v54 SQL' }));
+      else if (st.error) card.body.appendChild(errState('暫時讀不到語料蒐集狀態', st.error, function(){ return loadCorpus(true); }));
+      else card.body.appendChild(TR.ui.skeleton({ lines: 5 }));
+      return;
+    }
+    card.body.appendChild(corpusDrivers(d));
+    card.body.appendChild(corpusRetention(d, canW));
+    card.body.appendChild(corpusDays(d, canW));
+  }
+  function corpusDrivers(d){
+    var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '誰在蒐集' }));
+    var list = Array.isArray(d.enabled) ? d.enabled : [];
+    if (!list.length) {
+      box.appendChild(TR.ui.emptyState({ title: '目前沒有司機在蒐集', text: '到「司機」頁,在該司機的更多動作按「蒐集語料…」開啟(請先告知司機)。' }));
+      return box;
+    }
+    box.appendChild(h('div', { class: 'sys-big' }, h('span', { class: 'stat-value num', text: fmtN(list.length) }), h('span', { class: 'muted', text: '位司機蒐集中' })));
+    // 伺服器暫時讀不到「檔案 ↔ 司機」對照表時(owner_lookup_failed),上傳狀態一律顯示「暫時無法確認」,不可亮「尚未收到檔案」
+    var lookupFailed = d.owner_lookup_failed === true;
+    var rows = h('div', { class: 'list' });
+    list.forEach(function(r){
+      var name = r.driver_name ? String(r.driver_name) : TR.fmt.maskKey(r.key);
+      var up = lookupFailed || r.waiting == null ? '暫時無法確認' : (r.last_upload_at ? TR.fmt.rel(r.last_upload_at) : '還沒有');
+      var sub = '開啟於 ' + TR.fmt.rel(r.corpus_enabled_at) + '・最後上傳 ' + up +
+        (num(r.files_7d) ? '・近 7 天 ' + fmtN(r.files_7d) + ' 個檔(' + TR.fmt.bytes(r.bytes_7d) + ')' : '');
+      var badge = r.waiting === true ? TR.ui.badge('尚未收到檔案', 'warn')
+        : (lookupFailed || r.waiting == null ? TR.ui.badge('暫時無法確認', 'neutral') : TR.ui.badge('蒐集中', 'ok'));
+      rows.appendChild(h('div', { class: 'list-row sys-corpus-row' },
+        h('span', { class: 'grow' }, h('span', { text: name }), h('span', { class: 'sys-tool-sub', text: sub }),
+          r.waiting === true ? h('span', { class: 'sys-tool-sub', text: '可能 App 版本太舊、沒上線或沒網路' }) : null),
+        badge));
+    });
+    box.appendChild(rows);
+    if (lookupFailed) box.appendChild(h('p', { class: 'sys-note', text: '暫時讀不到司機對照表,上傳狀態請稍後再看(不代表沒收到檔案,請不要因此關掉再開啟,會清掉手機上還沒上傳的資料)' }));
+    return box;
+  }
+  function corpusRetention(d, canW){
+    var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '保留天數' }));
+    var days = num(d.retention_days) || 7;
+    box.appendChild(TR.ui.kv([[kvLabel('伺服器保留', '伺服器上的語料超過這個天數自動刪除。開發者已下載到電腦的副本不受影響。'),
+      kvVal(h('span', { class: 'num', text: days + ' 天' }), canW ? TR.ui.button({ label: '調整', size: 'sm', onClick: function(){ return corpusRetentionForm(days); } }) : null)]]));
+    // corpus 函式被重新部署成「要驗 JWT」→ v54b 每天不帶金鑰的自動清理會被閘道擋掉(只有伺服器確定被擋時才顯示)
+    if (d.sweep_gateway_open === false) {
+      box.appendChild(h('p', { class: 'sys-note' }, TR.ui.badge('注意', 'warn'),
+        ' 每日自動清理會被擋:corpus 函式目前要求登入金鑰(JWT)。若有跑 v54b 每日清理排程,請用 --no-verify-jwt 重新部署 corpus;沒跑 v54b 時只在有上傳或打開這頁時清'));
+    }
+    return box;
+  }
+  function corpusRetentionForm(cur){
+    if (!TR.can('write')) return Promise.resolve();
+    return TR.dialog.form({
+      title: '語料保留天數', level: 'B', submitText: '下一步',
+      fields: [{ id: 'days', label: '保留天數(天)', type: 'number', value: cur, min: 1, max: 30, hint: '1–30 天,預設 7 天' }],
+      validate: function(v){
+        var s = String(v.days == null ? '' : v.days).trim();
+        var n = Number(s);
+        if (s === '' || !isFinite(n) || Math.floor(n) !== n || n < 1 || n > 30) return '請輸入 1 到 30 的整數';
+        return null;
+      },
+      review: function(v){
+        var n = Number(v.days);
+        return { title: '請確認變更', rows: [{ label: '保留天數', from: cur + ' 天', to: n + ' 天' }], note: n < cur ? '改短會立刻刪掉超過天數的檔。' : '改長不會找回已經刪掉的檔。' };
+      },
+      onSubmit: function(v, ctl){
+        var n = Number(v.days);
+        return TR.api('corpusSetRetention', { days: n }).then(function(res){
+          if (res && res.ok) {
+            TR.toast({ type: 'ok', text: '已設為 ' + n + ' 天' + (num(res.deleted) ? '(已刪除 ' + fmtN(res.deleted) + ' 個過期檔)' : '') });
+            loadCorpus(true);
+            return true;
+          }
+          var e = TR.err(res); ctl.setError(e.text, e.tech);
+          return false;
+        });
+      }
+    });
+  }
+  function corpusDays(d, canW){
+    var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '每日收到' }));
+    var t = d.totals || {};
+    var days = (Array.isArray(d.days) ? d.days : []).slice(0, 14);
+    if (!num(t.files)) {
+      box.appendChild(h('p', { class: 'sys-note', text: '伺服器上目前沒有語料檔' }));
+    } else {
+      var top = 1;
+      days.forEach(function(x){ top = Math.max(top, num(x.bytes)); });
+      if (days.length) {
+        box.appendChild(TR.ui.barList({ rows: days.map(function(x){
+          return { label: String(x.day || '').slice(5).replace('-', '/'), value: TR.fmt.bytes(x.bytes), sub: fmtN(x.files) + ' 個檔・' + fmtN(x.drivers) + ' 位司機', pct: Math.max(2, Math.round(100 * num(x.bytes) / top)) };
+        }) }));
+      }
+      box.appendChild(h('p', { class: 'sys-note', text: '合計 ' + fmtN(t.files) + ' 個檔・' + TR.fmt.bytes(t.bytes) + (t.oldest_at ? '・最舊 ' + TR.fmt.date(t.oldest_at) : '') }));
+    }
+    if (d.overdue) box.appendChild(h('p', { class: 'sys-note' }, TR.ui.badge('注意', 'warn'), ' 有超過保留天數的檔案尚未清掉' + (canW ? ',按「立即清除語料」或稍後再看' : '')));
+    if (num(d.unknown_owner_files) > 0) box.appendChild(h('p', { class: 'sys-note', text: '其中 ' + fmtN(d.unknown_owner_files) + ' 個檔來自已刪除的金鑰' }));
+    if (canW && num(t.files) > 0) {
+      box.appendChild(h('div', { class: 'sys-actions' }, TR.ui.button({ label: '立即清除語料', variant: 'danger', onClick: function(){ return corpusClear(t); } })));
+    }
+    return box;
+  }
+  function corpusClear(t){
+    if (!TR.can('write')) return Promise.resolve();
+    return TR.dialog.confirm({
+      title: '立即清除全部語料?',
+      body: '刪除伺服器上全部 ' + fmtN(t.files) + ' 個語料檔(' + TR.fmt.bytes(t.bytes) + '),無法復原。司機手機若仍開著蒐集,之後還會繼續上傳新的;開發者電腦上已下載的副本不受影響。',
+      level: 'C',
+      requireType: CORPUS_CLEAR_WORD,
+      confirmText: '刪除全部語料檔',
+      onConfirm: function(ctl){
+        return TR.api('corpusClear', { confirm: CORPUS_CLEAR_WORD }).then(function(res){
+          if (res && res.ok) {
+            TR.toast({ type: 'ok', text: '已清除 ' + fmtN(res.deleted) + ' 個檔' + (num(res.remaining) > 0 ? ',還有 ' + fmtN(res.remaining) + ' 個,請再按一次' : '') });
+            loadCorpus(true);
+            return true;
+          }
+          var e = TR.err(res); ctl.setError(e.text, e.tech);
+          return false;
+        });
+      }
+    });
+  }
+
   // ----- 7. scale -----
   function buildScale(){
     var card = TR.ui.card({ id: 'sys-scale', title: '資料規模', collapsible: true, open: false, info: '位置相關資料目前累積的筆數。門牌資料是估計值。' });
@@ -5001,27 +5152,31 @@ html.has-overlay{ overflow:hidden; }
     S.cards.classifier = buildClassifier();
     if (TR.can('read', 'getAiPrompt')) S.cards.airules = buildAiRules();
     if (TR.can('read', 'storageUsage') && TR.can('read', 'dbStorage')) S.cards.storage = buildStorage();
+    if (TR.can('read', 'corpusStatus')) S.cards.corpus = buildCorpus();
     if (TR.can('read', 'geoAssets')) S.cards.scale = buildScale();
     if (TR.can('read', 'devStatus')) S.cards.version = buildVersion();
     S.cards.tools = buildTools();
-    ['status', 'health', 'version', 'caps', 'abuse', 'classifier', 'airules', 'storage', 'scale', 'tools'].forEach(function(k){
+    ['status', 'health', 'version', 'caps', 'abuse', 'classifier', 'airules', 'storage', 'corpus', 'scale', 'tools'].forEach(function(k){
       if (S.cards[k]) section.appendChild(S.cards[k].el);
     });
     S.mounted = true;
 
     TR.data.subscribe('geoUsage', onGeo);
     TR.data.subscribe('devStatus', function(){ if (S.mounted) guard(S.cards.version, renderVersion); });
+    TR.data.subscribe('corpus', function(){ if (S.mounted) guard(S.cards.corpus, renderCorpus); });
 
     renderHealth();
     renderCaps();
     renderClassifier();
     renderVersion();
+    renderCorpus();
     if (S.cards.version) TR.data.load('devStatus');
     var geo = TR.data.get('geoUsage');
     if (geo.loadedAt) TR.page.markUpdated('system', new Date(geo.loadedAt));
     if (!geo.value && !geo.loading) TR.data.load('geoUsage');
     loadAbuse();
     loadStorage();
+    loadCorpus(false);
     loadServerStatus(false);
     TR.poll.register('serverStatus', 60000, function(){
       if (!S.mounted || !S.cards.status || !TR.page.isVisible('system')) return;
@@ -5036,6 +5191,7 @@ html.has-overlay{ overflow:hidden; }
     var source = (opts && opts.source) || 'show';
     if (source === 'user') {
       var jobs = [TR.data.load('geoUsage', { force: true }), loadAbuse(), loadStorage()];
+      if (S.cards.corpus) jobs.push(loadCorpus(true));
       if (S.cards.status) jobs.push(loadServerStatus(true));
       if (S.cards.airules && AR.loaded) jobs.push(loadAiRules());
       if (S.cards.scale && (SC.loaded || S.cards.scale.el.open)) jobs.push(loadScale());
@@ -5046,6 +5202,7 @@ html.has-overlay{ overflow:hidden; }
     var stale = 5 * 60 * 1000;
     if (S.cards.abuse && Date.now() - AB.loadedAt > stale) loadAbuse();
     if (S.cards.storage && Date.now() - ST.loadedAt > stale) loadStorage();
+    if (S.cards.corpus) loadCorpus(false);
     if (S.cards.status && Date.now() - SV.loadedAt > 60000) loadServerStatus(false);
     if (S.cards.version) TR.data.load('devStatus');
     if (source !== 'show') return;
@@ -5781,6 +5938,37 @@ html.has-overlay{ overflow:hidden; }
     });
   }
 
+  // 派單語料蒐集(0915,v54):逐位開關(預設全部關);開之前要先告知司機並取得同意(對話框寫明)。
+  //   手機下一次 verify 心跳(≤5 分)生效;關閉時手機停止蒐集並刪掉還沒上傳的緩衝。
+  function toggleCorpus(r){
+    if (!TR.can('write')) return Promise.resolve();
+    var turnOn = r.corpus_enabled !== true;
+    var cv = TR.data.value('corpus');
+    var days = cv && Number(cv.retention_days) > 0 ? Number(cv.retention_days) : 7;
+    return TR.dialog.confirm({
+      title: (turnOn ? '開始蒐集語料:' : '停止蒐集語料:') + who(r),
+      body: turnOn
+        ? '開啟後,這位司機手機收到的「群組派單訊息」會先在手機上遮掉電話、LINE ID、車牌、身分證(門牌保留),約每 2 小時上傳一次,伺服器保留 ' + days + ' 天後自動刪除。私訊不收。請先告知司機並取得同意。'
+        : '手機 5 分鐘內停止蒐集並刪除手機上尚未上傳的資料;伺服器上已收到的依保留天數自動刪除,要立刻刪除請到系統頁「派單語料蒐集」。',
+      rows: [{ label: '語料蒐集', from: turnOn ? '關' : '開', to: turnOn ? '開' : '關' }],
+      level: 'B',
+      confirmText: turnOn ? '開始蒐集' : '停止蒐集',
+      onConfirm: function(ctl){
+        return TR.api('corpusSetDriver', { key: r.key, on: turnOn }).then(function(res){
+          if (!res || !res.ok) {
+            var e = TR.err(res);
+            ctl.setError(res && res.error === 'need_migration_v54' ? '這項功能還沒啟用(需先跑 v54 SQL)' : e.text, e.tech);
+            return false;
+          }
+          TR.toast({ type: 'ok', text: (turnOn ? '已開啟「' : '已停止「') + who(r) + '」的語料蒐集' });
+          reload();
+          if (TR.can('read', 'corpusStatus')) TR.data.load('corpus', { force: true });
+          return true;
+        });
+      }
+    });
+  }
+
   function setActive(r, on){
     return TR.api('setActive', { key: r.key, active: on });
   }
@@ -5857,6 +6045,7 @@ html.has-overlay{ overflow:hidden; }
         { label: '加減天數', onClick: function(){ addDays(r); } },
         { label: '換機(清除綁定)', onClick: function(){ unbind(r); } },
         { label: r.active ? '停用' : '啟用', onClick: function(){ if (r.active) disable(r); else enable(r); } },
+        { label: r.corpus_enabled === true ? '停止蒐集語料' : '蒐集語料…', hidden: !TR.can('write'), onClick: function(){ toggleCorpus(r); } },
         { separator: true },
         { label: '刪除', danger: true, onClick: function(){ remove(r); } }
       ];
@@ -6179,7 +6368,9 @@ html.has-overlay{ overflow:hidden; }
       h('span', { class: 'drv-sub', text: r.last_seen_at ? '上線 ' + TR.fmt.rel(r.last_seen_at) : '尚未上線' }),
       r.last_app_version ? h('span', { class: 'drv-sub num', text: 'App 版本 ' + String(r.last_app_version) }) : null,
       // 座標種子包(0915):null = 舊版 App 未回報(不顯示)、0 = 新版但沒有包、N = 手機上的包版本
-      r.seed_pack_version != null ? h('span', { class: 'drv-sub num', text: Number(r.seed_pack_version) > 0 ? '種子包 v' + String(r.seed_pack_version) : '無種子包' }) : null);
+      r.seed_pack_version != null ? h('span', { class: 'drv-sub num', text: Number(r.seed_pack_version) > 0 ? '種子包 v' + String(r.seed_pack_version) : '無種子包' }) : null,
+      // 派單語料蒐集(0915,v54):後台開啟的司機才會出現(list 是 select *,v54 沒跑時欄位不存在 → 不顯示)
+      r.corpus_enabled === true ? h('span', null, TR.ui.badge('蒐集語料中', 'warn')) : null);
   }
   function cellAuth(r){
     var st = mf('status')(r);
