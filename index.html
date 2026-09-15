@@ -7950,7 +7950,9 @@ html.has-overlay{ overflow:hidden; }
     updateCounts();
   }
   function buildPending(section){
-    var card = TR.ui.card({ title: '待處理', info: '候選:付費查到的地名,採用後全隊免費。查無地標:近 30 天全隊常查不到的地點。寫入位置庫前請先核對座標。' });
+    // 0915 使用者要求:待處理/地點兩張可收合(記住開合狀態);從總覽深連結進來時強制展開,免得點了看不到
+    var card = TR.ui.card({ title: '待處理', collapsible: true, open: true, persistKey: 'plc-pending', info: '候選:付費查到的地名,採用後全隊免費。查無地標:近 30 天全隊常查不到的地點。寫入位置庫前請先核對座標。' });
+    UI.pendingCard = card;
     UI.tabs = TR.ui.segmented({
       variant: 'tabs', ariaLabel: '待處理類型', value: S.tab,
       items: [{ value: 'cands', label: '候選' }, { value: 'miss', label: '查無地標' }],
@@ -7972,7 +7974,8 @@ html.has-overlay{ overflow:hidden; }
   }
 
   function buildPlaces(section){
-    var card = TR.ui.card({ title: '地點' });
+    var card = TR.ui.card({ title: '地點', collapsible: true, open: true, persistKey: 'plc-places' });
+    UI.placesCard = card;
     UI.placeSearch = TR.ui.searchInput({ placeholder: '搜尋名稱、別名或縣市', value: S.query, onInput: function(v){
       S.query = v;
       syncSearch(false);
@@ -8992,6 +8995,8 @@ html.has-overlay{ overflow:hidden; }
     renderPlaces();
     renderGaStats();
     renderSeedPack();
+    if (params.tab) UI.pendingCard.setOpen(true);
+    if (params.q) UI.placesCard.setOpen(true);
     applyGaParam(params.ga || '', true);
     return loadAll(false).then(function(){ TR.page.markUpdated(NAME); });
   }
@@ -9012,8 +9017,10 @@ html.has-overlay{ overflow:hidden; }
     if (!S.mounted) return;
     var tab = p.tab === 'miss' ? 'miss' : 'cands';
     if (tab !== S.tab) { S.tab = tab; UI.tabs.set(tab); showTab(); }
+    if (p.tab) UI.pendingCard.setOpen(true);
     var q = p.q || '';
     if (q !== S.query.trim()) { S.query = q; UI.placeSearch.set(q); syncSearch(true); renderPlaces(); }
+    if (q) UI.placesCard.setOpen(true);
     applyGaParam(p.ga || '', true);
   }
 
