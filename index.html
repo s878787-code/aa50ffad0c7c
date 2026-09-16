@@ -43,6 +43,7 @@
   --dur:160ms; --ease:cubic-bezier(.22,.61,.36,1);
   --sidebar-w:224px; --rail-w:64px; --tabbar-h:60px; --topbar-h:64px; --content-max:1120px;
   --control-h:36px; --touch:44px;
+  --ptabs-h:44px;
 
   --z-base:0; --z-sticky:10; --z-nav:20; --z-popover:55; --z-drawer:40; --z-dialog:50; --z-toast:60; --z-errbar:70;
   color-scheme: light;
@@ -252,6 +253,26 @@ html.has-overlay{ overflow:hidden; }
 .tab:hover{ color:var(--ink); }
 .tab[aria-selected="true"]{ color:var(--accent-ink); border-bottom-color:var(--accent); }
 .count{ color:var(--ink-3); font-weight:var(--fw-regular); font-variant-numeric:tabular-nums; }
+/* 0916 頁內分頁列:頁首正下方、捲動時黏在頂端(比卡片內的黏性列高一層);底色蓋滿左右留白,窄螢幕分頁列自己橫向捲 */
+.ptabs{ --ptabs-pad:var(--sp-5); position:sticky; top:0; z-index:calc(var(--z-sticky) + 1); margin:0 calc(-1 * var(--ptabs-pad)); padding:0 var(--ptabs-pad); background:var(--bg); }
+/* 共用 .tabs 的底線靠分頁 margin-bottom:-1px 疊在列的 border 上,在橫向捲動的列裡會多出 1px 垂直捲動
+   (滾輪停在列上字會跳、還吃掉整頁捲動)。頁內分頁列改用 inset 陰影畫底線、分頁不再往下凸,列高剛好等於分頁高 */
+.ptabs > .tabs{ gap:var(--sp-2); overflow-y:hidden; border-bottom:0; box-shadow:inset 0 -1px 0 var(--line); }
+.ptabs > .tabs::-webkit-scrollbar{ display:none; }
+/* 左右各 8px 內距:焦點框往內縮 6px 才不壓到字、紅點與選取底線 */
+.ptabs .tab{ height:var(--ptabs-h); min-height:0; margin-bottom:0; padding:0 8px; }
+.ptabs .tab:focus-visible{ outline-offset:-6px; }
+.ptabs::before,.ptabs::after{ content:""; position:absolute; top:0; bottom:1px; width:24px; pointer-events:none; opacity:0; transition:opacity var(--dur) var(--ease); }
+.ptabs::before{ left:var(--ptabs-pad); background:linear-gradient(to left, transparent, var(--bg)); }
+.ptabs::after{ right:var(--ptabs-pad); background:linear-gradient(to right, transparent, var(--bg)); }
+.ptabs.is-fade-l::before,.ptabs.is-fade-r::after{ opacity:1; }
+.ptabs .count.is-alert{ display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:var(--r-pill); background:var(--danger-solid); color:var(--on-danger); font-size:11px; font-weight:var(--fw-bold); line-height:1; }
+.ptabs-panel{ display:flex; flex-direction:column; gap:var(--sp-4); min-width:0; }
+.ptabs-panel > .card{ scroll-margin-top:calc(var(--ptabs-h) + var(--sp-3)); }
+@media (max-width:859.98px){
+  .ptabs{ --ptabs-pad:var(--sp-4); }
+  .ptabs > .tabs{ gap:var(--sp-1); }
+}
 .chips{ display:flex; flex-wrap:wrap; gap:var(--sp-2); }
 .chip{ display:inline-flex; align-items:center; gap:4px; height:30px; padding:0 12px; border:1px solid var(--line-input); border-radius:var(--r-pill); background:var(--surface); color:var(--ink-2); font-size:var(--fs-sm); font-weight:var(--fw-semibold); cursor:pointer; white-space:nowrap; }
 .chip:hover{ color:var(--ink); }
@@ -483,6 +504,7 @@ html.has-overlay{ overflow:hidden; }
   .tbl tr.is-clickable:hover td{ background:transparent; }
 }
 @media (pointer:coarse), (max-width:859.98px){
+  :root{ --ptabs-h:48px; }
   .btn,.btn-sm{ min-height:var(--touch); }
   .btn-icon,.btn-sm.btn-icon{ min-width:var(--touch); }
   .seg-btn,.tab,.chip,.menu-item,.sidebar-item{ min-height:var(--touch); }
@@ -593,7 +615,7 @@ html.has-overlay{ overflow:hidden; }
 [data-page="reports"] .rep-notice .tech{ color:var(--warn-fg); }
 [data-page="reports"] .rep-list{ display:flex; flex-direction:column; gap:var(--sp-2); min-width:0; }
 
-[data-page="reports"] .rep-card{ scroll-margin-top:var(--sp-4); }
+[data-page="reports"] .rep-card{ scroll-margin-top:calc(var(--ptabs-h) + var(--sp-4)); }
 [data-page="reports"] .rep-head{ display:flex; align-items:flex-start; gap:var(--sp-3); min-width:0; padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4); border-radius:var(--r-md); cursor:pointer; transition:background-color var(--dur) var(--ease); }
 [data-page="reports"] .rep-head:hover{ background:var(--surface-2); }
 [data-page="reports"] .rep-card.is-open .rep-head{ border-radius:var(--r-md) var(--r-md) 0 0; }
@@ -636,9 +658,9 @@ html.has-overlay{ overflow:hidden; }
 .rep-pre-reply{ max-height:240px; }
 
 @media (min-width:860px){
-  [data-page="reports"] .rep-filters{ position:sticky; top:0; z-index:var(--z-sticky); padding:var(--sp-2) 0; background:var(--bg); }
+  [data-page="reports"] .rep-filters{ position:sticky; top:var(--ptabs-h); z-index:var(--z-sticky); padding:var(--sp-2) 0; background:var(--bg); }
   [data-page="reports"] .rep-filters .batch-bar{ position:static; box-shadow:var(--shadow-1); }
-  [data-page="reports"] .rep-card{ scroll-margin-top:180px; }
+  [data-page="reports"] .rep-card{ scroll-margin-top:calc(var(--ptabs-h) + 180px); }
 }
 @media (max-width:859.98px){
   [data-page="reports"] .rep-head{ padding:var(--sp-3); gap:var(--sp-2); }
@@ -691,8 +713,12 @@ html.has-overlay{ overflow:hidden; }
 .plc-batch-results{ display:flex; flex-direction:column; gap:var(--sp-3); }
 .plc-batch-count{ font-size:var(--fs-xs); color:var(--ink-3); font-variant-numeric:tabular-nums; }
 
+@media (min-width:860px){
+  /* 0916 候選勾選後的批次列黏在頁內分頁列下方(手機版是固定在底部,不套) */
+  [data-page="places"] .batch-bar{ top:var(--ptabs-h); }
+}
 @media (max-width:859.98px){
-  [data-page="places"] .plc-tabs{ position:sticky; top:0; z-index:var(--z-sticky); background:var(--surface); }
+  [data-page="places"] .plc-tabs{ position:sticky; top:var(--ptabs-h); z-index:var(--z-sticky); background:var(--surface); }
   [data-page="places"] .plc-miss{ grid-template-columns:minmax(0,1fr) auto; }
   [data-page="places"] .plc-miss-acts{ grid-column:1 / -1; justify-content:flex-start; }
   [data-page="places"] .plc-toolbar .search{ max-width:none; }
@@ -1868,6 +1894,101 @@ html.has-overlay{ overflow:hidden; }
       }
     };
   };
+
+  // 0916 頁內分頁列(系統/營收與成本/位置庫/回報共用):放在頁首正下方、捲動時黏在頂端。
+  // 回傳 el(分頁列)與 panel(role=tabpanel,各頁把卡片放進去、自己切 hidden);persist 有給就記住該頁上次停的分頁。
+  var ptabSeq = 0;
+  TR.ui.pageTabs = function(o){
+    var c = o || {};
+    var key = c.persist ? 'tr2_ptab_' + c.persist : null;
+    var uid = 'ptab-' + (c.persist || ('x' + (++ptabSeq)));
+    var panel = h('div', { class: 'ptabs-panel', id: uid + '-panel', attrs: { role: 'tabpanel' } });
+    var seg = TR.ui.segmented({
+      variant: 'tabs', items: c.items, value: c.value, ariaLabel: c.ariaLabel || '分頁',
+      onChange: function(v){
+        sync();
+        toTop();
+        if (typeof c.onChange === 'function') c.onChange(v);
+      }
+    });
+    var bar = h('div', { class: 'ptabs' }, seg.el);
+    var btns = Array.prototype.slice.call(seg.el.children);
+    btns.forEach(function(b){
+      b.id = uid + '-' + String(b._value).replace(/[^A-Za-z0-9_-]/g, '_');
+      b.setAttribute('aria-controls', panel.id);
+    });
+    function btnOf(v){ for (var i = 0; i < btns.length; i++) { if (String(btns[i]._value) === String(v)) return btns[i]; } return null; }
+    // 窄螢幕分頁列左右還有分頁時,邊緣淡出提示可以橫向滑
+    function paintFade(){
+      var sc = seg.el;
+      var over = sc.scrollWidth > sc.clientWidth + 1;
+      bar.classList.toggle('is-fade-l', over && sc.scrollLeft > 1);
+      bar.classList.toggle('is-fade-r', over && sc.scrollLeft + sc.clientWidth < sc.scrollWidth - 1);
+    }
+    // 只捲分頁列本身讓目前分頁完整露出(不用 scrollIntoView,免得整頁跟著上下跳);留的邊距要大於淡出寬度
+    function reveal(){
+      var sc = seg.el;
+      var b = btnOf(seg.value());
+      if (b && sc.scrollWidth > sc.clientWidth + 1) {
+        var l = b.offsetLeft - sc.offsetLeft;
+        if (l < sc.scrollLeft + 32) sc.scrollLeft = Math.max(0, l - 32);
+        else if (l + b.offsetWidth > sc.scrollLeft + sc.clientWidth - 32) sc.scrollLeft = l + b.offsetWidth - sc.clientWidth + 32;
+      }
+      paintFade();
+    }
+    function sync(){
+      var cur = seg.value();
+      var b = btnOf(cur);
+      if (!b) return;
+      panel.setAttribute('aria-labelledby', b.id);
+      if (key) lsSet(key, String(cur));
+      reveal();
+    }
+    // 數字/紅點出現會把後面的分頁往右推:列寬有變才重新露出目前分頁(免得使用者自己滑開的位置被拉回)
+    function afterBadge(fn){
+      var w = seg.el.scrollWidth;
+      fn();
+      if (seg.el.scrollWidth !== w) reveal();
+    }
+    seg.el.addEventListener('scroll', paintFade, { passive: true });
+    // 視窗寬度改變、或整頁從隱藏變顯示(display:none → 有寬度)時重算
+    if (typeof window.ResizeObserver === 'function') {
+      try { new window.ResizeObserver(function(){ reveal(); }).observe(seg.el); } catch (e) {}
+    } else {
+      window.addEventListener('resize', function(){ if (bar.parentNode) reveal(); });
+    }
+    // 使用者切分頁時分頁列若已黏在頂端,捲回分頁列原位,新分頁從第一張卡開始看
+    function toTop(){
+      var sec = bar.parentNode;
+      if (!sec || !sec.getBoundingClientRect) return;
+      var top = sec.getBoundingClientRect().top;
+      if (top < 0) { try { window.scrollTo(0, (window.pageYOffset || 0) + top); } catch (e) {} }
+    }
+    sync();
+    return {
+      el: bar,
+      panel: panel,
+      value: function(){ return seg.value(); },
+      set: function(v){ seg.set(v); sync(); },
+      sync: sync,
+      setCounts: function(map){ afterBadge(function(){ seg.setCounts(map); }); },
+      // 需要處理的件數:紅底小數字;0 就收起來
+      setAlert: function(v, n, srText){
+        var b = btnOf(v);
+        if (!b) return;
+        var k = Math.max(0, Math.floor(Number(n) || 0));
+        afterBadge(function(){
+          b._count.hidden = !k;
+          b._count.textContent = k ? (k > 99 ? '99+' : String(k)) : '';
+          b._count.classList.toggle('is-alert', !!k);
+        });
+        var label = b.firstChild ? b.firstChild.textContent : '';
+        if (k) b.setAttribute('aria-label', label + '(' + (srText || k + ' 項需要處理') + ')');
+        else b.removeAttribute('aria-label');
+      }
+    };
+  };
+  TR.ui.pageTabs.stored = function(persist){ return persist ? lsGet('tr2_ptab_' + persist) : null; };
 
   TR.ui.keyed = function(container, items, keyFn, renderFn, updateFn){
     var existing = {};
@@ -3345,8 +3466,37 @@ html.has-overlay{ overflow:hidden; }
   var S = {
     mounted: false, stale: false, sec: null,
     growthMetric: 'drivers', usageMetric: 'google', detailTab: 'items', blMetric: 'google100',
-    sigs: {}, siteSeq: 0, ui: {}
+    sigs: {}, siteSeq: 0, siteAt: 0, ui: {},
+    tab: null, tabs: [], tabBar: null, blocks: []
   };
+  // 0916 分頁:上方四格摘要放在「營收」與「成本」兩個分頁;每 100 張、官網流量的資料切過去才載
+  var MONEY_TABS = [
+    { value: 'revenue', label: '營收' },
+    { value: 'cost', label: '成本' },
+    { value: 'baseline', label: '每 100 張', need: 'costBaseline' },
+    { value: 'site', label: '官網流量', need: 'siteViews' }
+  ];
+  function hasMoneyTab(v){ return S.tabs.some(function(t){ return t.value === v; }); }
+  function pickMoneyTab(p){
+    if (p && hasMoneyTab(p.tab)) return p.tab;
+    var st = TR.ui.pageTabs.stored('money');
+    return hasMoneyTab(st) ? st : S.tabs[0].value;
+  }
+  function showMoneyTab(v){
+    if (!hasMoneyTab(v)) return;
+    S.tab = v;
+    if (S.tabBar.value() !== v) S.tabBar.set(v);
+    S.blocks.forEach(function(b){ b.el.hidden = b.tabs.indexOf(v) < 0; });
+    moneyTabJobs(v, false);
+  }
+  function moneyTabJobs(v, force){
+    if (v === 'baseline' && S.ui.blHolder) {
+      // 使用者按的重新整理才叫伺服器連 5 分鐘快取一起重算(payload.force),切分頁/定時載入照用快取
+      return TR.data.load('costBaseline', force ? { force: true, payload: { force: true } } : undefined);
+    }
+    if (v === 'site' && S.ui.siteHolder && (force || Date.now() - S.siteAt > 5 * 60 * 1000)) return loadSite();
+    return null;
+  }
 
   function money(n, cur, dec){ return TR.fmt.money(n, cur, dec); }
   function fmtDayLabel(day){
@@ -3926,9 +4076,11 @@ html.has-overlay{ overflow:hidden; }
   function loadSite(){
     if (!TR.can('read', 'siteViews') || !S.ui.siteHolder) return Promise.resolve();
     var seq = ++S.siteSeq;
+    S.siteAt = Date.now();
     return TR.api('siteViews', {}).then(function(res){
       if (seq !== S.siteSeq || !S.mounted) return;
-      if (res && res.error === 'unauthorized') return;
+      if (res && res.error === 'unauthorized') { S.siteAt = 0; return; }
+      if (!res || !res.ok) S.siteAt = 0;
       renderSite(res);
     });
   }
@@ -3939,15 +4091,27 @@ html.has-overlay{ overflow:hidden; }
       var d = tpDay(0);
       return '本月・' + d.slice(0, 4) + ' 年 ' + Number(d.slice(5, 7)) + ' 月';
     },
-    mount: function(sec){
+    mount: function(sec, ctx){
       S.sec = sec;
       sec.textContent = '';
-      sec.appendChild(buildStats());
-      sec.appendChild(buildRevenue());
-      sec.appendChild(buildCost());
-      if (TR.can('read', 'costBaseline')) sec.appendChild(buildBaseline());
-      sec.appendChild(buildAdvice());
-      if (TR.can('read', 'siteViews')) sec.appendChild(buildSite());
+      S.tabs = MONEY_TABS.filter(function(t){ return !t.need || TR.can('read', t.need); });
+      S.tab = pickMoneyTab((ctx && ctx.params) || {});
+      S.tabBar = TR.ui.pageTabs({
+        persist: 'money', ariaLabel: '營收與成本分頁', value: S.tab,
+        items: S.tabs.map(function(t){ return { value: t.value, label: t.label }; }),
+        onChange: function(v){ showMoneyTab(v); TR.router.setParams({ tab: v }); }
+      });
+      sec.appendChild(S.tabBar.el);
+      sec.appendChild(S.tabBar.panel);
+      S.blocks = [];
+      function add(el, tabs){ S.blocks.push({ el: el, tabs: tabs }); S.tabBar.panel.appendChild(el); }
+      add(buildStats(), ['revenue', 'cost']);
+      add(buildRevenue(), ['revenue']);
+      add(buildCost(), ['cost']);
+      if (TR.can('read', 'costBaseline')) add(buildBaseline(), ['baseline']);
+      add(buildAdvice(), ['cost']);
+      if (TR.can('read', 'siteViews')) add(buildSite(), ['site']);
+      S.tabBar.sync();
       paintDetailTab();
       S.mounted = true;
       TR.data.subscribe('licenses', guardedRender);
@@ -3959,10 +4123,10 @@ html.has-overlay{ overflow:hidden; }
       renderAll();
       var g = TR.data.get('geoUsage');
       if (g.loadedAt) TR.page.markUpdated('money', g.loadedAt);
+      // 司機與用量是營收/成本兩個分頁共用、也有全域定時更新;每 100 張與官網流量等切到該分頁才載
       TR.data.load('licenses');
       TR.data.load('geoUsage');
-      if (S.ui.blHolder) TR.data.load('costBaseline');
-      loadSite();
+      showMoneyTab(S.tab);
     },
     refresh: function(opts){
       var src = opts && opts.source;
@@ -3970,9 +4134,7 @@ html.has-overlay{ overflow:hidden; }
         return Promise.all([
           TR.data.load('licenses', { force: true }),
           TR.data.load('geoUsage', { force: true }),
-          // 使用者按的重新整理才叫伺服器連 5 分鐘快取一起重算(payload.force),定時載入照用快取
-          S.ui.blHolder ? TR.data.load('costBaseline', { force: true, payload: { force: true } }) : null,
-          loadSite()
+          moneyTabJobs(S.tab, true)
         ]).then(function(){
           TR.page.markUpdated('money');
           guardedRender();
@@ -3980,7 +4142,12 @@ html.has-overlay{ overflow:hidden; }
       }
       if (S.stale) guardedRender();
       TR.data.load('geoUsage');
-      if (S.ui.blHolder) TR.data.load('costBaseline');
+      moneyTabJobs(S.tab, false);
+    },
+    onParams: function(params){
+      if (!S.mounted) return;
+      var t = pickMoneyTab(params || {});
+      if (t !== S.tab) showMoneyTab(t);
     }
   });
 })();
@@ -4156,7 +4323,20 @@ html.has-overlay{ overflow:hidden; }
     ai_prompt_history: 'AI 規則歷史', site_views: '官網流量', broadcasts: '公告'
   };
 
-  var S = { sec: null, mounted: false, stale: false, cards: {} };
+  var S = { sec: null, mounted: false, stale: false, cards: {}, tab: null, tabs: [], tabBar: null };
+  // 0916 分頁:每個分頁放哪幾張卡(陣列順序 = 畫面順序);s 深連結靠這張表先切到卡片所在的分頁
+  var SYS_TABS = [
+    { value: 'status', label: '狀態與版本', blocks: ['status', 'health', 'version'] },
+    { value: 'cost', label: '花費', blocks: ['caps', 'abuse'] },
+    { value: 'ai', label: 'AI 規則', blocks: ['airules', 'classifier'] },
+    { value: 'corpus', label: '語料', blocks: ['corpus'] },
+    { value: 'data', label: '資料與工具', blocks: ['storage', 'scale', 'tools'] }
+  ];
+  function sysTabOf(block){
+    for (var i = 0; i < SYS_TABS.length; i++) { if (SYS_TABS[i].blocks.indexOf(block) >= 0) return SYS_TABS[i].value; }
+    return null;
+  }
+  function hasSysTab(v){ return S.tabs.some(function(t){ return t.value === v; }); }
   var HS = { list: null, actGroup: null, watchGroup: null, actList: null, watchList: null, empty: null, status: null };
   var AB = { rows: null, cap: null, error: null, loadedAt: 0, loading: false, table: null, stateHost: null, body: null };
   var ST = { media: null, mediaErr: null, db: null, dbErr: null, loadedAt: 0, loading: false };
@@ -4188,10 +4368,28 @@ html.has-overlay{ overflow:hidden; }
   }
   function focusBlock(s){
     if (!s || !S.sec) return;
+    var t = sysTabOf(s);
+    if (t && t !== S.tab && hasSysTab(t)) showSysTab(t);
     var el = document.getElementById('sys-' + s);
     if (!el || !S.sec.contains(el)) return;
     if (el.tagName === 'DETAILS' && !el.open) el.open = true;
-    setTimeout(function(){ try { el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' }); } catch (e) {} }, 30);
+    setTimeout(function(){
+      try {
+        // 分頁的第一張卡本來就在分頁列正下方:不捲,免得把頁首捲走;分頁列已黏在頂端時才捲回原位
+        if (firstShownCard() === el) {
+          var top = S.sec.getBoundingClientRect().top;
+          if (top < 0) window.scrollTo(0, (window.pageYOffset || 0) + top);
+          return;
+        }
+        el.scrollIntoView({ block: 'start', behavior: reduced() ? 'auto' : 'smooth' });
+      } catch (e) {}
+    }, 30);
+  }
+  function firstShownCard(){
+    if (!S.tabBar) return null;
+    var kids = S.tabBar.panel.children;
+    for (var i = 0; i < kids.length; i++) { if (!kids[i].hidden) return kids[i]; }
+    return null;
   }
   function setCardInfo(card, text){
     var old = card.head.querySelector('.info-btn');
@@ -4355,7 +4553,7 @@ html.has-overlay{ overflow:hidden; }
         if (r.page === 'system') {
           var target = r.params.s;
           if (target && target !== 'health' && document.getElementById('sys-' + target)) {
-            body.appendChild(h('button', { class: 'link', type: 'button', text: '前往 ›', on: { click: function(){ TR.router.setParams({ s: target }); focusBlock(target); } } }));
+            body.appendChild(h('button', { class: 'link', type: 'button', text: '前往 ›', on: { click: function(){ TR.router.setParams({ s: target, tab: sysTabOf(target) || '' }); focusBlock(target); } } }));
           }
         } else {
           body.appendChild(h('a', { class: 'link', href: TR.router.href(r.page, r.params), text: '前往 ›' }));
@@ -4945,14 +5143,50 @@ html.has-overlay{ overflow:hidden; }
         (num(r.files_7d) ? '・近 7 天 ' + fmtN(r.files_7d) + ' 個檔(' + TR.fmt.bytes(r.bytes_7d) + ')' : '');
       var badge = r.waiting === true ? TR.ui.badge('尚未收到檔案', 'warn')
         : (lookupFailed || r.waiting == null ? TR.ui.badge('暫時無法確認', 'neutral') : TR.ui.badge('蒐集中', 'ok'));
+      var diag = corpusDiagLines(r, d.diag_available === true);
       rows.appendChild(h('div', { class: 'list-row sys-corpus-row' },
         h('span', { class: 'grow' }, h('span', { text: name }), h('span', { class: 'sys-tool-sub', text: sub }),
-          r.waiting === true ? h('span', { class: 'sys-tool-sub', text: '可能 App 版本太舊、沒上線或沒網路' }) : null),
+          diag.map(function(t){ return h('span', { class: 'sys-tool-sub', text: t }); }),
+          r.waiting === true && !diag.length ? h('span', { class: 'sys-tool-sub', text: '可能 App 版本太舊、沒上線或沒網路' }) : null),
         badge));
     });
     box.appendChild(rows);
     if (lookupFailed) box.appendChild(h('p', { class: 'sys-note', text: '暫時讀不到司機對照表,上傳狀態請稍後再看(不代表沒收到檔案,請不要因此關掉再開啟,會清掉手機上還沒上傳的資料)' }));
     return box;
+  }
+  // 0916 語料「看得見」(v57):手機心跳回報的純數字 + 伺服器記的最後一次上傳 → 一眼看出卡在哪一步(收不到/被擋/沒上傳/上傳失敗)
+  var CORPUS_REJ = [['rj_pid', '私訊'], ['rj_pfl', '私訊'], ['rj_np', '無法確認是群組'], ['rj_ng', '沒有群名'], ['rj_at', '@回覆'],
+    ['rj_ns', '純聊天'], ['rj_ts', '時間太舊'], ['rj_q', '佇列滿'], ['rj_ttl', '暫停中']];
+  var CORPUS_UD = { empty: '沒有待上傳', backoff: '失敗後等待重試', power_save: '省電延後', wait: '等下一次上傳', clock_back: '準備上傳', interval: '準備上傳', burst: '準備上傳' };
+  var CORPUS_POST = { ok: '成功', dup: '重複檔', daily_cap: '今日上限', too_large: '檔案太大', bad_body: '格式錯誤', storage_error: '儲存失敗',
+    server_error: '伺服器錯誤', expired: '授權過期', device_mismatch: '裝置不符', not_enabled: '未開啟' };
+  function corpusDiagLines(r, available){
+    if (!available) return [];
+    var out = [];
+    var s = r.corpus_stat && typeof r.corpus_stat === 'object' ? r.corpus_stat : null;
+    if (s) {
+      var rejTotal = 0, rejParts = [];
+      CORPUS_REJ.forEach(function(p){
+        var n = num(s[p[0]]);
+        if (n > 0) { rejTotal += n; rejParts.push(p[1] + ' ' + fmtN(n)); }
+      });
+      var line = '手機今日:收到 ' + fmtN(num(s.of)) + ' 則・擋掉 ' + fmtN(rejTotal) + ' 則' + (rejParts.length ? '(' + rejParts.slice(0, 3).join('、') + ')' : '') +
+        '・寫入 ' + fmtN(num(s.wr)) + ' 則・待上傳 ' + fmtN(num(s.pf)) + ' 檔・上傳成功 ' + fmtN(num(s.up_ok)) + '/' + fmtN(num(s.up_n)) + ' 次';
+      out.push(line);
+      var tail = [];
+      if (s.ud && CORPUS_UD[s.ud]) tail.push('上傳狀態:' + CORPUS_UD[s.ud]);
+      if (num(s.http) > 0 && num(s.http) !== 200) tail.push('最後 HTTP ' + num(s.http) + (s.err ? '(' + s.err + ')' : ''));
+      if (num(s.ps) === 1) tail.push('省電模式中');
+      tail.push('手機回報於 ' + (r.corpus_stat_at ? TR.fmt.rel(r.corpus_stat_at) : '—'));
+      out.push(tail.join('・'));
+    } else {
+      out.push('手機還沒回報診斷數字(需要 App 47.5 以上)');
+    }
+    if (r.corpus_last_post_at) {
+      var st = r.corpus_last_post_status ? (CORPUS_POST[r.corpus_last_post_status] || r.corpus_last_post_status) : '—';
+      out.push('伺服器最後收到上傳:' + TR.fmt.rel(r.corpus_last_post_at) + '(' + st + ')');
+    }
+    return out;
   }
   function corpusRetention(d, canW){
     var box = h('div', { class: 'sys-sub' }, h('h3', { class: 'sys-sub-title', text: '保留天數' }));
@@ -5650,8 +5884,56 @@ html.has-overlay{ overflow:hidden; }
   function onGeo(st){
     if (!S.mounted) return;
     if (st && st.loadedAt) TR.page.markUpdated('system', new Date(st.loadedAt));
+    paintSysAlert();
     if (!TR.page.isVisible('system')) { S.stale = true; return; }
     renderGeoParts();
+  }
+  // 「狀態與版本」分頁上的紅色數字 = 健康檢查「需要處理」項數(與頁首副標、選單徽章同一個來源)
+  function paintSysAlert(){
+    if (!S.tabBar) return;
+    var last = TR.health && Array.isArray(TR.health.last) ? TR.health.last : [];
+    var n = last.filter(function(w){ return w && w.level === 'act'; }).length;
+    S.tabBar.setAlert('status', n, n + ' 項需要處理');
+  }
+
+  // ----- tabs(0916)-----
+  // 優先順序:s 深連結所在分頁 > tab 參數 > 上次停的分頁 > 第一個
+  function pickSysTab(p){
+    var fromS = p && p.s ? sysTabOf(p.s) : null;
+    if (fromS && hasSysTab(fromS)) return fromS;
+    if (p && hasSysTab(p.tab)) return p.tab;
+    var st = TR.ui.pageTabs.stored('system');
+    if (hasSysTab(st)) return st;
+    return S.tabs[0].value;
+  }
+  function showSysTab(v){
+    if (!hasSysTab(v)) return;
+    S.tab = v;
+    if (S.tabBar.value() !== v) S.tabBar.set(v);
+    S.tabs.forEach(function(t){
+      t.blocks.forEach(function(k){ if (S.cards[k]) S.cards[k].el.hidden = t.value !== v; });
+    });
+    sysTabJobs(v, 'show');
+  }
+  // 只載目前分頁要的資料:mode 'show' = 切過來/頁面重新顯示(沿用原本的過期判斷)、'user' = 按重新整理(強制)
+  function sysTabJobs(v, mode){
+    var jobs = [];
+    var force = mode === 'user';
+    var stale = 5 * 60 * 1000;
+    if (v === 'status') {
+      if (S.cards.status && (force || Date.now() - SV.loadedAt > 60000)) jobs.push(loadServerStatus(force));
+      if (S.cards.version) jobs.push(TR.data.load('devStatus', force ? { force: true } : undefined));
+    } else if (v === 'cost') {
+      if (S.cards.abuse && (force || Date.now() - AB.loadedAt > stale)) jobs.push(loadAbuse());
+    } else if (v === 'ai') {
+      if (force && S.cards.airules && AR.loaded) jobs.push(loadAiRules());
+    } else if (v === 'corpus') {
+      if (S.cards.corpus) jobs.push(loadCorpus(force));
+    } else if (v === 'data') {
+      if (S.cards.storage && (force || Date.now() - ST.loadedAt > stale)) jobs.push(loadStorage());
+      if (force && S.cards.scale && (SC.loaded || S.cards.scale.el.open)) jobs.push(loadScale());
+    }
+    return jobs;
   }
 
   function mount(section, ctx){
@@ -5669,9 +5951,21 @@ html.has-overlay{ overflow:hidden; }
     if (TR.can('read', 'geoAssets')) S.cards.scale = buildScale();
     if (TR.can('read', 'devStatus')) S.cards.version = buildVersion();
     S.cards.tools = buildTools();
-    ['status', 'health', 'version', 'caps', 'abuse', 'classifier', 'airules', 'storage', 'corpus', 'scale', 'tools'].forEach(function(k){
-      if (S.cards[k]) section.appendChild(S.cards[k].el);
+    var p = (ctx && ctx.params) || {};
+    // 0916:卡片依分頁分組放進同一個 tabpanel,不在目前分頁的卡片 hidden(仍留在 DOM,s 深連結與「前往 ›」找得到)
+    S.tabs = SYS_TABS.filter(function(t){ return t.blocks.some(function(k){ return !!S.cards[k]; }); });
+    S.tab = pickSysTab(p);
+    S.tabBar = TR.ui.pageTabs({
+      persist: 'system', ariaLabel: '系統分頁', value: S.tab,
+      items: S.tabs.map(function(t){ return { value: t.value, label: t.label }; }),
+      onChange: function(v){ showSysTab(v); TR.router.setParams({ tab: v, s: '' }); }
     });
+    section.appendChild(S.tabBar.el);
+    section.appendChild(S.tabBar.panel);
+    S.tabs.forEach(function(t){
+      t.blocks.forEach(function(k){ if (S.cards[k]) S.tabBar.panel.appendChild(S.cards[k].el); });
+    });
+    S.tabBar.sync();
     S.mounted = true;
 
     TR.data.subscribe('geoUsage', onGeo);
@@ -5684,19 +5978,16 @@ html.has-overlay{ overflow:hidden; }
     renderClassifier();
     renderVersion();
     renderCorpus();
-    if (S.cards.version) TR.data.load('devStatus');
+    paintSysAlert();
     var geo = TR.data.get('geoUsage');
     if (geo.loadedAt) TR.page.markUpdated('system', new Date(geo.loadedAt));
+    // 用量(健康/上限/分類)是頁首副標與選單徽章共用的資料,不分分頁都要有
     if (!geo.value && !geo.loading) TR.data.load('geoUsage');
-    loadAbuse();
-    loadStorage();
-    loadCorpus(false);
-    loadServerStatus(false);
+    showSysTab(S.tab);
     TR.poll.register('serverStatus', 60000, function(){
-      if (!S.mounted || !S.cards.status || !TR.page.isVisible('system')) return;
+      if (!S.mounted || !S.cards.status || S.tab !== 'status' || !TR.page.isVisible('system')) return;
       return loadServerStatus(false);
     });
-    var p = (ctx && ctx.params) || {};
     if (p.s) focusBlock(p.s);
   }
 
@@ -5704,21 +5995,12 @@ html.has-overlay{ overflow:hidden; }
     if (!S.mounted) return;
     var source = (opts && opts.source) || 'show';
     if (source === 'user') {
-      var jobs = [TR.data.load('geoUsage', { force: true }), loadAbuse(), loadStorage()];
-      if (S.cards.corpus) jobs.push(loadCorpus(true));
-      if (S.cards.status) jobs.push(loadServerStatus(true));
-      if (S.cards.airules && AR.loaded) jobs.push(loadAiRules());
-      if (S.cards.scale && (SC.loaded || S.cards.scale.el.open)) jobs.push(loadScale());
-      if (S.cards.version) jobs.push(TR.data.load('devStatus', { force: true }));
+      var jobs = [TR.data.load('geoUsage', { force: true })].concat(sysTabJobs(S.tab, 'user'));
       return Promise.all(jobs).then(function(){ TR.page.markUpdated('system'); });
     }
     if (S.stale) { S.stale = false; renderGeoParts(); }
-    var stale = 5 * 60 * 1000;
-    if (S.cards.abuse && Date.now() - AB.loadedAt > stale) loadAbuse();
-    if (S.cards.storage && Date.now() - ST.loadedAt > stale) loadStorage();
-    if (S.cards.corpus) loadCorpus(false);
-    if (S.cards.status && Date.now() - SV.loadedAt > 60000) loadServerStatus(false);
-    if (S.cards.version) TR.data.load('devStatus');
+    paintSysAlert();
+    sysTabJobs(S.tab, 'show');
     if (source !== 'show') return;
     var p = TR.router.current().params;
     if (p.s) focusBlock(p.s);
@@ -5734,7 +6016,13 @@ html.has-overlay{ overflow:hidden; }
     },
     mount: mount,
     refresh: refresh,
-    onParams: function(params){ if (params && params.s) focusBlock(params.s); }
+    onParams: function(params){
+      if (!S.mounted) return;
+      var p = params || {};
+      var t = pickSysTab(p);
+      if (t !== S.tab) showSysTab(t);
+      if (p.s) focusBlock(p.s);
+    }
   });
 })();
 (function(){
@@ -5833,8 +6121,9 @@ html.has-overlay{ overflow:hidden; }
     ui.stats = h('div', { class: 'stat-grid ovw-stats' });
     ui.sActive = TR.ui.statCard({ label: '有效司機', href: TR.router.href('drivers', { f: 'active' }) });
     ui.sAccept = TR.ui.statCard({ label: '今日接單', sub: '全體司機' });
-    ui.sRev = TR.ui.statCard({ label: '本月預估營收', href: TR.router.href('money', {}), info: '依目前有效司機的方案價格推算,不是實收金額。' });
-    ui.sCost = TR.ui.statCard({ label: '本月預估成本', href: TR.router.href('money', {}) });
+    // 0916 營收與成本已分頁:明帶 tab,免得打開的是上次停的分頁(例如官網流量)
+    ui.sRev = TR.ui.statCard({ label: '本月預估營收', href: TR.router.href('money', { tab: 'revenue' }), info: '依目前有效司機的方案價格推算,不是實收金額。' });
+    ui.sCost = TR.ui.statCard({ label: '本月預估成本', href: TR.router.href('money', { tab: 'cost' }) });
     [ui.sActive, ui.sAccept, ui.sRev, ui.sCost].forEach(function(s){ ui.stats.appendChild(s.el); });
 
     ui.liveCount = h('span', { class: 'ovw-live-count muted num' });
@@ -7212,7 +7501,10 @@ html.has-overlay{ overflow:hidden; }
   // ---- filters ----
   function readParams(p){
     var q = p || {};
-    S.s = ['open','resolved','all'].indexOf(q.s) >= 0 ? q.s : 'open';
+    // 0916 沒帶 s 時回到上次停的狀態分頁(與系統/營收/位置庫一致);總覽連結都明帶 s=open
+    var STS = ['open','resolved','all'];
+    var lastS = TR.ui.pageTabs.stored('reports');
+    S.s = STS.indexOf(q.s) >= 0 ? q.s : (STS.indexOf(lastS) >= 0 ? lastS : 'open');
     S.k = ['all','quick','detail'].indexOf(q.k) >= 0 ? q.k : 'all';
     S.t = q.t ? String(q.t) : '';
     S.qRaw = q.q ? String(q.q) : '';
@@ -7879,9 +8171,10 @@ html.has-overlay{ overflow:hidden; }
     readParams((ctx && ctx.params) || {});
     rows = TR.data.value('reports');
 
-    ui.statusSeg = TR.ui.segmented({
-      items: [{ value: 'open', label: '待處理', count: 0 }, { value: 'resolved', label: '已修復', count: 0 }, { value: 'all', label: '全部狀態' }],
-      value: S.s, ariaLabel: '處理狀態',
+    // 0916:處理狀態改成頁首下方的分頁列(與系統/營收/位置庫同一個元件);數字等資料到了才顯示,參數仍是 s
+    ui.statusSeg = TR.ui.pageTabs({
+      items: [{ value: 'open', label: '待處理' }, { value: 'resolved', label: '已修復' }, { value: 'all', label: '全部狀態' }],
+      value: S.s, ariaLabel: '處理狀態', persist: 'reports',
       onChange: function(v){ TR.router.setParams({ s: v === 'open' ? '' : v }); }
     });
     ui.kindSeg = TR.ui.segmented({
@@ -7899,7 +8192,7 @@ html.has-overlay{ overflow:hidden; }
     ui.chipsSig = null;
 
     ui.filters = h('div', { class: 'rep-filters', hidden: true },
-      h('div', { class: 'rep-toolbar' }, ui.statusSeg.el, ui.kindSeg.el, ui.search.el),
+      h('div', { class: 'rep-toolbar' }, ui.kindSeg.el, ui.search.el),
       ui.chips);
 
     {
@@ -7922,10 +8215,13 @@ html.has-overlay{ overflow:hidden; }
     ui.list = h('div', { class: 'rep-list', attrs: { 'aria-label': '回報清單' } });
     ui.empty = h('div', { class: 'card rep-empty', hidden: true });
 
-    section.appendChild(ui.filters);
-    section.appendChild(ui.status);
-    section.appendChild(ui.list);
-    section.appendChild(ui.empty);
+    section.appendChild(ui.statusSeg.el);
+    section.appendChild(ui.statusSeg.panel);
+    ui.statusSeg.panel.appendChild(ui.filters);
+    ui.statusSeg.panel.appendChild(ui.status);
+    ui.statusSeg.panel.appendChild(ui.list);
+    ui.statusSeg.panel.appendChild(ui.empty);
+    ui.statusSeg.sync();
 
     if (!S.subscribed) { S.subscribed = true; TR.data.subscribe('reports', onStore); }
     var st = TR.data.get('reports');
@@ -7965,12 +8261,26 @@ html.has-overlay{ overflow:hidden; }
   var S = {
     mounted: false, section: null, stale: false,
     places: null, placesErr: null, placesAt: 0, placesSeq: 0, placesTotal: null,
-    srch: null, srchErr: null, srchSeq: 0, srchTimer: null,
+    srch: null, srchErr: null, srchSeq: 0, srchTimer: null, srchDirty: false,
     query: '', tab: 'cands',
     candSel: {},
     missAll: false, missAllData: null, missAllErr: null, missAllSeq: 0, missOpen: {},
-    gaStats: null, gaStatsErr: null, gaLast: null, gaSeq: 0
+    gaStats: null, gaStatsErr: null, gaStatsAt: 0, gaLast: null, gaSeq: 0,
+    pageTab: 'pending', selfNav: false,
+    own: { tab: '', q: '' }   // 本頁自己最後寫進網址的 tab/q(存 sessionStorage,重新整理後仍分得出「自己寫的」)
   };
+  try { var ownRaw = JSON.parse(sessionStorage.getItem('tr2_plc_own') || 'null'); if (ownRaw && typeof ownRaw === 'object') S.own = { tab: String(ownRaw.tab || ''), q: String(ownRaw.q || '') }; } catch (e) {}
+  // 0916 頁內分頁。tab 參數沿用舊值:cands/miss 仍代表「待處理」卡裡的候選/查無地標(總覽深連結 tab=cands),
+  // 新增 pending/places/seed 三個分頁值;沒帶 tab 但帶了地點搜尋(q)或座標查詢(ga)就是「地點」分頁
+  var PLC_TABS = [{ value: 'pending', label: '待處理' }, { value: 'places', label: '地點' }, { value: 'seed', label: '種子包' }];
+  function plcTabOf(p){
+    var t = p && p.tab;
+    if (t === 'cands' || t === 'miss' || t === 'pending') return 'pending';
+    if (t === 'places' || t === 'seed') return t;
+    if (p && (p.q || p.ga)) return 'places';
+    var st = TR.ui.pageTabs.stored(NAME);
+    return st === 'places' || st === 'seed' ? st : 'pending';
+  }
   var UI = {};
 
   /* ---------- helpers ---------- */
@@ -8642,6 +8952,12 @@ html.has-overlay{ overflow:hidden; }
   function updateCounts(){
     if (!UI.tabs) return;
     UI.tabs.setCounts({ cands: TR.data.count(TR.data.value('placeCands')), miss: TR.data.count(missData().value) });
+    if (UI.pageTabs) {
+      // 「待處理」分頁的數字與頁首副標同一個算法(候選 + 需要補的查無地標);0 筆不顯示
+      var c = TR.data.count(TR.data.value('placeCands')), m = TR.data.count(TR.data.value('missQueue'));
+      var n = (c ? c.n : 0) + (m ? m.n : 0);
+      UI.pageTabs.setCounts({ pending: n > 0 ? { n: n, plus: !!(c && c.plus) || !!(m && m.plus) } : null });
+    }
     TR.page.updateHeader(NAME);
   }
   function showTab(){
@@ -8664,7 +8980,7 @@ html.has-overlay{ overflow:hidden; }
       onChange: function(v){
         S.tab = v === 'miss' ? 'miss' : 'cands';
         showTab();
-        TR.router.setParams({ tab: S.tab === 'miss' ? 'miss' : '' });
+        selfParams({ tab: pendingTabParam() });   // 0916:候選不寫 cands(那是總覽深連結專用、會強制展開)
       }
     });
     UI.candPane = h('div', { class: 'plc-pane', attrs: { role: 'tabpanel', 'aria-label': '候選' } });
@@ -8685,7 +9001,7 @@ html.has-overlay{ overflow:hidden; }
       S.query = v;
       syncSearch(false);
       renderPlaces();
-      TR.router.setParams({ q: v.trim() });
+      selfParams({ q: v.trim() });
     } });
     UI.placeCount = h('span', { class: 'muted num plc-count', attrs: { 'aria-live': 'polite' } });
     UI.placeErr = h('div', { class: 'plc-inline-err', hidden: true });
@@ -8740,8 +9056,10 @@ html.has-overlay{ overflow:hidden; }
 
   function loadGaStats(){
     if (!TR.can('read', 'geoAssetStats')) return Promise.resolve();
+    S.gaStatsAt = Date.now();
     return TR.api('geoAssetStats', {}).then(function(res){
-      if (silentErr(res)) return;
+      if (silentErr(res)) { S.gaStatsAt = 0; return; }
+      if (!res || !res.ok) S.gaStatsAt = 0;
       if (res && res.ok && !res.missing) { S.gaStats = res; S.gaStatsErr = null; }
       else if (res && res.ok && res.missing) { S.gaStats = null; S.gaStatsErr = { text: '這項功能還沒啟用,請聯絡工程人員', tech: String(res.warning || 'missing') }; }
       else { S.gaStats = null; S.gaStatsErr = gaReadErr(res); }
@@ -9089,6 +9407,7 @@ html.has-overlay{ overflow:hidden; }
       title: '永久座標資產',
       info: '全隊累積的地址座標版本。服務中才會被 App 使用;撤回、存疑不會刪資料,隨時可以再啟用。'
     });
+    UI.gaStatsCard = card;
     UI.gaStatsBody = h('div', { class: 'plc-stats-body' });
     card.body.appendChild(UI.gaStatsBody);
     section.appendChild(card.el);
@@ -9660,21 +9979,52 @@ html.has-overlay{ overflow:hidden; }
     if (TR.busy.isInteracting(S.section)) TR.busy.whenIdle(S.section, renderPending);
     else renderPending();
   }
+  // 地點清單與待處理數字是頁首副標要用的,不分分頁都載;座標資產統計、座標查詢、種子包切到該分頁才載
   function loadAll(force){
+    // 地點搜尋結果只有「地點」分頁看得到:別的分頁按重新整理不重搜,記下來等切到「地點」再搜
+    var research = !!force && S.pageTab === 'places';
+    if (research) S.srchDirty = false;
+    else if (force && S.query.trim()) S.srchDirty = true;
     var ps = [
-      loadPlaces({ research: !!force }),
+      loadPlaces({ research: research }),
       TR.data.load('placeCands', { force: force }),
-      TR.data.load('missQueue', { force: force }),
-      TR.data.load('seedPack', { force: force }),
-      loadGaStats()
+      TR.data.load('missQueue', { force: force })
     ];
-    if (S.missAll && (force || !S.missAllData)) ps.push(loadMissAll());
-    if (force && S.gaLast) ps.push(gaReload());
+    ps.push(plcTabJobs(S.pageTab, !!force));
     return Promise.all(ps);
+  }
+  function plcTabJobs(v, force){
+    var ps = [];
+    if (v === 'pending') {
+      // 查無地標「顯示全部」清單只在待處理卡裡
+      if (S.missAll && (force || !S.missAllData)) ps.push(loadMissAll());
+    } else if (v === 'places') {
+      if (S.srchDirty && !force) { S.srchDirty = false; syncSearch(true); renderPlaces(); }
+      if (force || Date.now() - S.gaStatsAt > 300000) ps.push(loadGaStats());
+      if (force && S.gaLast) ps.push(gaReload());
+      else applyGaParam(TR.router.current().page === NAME ? (TR.router.current().params.ga || '') : '', false);
+    } else if (v === 'seed') {
+      ps.push(TR.data.load('seedPack', { force: force }));
+    }
+    return Promise.all(ps);
+  }
+  function applyPlcTab(v){
+    S.pageTab = v;
+    if (UI.pageTabs.value() !== v) UI.pageTabs.set(v);
+    UI.pendingCard.el.hidden = v !== 'pending';
+    UI.placesCard.el.hidden = v !== 'places';
+    UI.gaStatsCard.el.hidden = v !== 'places';
+    UI.gaCard.el.hidden = v !== 'places';
+    UI.seedCard.el.hidden = v !== 'seed';
+  }
+  function showPlcTab(v){
+    applyPlcTab(v);
+    plcTabJobs(v, false);
   }
   function applyGaParam(ga, scroll){
     if (!ga) return;
     if (S.gaLast && S.gaLast.kind === 'search' && S.gaLast.q === ga) return;
+    if (S.pageTab !== 'places') return;   // 0916:座標查詢在「地點」分頁,切過去時才查(plcTabJobs)
     UI.gaCard.setOpen(true);
     UI.gaSearch.set(ga);
     gaSearch(ga);
@@ -9686,12 +10036,26 @@ html.has-overlay{ overflow:hidden; }
     S.mounted = true;
     S.tab = params.tab === 'miss' ? 'miss' : 'cands';
     S.query = params.q || '';
+    S.pageTab = plcTabOf(params);
     section.textContent = '';
-    buildGaStats(section);
-    buildSeedPack(section);
-    buildPending(section);
-    buildPlaces(section);
-    buildGa(section);
+    UI.pageTabs = TR.ui.pageTabs({
+      persist: NAME, ariaLabel: '位置庫分頁', value: S.pageTab, items: PLC_TABS,
+      onChange: function(v){
+        showPlcTab(v);
+        // 回到「待處理」時保留卡內停的候選/查無地標
+        selfParams({ tab: v === 'pending' ? pendingTabParam() : v });
+      }
+    });
+    section.appendChild(UI.pageTabs.el);
+    var panel = UI.pageTabs.panel;
+    section.appendChild(panel);
+    buildPending(panel);
+    buildPlaces(panel);
+    buildGaStats(panel);
+    buildGa(panel);
+    buildSeedPack(panel);
+    applyPlcTab(S.pageTab);
+    UI.pageTabs.sync();
     TR.data.subscribe('placeCands', onStore);
     TR.data.subscribe('missQueue', onStore);
     TR.data.subscribe('seedPack', onSeedStore);
@@ -9700,9 +10064,8 @@ html.has-overlay{ overflow:hidden; }
     renderPlaces();
     renderGaStats();
     renderSeedPack();
-    if (params.tab) UI.pendingCard.setOpen(true);
-    if (params.q) UI.placesCard.setOpen(true);
-    applyGaParam(params.ga || '', true);
+    if (S.pageTab === 'places' && params.ga) applyGaParam(params.ga, true);
+    arrivalOpen(params);
     return loadAll(false).then(function(){ TR.page.markUpdated(NAME); });
   }
   function refresh(opts){
@@ -9712,21 +10075,58 @@ html.has-overlay{ overflow:hidden; }
     if (src === 'show') {
       if (S.stale) { S.stale = false; renderPending(); }
       renderPlaces();
-      var ps = [TR.data.load('placeCands'), TR.data.load('missQueue'), TR.data.load('seedPack')];
+      var ps = [TR.data.load('placeCands'), TR.data.load('missQueue'), plcTabJobs(S.pageTab, false)];
       if (Date.now() - S.placesAt > 300000) ps.push(loadPlaces());
       return Promise.all(ps);
     }
     return Promise.resolve();
   }
+  // 本頁自己寫網址(分頁切換、地點搜尋):onParams 會同步跑到,靠旗標分辨「自己切的」與「外面連進來的」;
+  // 同時記下自己寫的 tab/q —— 左側選單回到本頁會重放上次網址、重新整理也還是那串網址,都不算外面連進來
+  function markOwn(patch){
+    if ('tab' in patch) S.own.tab = String(patch.tab || '');
+    if ('q' in patch) S.own.q = String(patch.q || '');
+    try { sessionStorage.setItem('tr2_plc_own', JSON.stringify(S.own)); } catch (e) {}
+  }
+  function selfParams(patch){
+    markOwn(patch);
+    S.selfNav = true;
+    try { TR.router.setParams(patch); } finally { S.selfNav = false; }
+  }
+  // 「待處理」分頁寫進網址的 tab:查無地標寫 miss(回來還在查無地標);候選不寫,
+  // 但網址還帶著地點搜尋 q / 座標查詢 ga 時要明寫 pending,否則會被判成「地點」分頁
+  function pendingTabParam(){
+    if (S.tab === 'miss') return 'miss';
+    var cp = TR.router.current().params || {};
+    return cp.q || cp.ga ? 'pending' : '';
+  }
+  // 0915「深連結進來強制展開」只給外面來的網址(總覽「位置庫待處理」tab=cands、書籤):
+  // 自己寫的 tab/q 不展開,免得蓋掉使用者收合並記住的狀態。tab=cands 用過就從網址拿掉,
+  // 之後左側選單回來(重放網址)不會再展開,但從總覽再點一次仍會展開
+  function arrivalOpen(p){
+    if (S.selfNav) return;
+    var t = p.tab || '', q = p.q || '';
+    if ((t === 'cands' || t === 'miss') && t !== S.own.tab) {
+      UI.pendingCard.setOpen(true);
+      if (t === 'cands') selfParams({ tab: pendingTabParam() });
+      else markOwn({ tab: t });
+    }
+    if (q && q !== S.own.q) {
+      UI.placesCard.setOpen(true);
+      markOwn({ q: q });
+    }
+  }
   function onParams(p){
     if (!S.mounted) return;
-    var tab = p.tab === 'miss' ? 'miss' : 'cands';
+    var pt = plcTabOf(p);
+    if (pt !== S.pageTab) showPlcTab(pt);
+    // 沒帶 tab 又停在「待處理」(例如點左側選單回到本頁)照舊回到候選;其他情況不動卡內停的位置
+    var tab = p.tab === 'miss' ? 'miss' : (p.tab === 'cands' || (!p.tab && pt === 'pending') ? 'cands' : S.tab);
     if (tab !== S.tab) { S.tab = tab; UI.tabs.set(tab); showTab(); }
-    if (p.tab) UI.pendingCard.setOpen(true);
     var q = p.q || '';
     if (q !== S.query.trim()) { S.query = q; UI.placeSearch.set(q); syncSearch(true); renderPlaces(); }
-    if (q) UI.placesCard.setOpen(true);
     applyGaParam(p.ga || '', true);
+    arrivalOpen(p);   // 放最後:tab=cands 會改寫網址、同步再跑一次 onParams
   }
 
   TR.page.register(NAME, {
