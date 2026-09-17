@@ -1048,7 +1048,7 @@ html.has-overlay{ overflow:hidden; }
     // 語料下載(0916;v55)
     else if (e === 'need_migration_v55') text = '這項功能還沒啟用(需先執行 v55 SQL)';
     else if (e === 'export_disabled') text = '尚未啟用:請到 Supabase 設定 CORPUS_EXPORT_PASSWORD';
-    else if (e === 'export_weak_secret') text = '下載密碼太短(至少 12 個字):請到 Supabase 把 CORPUS_EXPORT_PASSWORD 改長,再重新部署 admin';
+    else if (e === 'export_weak_secret') text = '下載密碼格式不對:請到 Supabase 檢查 CORPUS_EXPORT_PASSWORD,再重新部署 admin';
     else if (e === 'export_secret_reuse') text = '下載密碼不可與登入密碼相同,請到 Supabase 改 CORPUS_EXPORT_PASSWORD,再重新部署 admin';
     else if (e === 'export_forbidden') text = '下載密碼不對,沒有下載任何檔案';
     else if (e === 'sign_failed') text = '無法產生下載網址,請稍後再試(已記一筆下載紀錄)';
@@ -5550,8 +5550,7 @@ html.has-overlay{ overflow:hidden; }
         h('div', { class: 'field' }, h('label', { class: 'field-label', for: idT, text: '結束日期' }), toIn)),
       def.earliest ? h('p', { class: 'field-hint', text: '伺服器上有 ' + def.earliest + ' 到 ' + def.latest + ' 的檔' }) : null,
       h('div', { class: 'field' },
-        h('label', { class: 'field-label', for: idP, text: '下載密碼' }), pwIn,
-        h('p', { class: 'field-hint', text: '不是後台登入密碼。請不要讓瀏覽器儲存這組密碼。每次下載都會記錄時間與 IP;錯太多次會暫時被鎖住。' })),
+        h('label', { class: 'field-label', for: idP, text: '下載密碼' }), pwIn),
       h('p', { class: 'dialog-note', text: '只有擁有者知道下載密碼;下載的內容已遮蔽電話等個資,但仍含群組名與門牌,請勿外流' }),
       progress, stopRow);
     function setInputs(dis){ fromIn.disabled = dis; toIn.disabled = dis; pwIn.disabled = dis; }
